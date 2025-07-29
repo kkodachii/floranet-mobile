@@ -23,8 +23,8 @@ const Index = () => {
 
         <View style={styles.content}>
           <AccountDetails
-            name="Cogie W. Oasan"
-            houseNum="456"
+            homeownername="Juan Dela Cruz"
+            houseNumber="B3A - L23"
             avatarUri="https://via.placeholder.com/50"
           />
 
@@ -52,7 +52,7 @@ const Index = () => {
   );
 };
 
-const AccountDetails = ({ houseNum, name, avatarUri }) => (
+const AccountDetails = ({ houseNumber, homeownername, avatarUri }) => (
   <View style={styles.paymentCard}>
     <View style={styles.cardHeader}>
       <View style={styles.avatarContainer}>
@@ -64,8 +64,8 @@ const AccountDetails = ({ houseNum, name, avatarUri }) => (
     </View>
 
     <View style={styles.cardContent}>
-      <Text style={styles.name}>{name}</Text>
-      <Text style={styles.houseNum}>House Number: {houseNum}</Text>
+      <Text style={styles.homeownername}>{homeownername}</Text>
+      <Text style={styles.houseNumber}>House Number: {houseNumber}</Text>
 
       <TouchableOpacity style={styles.detailsButton}>
         <Text style={styles.detailsButtonText}>More Details</Text>
@@ -140,16 +140,16 @@ const styles = StyleSheet.create({
   cardContent: {
     alignItems: "flex-start",
   },
-  houseNum: {
+  houseNumber: {
     color: "white",
     fontSize: 16,
-    marginBottom: 8,
+    marginBottom: 15,
   },
-  name: {
+  homeownername: {
     color: "white",
     fontSize: 32,
     fontWeight: "bold",
-    marginBottom: 5,
+    marginBottom: 3,
   },
   detailsButton: {
     borderWidth: 1,
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    marginBottom: 7,
+    marginBottom: 3,
   },
   detailsButtonText: {
     color: "white",
