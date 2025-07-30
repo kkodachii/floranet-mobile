@@ -5,16 +5,17 @@ import {
   View,
   SafeAreaView,
   TouchableOpacity,
-  Platform,
   Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import Navbar from "../components/Navbar";
 import Header from "../components/Header";
 import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 
 const Index = () => {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   return (
     <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
@@ -23,23 +24,34 @@ const Index = () => {
 
         <View style={styles.content}>
           <AccountDetails
-            homeownername="Juan Dela Cruz"
-            houseNumber="B3A - L23"
+            homeownerName="Juan Dela Cruz"
+            residentId="B3A - L23"
             avatarUri={null}
           />
-
-          <MenuButton
-            icon={<Ionicons name="wallet" size={30} color="black" />}
-            label="FINANCE AND SERVICES"
-          />
-          <MenuButton
-            icon={<FontAwesome5 name="users" size={30} color="black" />}
-            label="COMMUNITY"
-          />
-          <MenuButton
-            icon={<MaterialIcons name="shield" size={30} color="black" />}
-            label="SECURITY AND EMERGENCY"
-          />
+          <View style={styles.buttonGrid}>
+            <MenuButton
+              icon={<Ionicons name="wallet" size={30} color="#2f3b4c" />}
+              label="FINANCE"
+              onPress={() => router.push("/Finance/FinanceHomepage/")}
+            />
+            <MenuButton
+              icon={<FontAwesome5 name="users" size={30} color="#2f3b4c" />}
+              label="COMMUNITY"
+              onPress={() => router.push("/Community/CommunityHomepage")}
+            />
+            <MenuButton
+              icon={<MaterialIcons name="shield" size={30} color="#2f3b4c" />}
+              label="SECURITY"
+              onPress={() => router.push("/Security/SecurityHomepage")}
+            />
+            <MenuButton
+              icon={
+                <MaterialIcons name="emergency" size={30} color="#2f3b4c" />
+              }
+              label="EMERGENCY"
+              onPress={() => router.push("/Emergency/EmergencyHomepage")}
+            />
+          </View>
         </View>
 
         <View
@@ -52,7 +64,7 @@ const Index = () => {
   );
 };
 
-const AccountDetails = ({ houseNumber, homeownername, avatarUri }) => (
+const AccountDetails = ({ residentId, homeownerName, avatarUri }) => (
   <View style={styles.paymentCard}>
     <View style={styles.cardHeader}>
       <View style={styles.avatarContainer}>
@@ -70,8 +82,8 @@ const AccountDetails = ({ houseNumber, homeownername, avatarUri }) => (
     </View>
 
     <View style={styles.cardContent}>
-      <Text style={styles.homeownername}>{homeownername}</Text>
-      <Text style={styles.houseNumber}>House Number: {houseNumber}</Text>
+      <Text style={styles.homeownerName}>{homeownerName}</Text>
+      <Text style={styles.residentId}>Resident ID: {residentId}</Text>
 
       <TouchableOpacity style={styles.detailsButton}>
         <Text style={styles.detailsButtonText}>More Details</Text>
@@ -80,8 +92,8 @@ const AccountDetails = ({ houseNumber, homeownername, avatarUri }) => (
   </View>
 );
 
-const MenuButton = ({ icon, label }) => (
-  <TouchableOpacity style={styles.button}>
+const MenuButton = ({ icon, label, onPress }) => (
+  <TouchableOpacity style={styles.button} onPress={onPress}>
     <View style={styles.iconWrapper}>{icon}</View>
     <Text style={styles.buttonText}>{label}</Text>
   </TouchableOpacity>
@@ -92,7 +104,7 @@ export default Index;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#f6f7f9",
   },
   container: {
     flex: 1,
@@ -107,20 +119,24 @@ const styles = StyleSheet.create({
   navWrapper: {
     backgroundColor: "#fff",
   },
-
-  // Payment Card Styles
   paymentCard: {
-    backgroundColor: "#28942c",
-    borderRadius: 16,
-    padding: 20,
-    width: 300,
-    marginBottom: 8,
-  },
+  backgroundColor: "#fff",
+  borderRadius: 16,
+  padding: 20,
+  width: 310,
+  marginBottom: 20,
+
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.1,
+  shadowRadius: 4,
+  elevation: 5,
+},
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 16,
+    marginBottom: 10,
   },
   avatarContainer: {
     width: 60,
@@ -142,61 +158,61 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   badge: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#28942c",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 999,
   },
-
   badgeText: {
-    color: "#28942c",
+    color: "#ffff",
   },
   cardContent: {
     alignItems: "flex-start",
   },
-  houseNumber: {
-    color: "white",
+  residentId: {
+    color: "#28942c",
     fontSize: 16,
     marginBottom: 15,
   },
-  homeownername: {
-    color: "white",
+  homeownerName: {
+    color: "#2f3b4c",
     fontSize: 32,
     fontWeight: "bold",
     marginBottom: 3,
   },
   detailsButton: {
     borderWidth: 1,
-    borderColor: "white",
+    borderColor: "#2f3b4c",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
     marginBottom: 3,
   },
   detailsButtonText: {
-    color: "white",
+    color: "#2f3b4c",
     fontSize: 14,
     fontWeight: "600",
   },
-
-  button: {
+  buttonGrid: {
     flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    width: 300,
-    borderWidth: 1,
-    borderColor: "#000",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 12,
   },
-  iconWrapper: {
-    marginRight: 12,
+  button: {
+    flexDirection: "column",
+    alignItems: "center",
+    backgroundColor: "#edf0f2",
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    width: 150,
+    height: 90,
   },
   buttonText: {
-    color: "black",
+    color: "#2f3b4c",
     fontWeight: "bold",
-    fontSize: 16,
+    fontSize: 14,
     flexShrink: 1,
   },
 });

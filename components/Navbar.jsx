@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -7,9 +7,11 @@ import {
   Platform,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import { useRouter, usePathname } from "expo-router";
 
 const Navbar = () => {
-  const [activeTab, setActiveTab] = useState("home");
+  const router = useRouter();
+  const pathname = usePathname();
 
   const tabs = [
     {
@@ -17,51 +19,63 @@ const Navbar = () => {
       label: "Home",
       icon: "home-outline",
       iconActive: "home",
+      route: "/Index",
     },
     {
-      id: "chat",
-      label: "Message",
-      icon: "chatbubble-outline",
-      iconActive: "chatbubble",
+      id: "wallet",
+      label: "Finance",
+      icon: "wallet-outline",
+      iconActive: "wallet",
+      route: "/Finance/FinanceHomepage",
     },
     {
       id: "community",
       label: "Community",
       icon: "people-outline",
       iconActive: "people",
+      route: "/Community/CommunityHomepage",
     },
+    {
+      id: "shield",
+      label: "Security",
+      icon: "shield-outline",
+      iconActive: "shield",
+      route: "/Security/SecurityHomepage",
+    },
+
     {
       id: "profile",
       label: "Profile",
       icon: "person-outline",
       iconActive: "person",
+      route: "/Profile/MainProfile",
     },
   ];
 
   return (
     <View style={styles.container}>
-      {tabs.map((tab) => (
-        <TouchableOpacity
-          key={tab.id}
-          style={styles.tabItem}
-          onPress={() => setActiveTab(tab.id)}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={activeTab === tab.id ? tab.iconActive : tab.icon}
-            size={24}
-            color={activeTab === tab.id ? "#000" : "#888"}
-          />
-          <Text
-            style={[
-              styles.tabLabel,
-              { color: activeTab === tab.id ? "#000" : "#888" },
-            ]}
+      {tabs.map((tab) => {
+        const isActive = pathname === tab.route;
+        return (
+          <TouchableOpacity
+            key={tab.id}
+            style={styles.tabItem}
+            onPress={() => router.replace(tab.route)}
+            activeOpacity={0.7}
           >
-            {tab.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
+            <Ionicons
+              name={isActive ? tab.iconActive : tab.icon}
+              size={24}
+              color={isActive ? "#28942c" : "#888"}
+            />
+            <Text
+              style={[styles.tabLabel, { color: isActive ? "#28942c" : "#888" }]}
+            >
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 };
