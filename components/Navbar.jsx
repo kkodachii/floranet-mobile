@@ -20,7 +20,7 @@ const Navbar = () => {
     },
     {
       id: "chat",
-      label: "Chat",
+      label: "Message",
       icon: "chatbubble-outline",
       iconActive: "chatbubble",
     },

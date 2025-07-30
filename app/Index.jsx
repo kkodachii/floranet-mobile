@@ -25,11 +25,11 @@ const Index = () => {
           <AccountDetails
             homeownername="Juan Dela Cruz"
             houseNumber="B3A - L23"
-            avatarUri="https://via.placeholder.com/50"
+            avatarUri={null}
           />
 
           <MenuButton
-            icon={<Ionicons name="business" size={30} color="black" />}
+            icon={<Ionicons name="wallet" size={30} color="black" />}
             label="FINANCE AND SERVICES"
           />
           <MenuButton
@@ -37,7 +37,7 @@ const Index = () => {
             label="COMMUNITY"
           />
           <MenuButton
-            icon={<MaterialIcons name="security" size={30} color="black" />}
+            icon={<MaterialIcons name="shield" size={30} color="black" />}
             label="SECURITY AND EMERGENCY"
           />
         </View>
@@ -56,7 +56,13 @@ const AccountDetails = ({ houseNumber, homeownername, avatarUri }) => (
   <View style={styles.paymentCard}>
     <View style={styles.cardHeader}>
       <View style={styles.avatarContainer}>
-        <Image source={{ uri: avatarUri }} style={styles.avatar} />
+        {avatarUri ? (
+          <Image source={{ uri: avatarUri }} style={styles.avatar} />
+        ) : (
+          <View style={styles.placeholder}>
+            <Ionicons name="person" size={35} color="#ccc" />
+          </View>
+        )}
       </View>
       <View style={styles.badge}>
         <Text style={styles.badgeText}>Homeowner</Text>
@@ -117,9 +123,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   avatarContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 60,
+    height: 60,
+    borderRadius: 35,
     overflow: "hidden",
   },
   avatar: {
@@ -127,11 +133,19 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 25,
   },
+  placeholder: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 25,
+    backgroundColor: "#e0e0e0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   badge: {
-    backgroundColor: "#ffffff", // solid white background
+    backgroundColor: "#ffffff",
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 999, // makes it fully rounded
+    borderRadius: 999,
   },
 
   badgeText: {
