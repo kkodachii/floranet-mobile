@@ -1,12 +1,11 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useTheme } from "../Theme/ThemeProvider";
 
 const HeaderBack = ({ title = "Page Title", onBack }) => {
-  const colorScheme = useColorScheme();
-  const isDarkMode = colorScheme === "dark";
+  const { theme, colors } = useTheme();
   const router = useRouter();
 
   const handleBack = () => {
@@ -17,21 +16,22 @@ const HeaderBack = ({ title = "Page Title", onBack }) => {
     }
   };
 
+  const backgroundColor = theme === "light" ? "#ffffff" : "#14181F";
+  const textColor = theme === "light" ? "#2f3b4c" : "#ffffff";
+  const borderColor = theme === "light" ? "#ccc" : "#333";
+
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor, borderBottomColor: borderColor },
+      ]}
+    >
       <TouchableOpacity style={styles.iconButton} onPress={handleBack}>
-        <Ionicons
-          name="arrow-back"
-          size={28}
-          color={isDarkMode ? "#ffffff" : "#2f3b4c"}
-        />
+        <Ionicons name="arrow-back" size={28} color={textColor} />
       </TouchableOpacity>
-      <Text
-        style={[styles.title, { color: isDarkMode ? "#ffffff" : "#2f3b4c" }]}
-      >
-        {title}
-      </Text>
-      <View style={{ width: 28 }} /> {/* Spacer to balance the arrow */}
+      <Text style={[styles.title, { color: textColor }]}>{title}</Text>
+      <View style={{ width: 28 }} />
     </View>
   );
 };
@@ -45,8 +45,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
-    backgroundColor: "#fff",
   },
   title: {
     fontSize: 18,
