@@ -154,7 +154,6 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   navWrapper: {
-    borderTopWidth: 1,
   },
   historySection: {
     marginTop: 53,

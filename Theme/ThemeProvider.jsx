@@ -19,7 +19,7 @@ const darkColors = {
   navbg: "#14181F",
   card: "#1F2633",
   text: "#f6f7f9",
-  buttonBackground: "#3a3a3c",
+  buttonBackground: " #1F2633",
 };
 
 export const ThemeProvider = ({ children }) => {
