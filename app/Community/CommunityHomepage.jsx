@@ -52,21 +52,29 @@ const CommunityHomepage = () => {
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    let isMounted = true;
+
+    const animate = () => {
+      if (!isMounted) return;
+
+      fadeAnim.setValue(0);
+
+      setShowCategory((prev) => !prev);
+
       Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 300,
+        toValue: 1,
+        duration: 400,
         useNativeDriver: true,
       }).start(() => {
-        setShowCategory((prev) => !prev);
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
+        setTimeout(animate, 3000);
       });
-    }, 2000);
-    return () => clearInterval(interval);
+    };
+
+    animate();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const chipRefs = useRef({});
