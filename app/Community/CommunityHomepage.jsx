@@ -1,5 +1,3 @@
-// CommunityHomepage.js
-
 import {
   StyleSheet,
   Text,
@@ -116,6 +114,12 @@ const CommunityHomepage = () => {
         image:
           "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=400&h=400&fit=crop",
       },
+      residentName: "Juan Dela Cruz",
+      residentID: "B3A - L23",
+      houseNumber: "23",
+      street: "Blk B3A",
+      businessName: "Juan’s Buko Shake",
+      contactNumber: "09171234567",
     },
     {
       homeownerName: "Maria Santos",
@@ -126,6 +130,12 @@ const CommunityHomepage = () => {
       category: "Announcement",
       commentCount: 8,
       likes: 30,
+      residentName: "Maria Santos",
+      residentID: "C2B - L12",
+      houseNumber: "12",
+      street: "Blk C2B",
+      businessName: "",
+      contactNumber: "09182345678",
     },
     {
       homeownerName: "Pedro Reyes",
@@ -136,6 +146,12 @@ const CommunityHomepage = () => {
       category: "Vendor",
       commentCount: 5,
       likes: 18,
+      residentName: "Pedro Reyes",
+      residentID: "A1 - L5",
+      houseNumber: "5",
+      street: "Blk A1",
+      businessName: "Pedro’s Farm Goods",
+      contactNumber: "09183456789",
     },
   ];
 
@@ -157,12 +173,10 @@ const CommunityHomepage = () => {
             <Text style={[styles.title, { color: textColor }]}>
               Community Hub
             </Text>
-            <TouchableOpacity onPress={handleChatPress}>
-              <Ionicons
-                name="chatbubble-ellipses-outline"
-                size={24}
-                color={textColor}
-              />
+            <TouchableOpacity
+              onPress={() => router.push("/Community/ChatHomepage")}
+            >
+              <Ionicons name="chatbubble-outline" size={24} color={textColor} />
             </TouchableOpacity>
           </View>
 
