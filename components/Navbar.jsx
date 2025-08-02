@@ -26,13 +26,6 @@ const Navbar = () => {
       route: "/Index",
     },
     {
-      id: "wallet",
-      label: "Finance",
-      icon: "wallet-outline",
-      iconActive: "wallet",
-      route: "/Finance/FinanceHomepage",
-    },
-    {
       id: "community",
       label: "Community",
       icon: "people-outline",
@@ -40,11 +33,11 @@ const Navbar = () => {
       route: "/Community/CommunityHomepage",
     },
     {
-      id: "shield",
-      label: "Security",
-      icon: "shield-outline",
-      iconActive: "shield",
-      route: "/Security/SecurityHomepage",
+      id: "chat",
+      label: "Message",
+      icon: "chatbubble-outline",
+      iconActive: "chatbubble",
+      route: "/Community/ChatHomepage",
     },
     {
       id: "profile",
