@@ -1,3 +1,5 @@
+// CommunityHomepage.js
+
 import {
   StyleSheet,
   Text,
@@ -7,8 +9,9 @@ import {
   ScrollView,
   Image,
   StatusBar,
+  Animated,
 } from "react-native";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Navbar from "../../components/Navbar";
 import Header from "../../components/Header";
 import { useRouter } from "expo-router";
@@ -34,7 +37,37 @@ const CommunityHomepage = () => {
     "Vendors",
     "Businesses",
   ];
+  const categoryMap = {
+    All: "All",
+    Events: "Event",
+    Announcements: "Announcement",
+    Vendors: "Vendor",
+    Businesses: "Business",
+  };
+
   const [selectedChip, setSelectedChip] = useState("All");
+  const [showCategory, setShowCategory] = useState(false);
+  const [interestedStates, setInterestedStates] = useState({});
+  const [likedPosts, setLikedPosts] = useState({});
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        setShowCategory((prev) => !prev);
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+      });
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   const chipRefs = useRef({});
   const scrollViewRef = useRef(null);
@@ -69,6 +102,12 @@ const CommunityHomepage = () => {
       category: "Event",
       commentCount: 12,
       likes: 45,
+      event: {
+        dateTime: "Fri, 2 June – 11:00 AM",
+        location: "Clubhouse, Community Area",
+        image:
+          "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=400&h=400&fit=crop",
+      },
     },
     {
       homeownerName: "Maria Santos",
@@ -182,90 +221,287 @@ const CommunityHomepage = () => {
           </View>
 
           <View style={styles.content}>
-            {posts.map((post, index) => (
-              <View
-                key={index}
-                style={[styles.postCard, { backgroundColor: cardBackground }]}
-              >
-                <TouchableOpacity
-                  onPress={() =>
-                    router.push(
-                      `/profile/${post.homeownerName.replace(" ", "")}`
-                    )
-                  }
-                  style={styles.postHeaderRow}
-                >
-                  <View style={styles.avatarContainer}>
-                    {post.avatarUri ? (
+            {posts
+              .filter((post) => {
+                if (selectedChip === "All") return true;
+                return (
+                  post.category.toLowerCase() ===
+                  categoryMap[selectedChip].toLowerCase()
+                );
+              })
+              .map((post, index) => {
+                const isEvent = post.category.toLowerCase() === "event";
+                const isVendorOrBusiness = ["vendor", "business"].includes(
+                  post.category.toLowerCase()
+                );
+                const isInterested = interestedStates[index] || false;
+                const isLiked = likedPosts[index] || false;
+
+                const handleInterestPress = () => {
+                  setInterestedStates((prev) => ({
+                    ...prev,
+                    [index]: !prev[index],
+                  }));
+                };
+
+                const handleLikePress = () => {
+                  setLikedPosts((prev) => ({
+                    ...prev,
+                    [index]: !prev[index],
+                  }));
+                };
+
+                if (isEvent && post.event) {
+                  return (
+                    <View
+                      key={index}
+                      style={[
+                        styles.postCard,
+                        {
+                          backgroundColor: cardBackground,
+                          flexDirection: "row",
+                          alignItems: "flex-start",
+                        },
+                      ]}
+                    >
                       <Image
-                        source={{ uri: post.avatarUri }}
-                        style={styles.avatar}
+                        source={{
+                          uri:
+                            post.event.image ||
+                            "https://via.placeholder.com/80",
+                        }}
+                        style={{
+                          width: 80,
+                          height: 80,
+                          borderRadius: 12,
+                          marginRight: 16,
+                        }}
                       />
-                    ) : (
-                      <View style={styles.placeholder}>
-                        <Ionicons name="person" size={24} color="#ccc" />
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            fontWeight: "600",
+                            color: "#28942c",
+                            marginBottom: 4,
+                          }}
+                        >
+                          {post.event.dateTime}
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 18,
+                            fontWeight: "700",
+                            color: textColor,
+                            marginBottom: 8,
+                          }}
+                        >
+                          {post.caption}
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            color: "#7f8c8d",
+                            marginBottom: 2,
+                          }}
+                        >
+                          {post.event.location}
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            color: "#7f8c8d",
+                            marginBottom: 10,
+                          }}
+                        >
+                          Hosted by {post.homeownerName}
+                        </Text>
+                        <TouchableOpacity
+                          style={{
+                            backgroundColor: isInterested
+                              ? "#28942c"
+                              : "transparent",
+                            paddingHorizontal: 16,
+                            paddingVertical: 8,
+                            borderRadius: 20,
+                            borderWidth: 1,
+                            borderColor: isInterested ? "#28942c" : textColor,
+                            alignSelf: "flex-start",
+                          }}
+                          onPress={handleInterestPress}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              fontWeight: "600",
+                              color: isInterested ? "#fff" : textColor,
+                            }}
+                          >
+                            Interested
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                }
+
+                return (
+                  <View
+                    key={index}
+                    style={[
+                      styles.postCard,
+                      { backgroundColor: cardBackground },
+                    ]}
+                  >
+                    <TouchableOpacity
+                      onPress={() =>
+                        router.push(
+                          `/profile/${post.homeownerName.replace(" ", "")}`
+                        )
+                      }
+                      style={styles.postHeaderRow}
+                    >
+                      <View style={styles.avatarContainer}>
+                        {post.avatarUri ? (
+                          <Image
+                            source={{ uri: post.avatarUri }}
+                            style={styles.avatar}
+                          />
+                        ) : (
+                          <View style={styles.placeholder}>
+                            <Ionicons name="person" size={24} color="#ccc" />
+                          </View>
+                        )}
+                      </View>
+                      <View style={{ marginLeft: 10 }}>
+                        <Text style={[styles.postName, { color: textColor }]}>
+                          {post.homeownerName}
+                        </Text>
+                        <Animated.Text
+                          style={[
+                            styles.postTime,
+                            { color: textColor, opacity: fadeAnim },
+                          ]}
+                        >
+                          {showCategory ? post.category : post.postTime}
+                        </Animated.Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    <Text style={[styles.postCaption, { color: textColor }]}>
+                      {post.caption}
+                    </Text>
+
+                    <View style={styles.imagePlaceholder}>
+                      <Text style={{ color: "#888" }}>Photo goes here</Text>
+                    </View>
+
+                    {isVendorOrBusiness && (
+                      <View style={{ marginTop: 1, marginBottom: 12 }}>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                            }}
+                          >
+                            {[...Array(5)].map((_, i) => (
+                              <Ionicons
+                                key={i}
+                                name="star"
+                                size={16}
+                                color={i < 4 ? "#28942c" : "#ccc"}
+                              />
+                            ))}
+                            <Text
+                              style={{
+                                marginLeft: 6,
+                                fontSize: 12,
+                                color: textColor,
+                              }}
+                            >
+                              4.0
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            onPress={handleChatPress}
+                            style={{
+                              backgroundColor: "transparent",
+                              paddingVertical: 6,
+                              paddingHorizontal: 14,
+                              borderRadius: 20,
+                              borderWidth: 1,
+                              borderColor: textColor,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: textColor,
+                                fontSize: 14,
+                                fontWeight: "600",
+                              }}
+                            >
+                              Message
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     )}
+
+                    <View style={styles.actionRow}>
+                      <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={handleLikePress}
+                      >
+                        <Ionicons
+                          name={isLiked ? "heart" : "heart-outline"}
+                          size={20}
+                          color={isLiked ? "green" : textColor}
+                        />
+                        <Text style={[styles.iconText, { color: textColor }]}>
+                          {post.likes}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={() =>
+                          router.push(`Community/CommentSection/${index}`)
+                        }
+                      >
+                        <Ionicons
+                          name="chatbubble-outline"
+                          size={20}
+                          color={textColor}
+                        />
+                        <Text style={[styles.iconText, { color: textColor }]}>
+                          Comment
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        onPress={() => router.push(`/CommentSection/${index}`)}
+                        style={{ marginLeft: "auto" }}
+                      >
+                        <Text
+                          style={[styles.commentCount, { color: textColor }]}
+                        >
+                          {post.commentCount} comments
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  <View style={{ marginLeft: 10 }}>
-                    <Text style={[styles.postName, { color: textColor }]}>
-                      {post.homeownerName}
-                    </Text>
-                    <Text style={[styles.postTime, { color: textColor }]}>
-                      {post.postTime}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-
-                <Text style={[styles.postCaption, { color: textColor }]}>
-                  {post.caption}
-                </Text>
-
-                <View style={styles.imagePlaceholder}>
-                  <Text style={{ color: "#888" }}>Photo goes here</Text>
-                </View>
-
-                <View style={styles.actionRow}>
-                  <TouchableOpacity style={styles.iconButton}>
-                    <Ionicons
-                      name="heart-outline"
-                      size={20}
-                      color={textColor}
-                    />
-                    <Text style={[styles.iconText, { color: textColor }]}>
-                      {post.likes}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.iconButton}
-                    onPress={() => router.push(`Community/CommentSection/${index}`)}
-                  >
-                    <Ionicons
-                      name="chatbubble-outline"
-                      size={20}
-                      color={textColor}
-                    />
-                    <Text style={[styles.iconText, { color: textColor }]}>
-                      Comment
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => router.push(`Community/CommentSection/${index}`)}
-                    style={{ marginLeft: "auto" }}
-                  >
-                    <Text style={[styles.commentCount, { color: textColor }]}>
-                      {post.commentCount} comments
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
+                );
+              })}
           </View>
         </View>
       </ScrollView>
-
       <View
         style={[
           styles.navWrapper,
@@ -317,7 +553,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
-  moreButton: { marginLeft: "auto", padding: 4 },
   postName: { fontWeight: "bold", fontSize: 16 },
   postTime: { fontSize: 10, color: "#555" },
   postCaption: { fontSize: 16, marginBottom: 12, fontWeight: "bold" },
