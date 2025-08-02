@@ -3,6 +3,7 @@ import React from "react";
 import Navbar from "../../components/Navbar";
 import Header from "../../components/Header";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import ThemeToggle from "../../components/ThemeToggle"; // ✅ Make sure this file exists
 
 const MainProfile = () => {
   const insets = useSafeAreaInsets();
@@ -14,6 +15,7 @@ const MainProfile = () => {
 
         <View style={styles.content}>
           <Text style={styles.title}>Profile Homepage</Text>
+          <ThemeToggle /> {/* 👈 Theme toggle button here */}
         </View>
 
         <View
@@ -31,7 +33,7 @@ export default MainProfile;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#fff", // optional: will be overridden by theme if you refactor
   },
   container: {
     flex: 1,

@@ -2,13 +2,33 @@ import { StyleSheet, Text, View, SafeAreaView } from "react-native";
 import React from "react";
 import Navbar from "../../components/Navbar";
 import Header from "../../components/Header";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "../../Theme/ThemeProvider";
+import { StatusBar } from "react-native";
 
 const SecurityHomepage = () => {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { colors, theme } = useTheme();
+
+  const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
+  const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
+  const cardBackground = theme === "light" ? "#ffffff" : "#14181F";
+  const textColor = colors.text;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
+    <SafeAreaView
+      style={[
+        styles.safeArea,
+        { paddingTop: insets.top, backgroundColor: colors.background },
+      ]}
+    >
+      <StatusBar
+        backgroundColor={statusBarBackground}
+        barStyle={theme === "light" ? "dark-content" : "light-content"}
+      />
+
       <View style={styles.container}>
         <Header />
 
@@ -17,7 +37,13 @@ const SecurityHomepage = () => {
         </View>
 
         <View
-          style={[styles.navWrapper, { paddingBottom: insets.bottom || 16 }]}
+          style={[
+            styles.navWrapper,
+            {
+              paddingBottom: insets.bottom || 16,
+              backgroundColor: navBarBackground,
+            },
+          ]}
         >
           <Navbar />
         </View>
@@ -31,7 +57,6 @@ export default SecurityHomepage;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#fff",
   },
   container: {
     flex: 1,

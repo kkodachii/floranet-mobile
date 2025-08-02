@@ -6,32 +6,53 @@ import {
   ScrollView,
   TouchableOpacity,
 } from "react-native";
-import React from "react";
 import Navbar from "../../components/Navbar";
 import Header from "../../components/Header";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../Theme/ThemeProvider";
+import { StatusBar } from "react-native";
+
+const paymentData = {
+  month: "July",
+  dueDate: "July 31, 2025",
+  amount: 300.0,
+};
 
 const FinanceHomepage = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors, theme } = useTheme();
 
-  const month = new Date().toLocaleString("default", { month: "long" });
+  const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
+  const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
+  const cardBackground = theme === "light" ? "#ffffff" : "#14181F";
+  const textColor = colors.text;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
+    <SafeAreaView
+      style={[
+        styles.safeArea,
+        { paddingTop: insets.top, backgroundColor: colors.background },
+      ]}
+    >
+      <StatusBar
+        backgroundColor={statusBarBackground}
+        barStyle={theme === "light" ? "dark-content" : "light-content"}
+      />
+      
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Header />
-
-        {/* Payment Card with Pay Button */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: cardBackground }]}>
           <View style={styles.cardHeader}>
-            <Text style={styles.month}>{month} Payment</Text>
-            <Text style={styles.dueDate}>Due at: July 31, 2025</Text>
+            <Text style={styles.month}>{paymentData.month} Payment</Text>
+            <Text style={styles.dueDate}>Due at: {paymentData.dueDate}</Text>
           </View>
 
-          <Text style={styles.amount}>₱300.00</Text>
+          <Text style={[styles.amount, { color: textColor }]}>
+            ₱{paymentData.amount.toFixed(2)}
+          </Text>
 
           <TouchableOpacity
             style={styles.payButton}
@@ -39,32 +60,70 @@ const FinanceHomepage = () => {
           >
             <Text style={styles.payButtonText}>Pay Now</Text>
           </TouchableOpacity>
+
+          <View style={styles.extraButtonsContainer}>
+            <TouchableOpacity
+              style={[styles.extraButton, { borderColor: textColor }]}
+            >
+              <Text style={[styles.extraButtonText, { color: textColor }]}>
+                Link GCash
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.extraButton, { borderColor: textColor }]}
+            >
+              <Text style={[styles.extraButtonText, { color: textColor }]}>
+                Pay via GCash
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.historySection}>
+        <View
+          style={[styles.historySection, { backgroundColor: cardBackground }]}
+        >
           <Text style={styles.historyTitle}>Recent Payments</Text>
 
           <View style={styles.historyItem}>
-            <Text style={styles.historyDate}>July 2025</Text>
-            <Text style={styles.historyAmount}>₱300.00</Text>
+            <Text style={[styles.historyDate, { color: textColor }]}>
+              July 2025
+            </Text>
+            <Text style={[styles.historyAmount, { color: textColor }]}>
+              ₱300.00
+            </Text>
           </View>
 
           <View style={styles.historyItem}>
-            <Text style={styles.historyDate}>June 2025</Text>
-            <Text style={styles.historyAmount}>₱500.00</Text>
+            <Text style={[styles.historyDate, { color: textColor }]}>
+              June 2025
+            </Text>
+            <Text style={[styles.historyAmount, { color: textColor }]}>
+              ₱500.00
+            </Text>
           </View>
 
           <TouchableOpacity
             style={styles.historyButton}
             onPress={() => router.push("/Finance/PaymentHistory")}
           >
-            <Ionicons name="time" size={18} color="#2f3b4c" />
-            <Text style={styles.historyButtonText}>Expand Full History</Text>
+            <Ionicons name="time" size={18} color={textColor} />
+            <Text style={[styles, { color: textColor }]}>
+              Expand Full History
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
-      <View style={[styles.navWrapper, { paddingBottom: insets.bottom || 16 }]}>
+      <View
+        style={[
+          styles.navWrapper,
+          {
+            paddingBottom: insets.bottom || 16,
+            backgroundColor: navBarBackground,
+          },
+        ]}
+      >
         <Navbar />
       </View>
     </SafeAreaView>
@@ -76,7 +135,6 @@ export default FinanceHomepage;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#f6f7f9",
   },
   scrollContent: {
     paddingBottom: 16,
@@ -85,15 +143,14 @@ const styles = StyleSheet.create({
     marginTop: 65,
     marginHorizontal: 25,
     marginBottom: 20,
-    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 20,
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   cardHeader: {
     flexDirection: "row",
@@ -102,18 +159,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   month: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "600",
     color: "#28942c",
   },
   dueDate: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#888",
   },
   amount: {
-    fontSize: 32,
+    fontSize: 40,
     fontWeight: "bold",
-    color: "#2f3b4c",
     marginBottom: 16,
   },
   payButton: {
@@ -121,7 +177,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#28942c",
     paddingVertical: 10,
-    paddingHorizontal: 30,
+    paddingHorizontal: 60,
     borderRadius: 8,
   },
   payButtonText: {
@@ -132,15 +188,19 @@ const styles = StyleSheet.create({
   historySection: {
     marginTop: 10,
     marginHorizontal: 25,
-    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 20,
     elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
   },
   historyTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#2f3b4c",
+    color: "#28942c",
     marginBottom: 12,
   },
   historyItem: {
@@ -170,5 +230,27 @@ const styles = StyleSheet.create({
   },
   navWrapper: {
     backgroundColor: "#fff",
+  },
+  extraButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginTop: 12,
+    gap: 10,
+  },
+  extraButton: {
+    flex: 1,
+    backgroundColor: "ffff",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#2f3b4c",
+  },
+  extraButtonText: {
+    color: "#2f3b4c",
+    fontWeight: "600",
+    fontSize: 14,
   },
 });

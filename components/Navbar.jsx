@@ -8,10 +8,14 @@ import {
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useRouter, usePathname } from "expo-router";
+import { useTheme } from "../Theme/ThemeProvider"; // ✅ custom hook for theme
 
 const Navbar = () => {
   const router = useRouter();
   const pathname = usePathname();
+  const { theme, colors } = useTheme();
+
+  const isDarkMode = theme === "dark";
 
   const tabs = [
     {
@@ -42,7 +46,6 @@ const Navbar = () => {
       iconActive: "shield",
       route: "/Security/SecurityHomepage",
     },
-
     {
       id: "profile",
       label: "Profile",
@@ -53,9 +56,20 @@ const Navbar = () => {
   ];
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.navbg || (isDarkMode ? "#1a1a1a" : "#ffffff"),
+          borderTopColor: isDarkMode ? "#333" : "#ccc",
+        },
+      ]}
+    >
       {tabs.map((tab) => {
         const isActive = pathname === tab.route;
+        const activeColor = "#28942c";
+        const inactiveColor = isDarkMode ? "#f6f7f9" : "#1F2633";
+
         return (
           <TouchableOpacity
             key={tab.id}
@@ -66,10 +80,13 @@ const Navbar = () => {
             <Ionicons
               name={isActive ? tab.iconActive : tab.icon}
               size={24}
-              color={isActive ? "#28942c" : "#888"}
+              color={isActive ? activeColor : inactiveColor}
             />
             <Text
-              style={[styles.tabLabel, { color: isActive ? "#28942c" : "#888" }]}
+              style={[
+                styles.tabLabel,
+                { color: isActive ? activeColor : inactiveColor },
+              ]}
             >
               {tab.label}
             </Text>
@@ -86,8 +103,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     paddingVertical: Platform.OS === "ios" ? 12 : 8,
     borderTopWidth: 1,
-    borderTopColor: "#ccc",
-    backgroundColor: "#fff",
   },
   tabItem: {
     flex: 1,
