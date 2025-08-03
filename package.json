@@ -10,8 +10,10 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
+    "@react-native-community/datetimepicker": "^8.4.3",
     "babel-preset-expo": "^13.2.3",
     "expo": "~53.0.20",
+    "expo-image-picker": "~16.1.4",
     "expo-navigation-bar": "~4.2.7",
     "expo-router": "~5.1.4",
     "expo-status-bar": "~2.2.3",
@@ -20,8 +22,7 @@
     "react-dom": "19.0.0",
     "react-native": "0.79.5",
     "react-native-safe-area-context": "^5.4.0",
-    "react-native-web": "^0.20.0",
-    "expo-image-picker": "~16.1.4"
+    "react-native-web": "^0.20.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
