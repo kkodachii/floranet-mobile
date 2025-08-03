@@ -18,7 +18,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../Theme/ThemeProvider";
-import Navbar from "../../components/Navbar";
+import ChatNavbar from "../../components/ChatNavbar"; // ✅ Updated import
 
 const allMessages = [
   { residentID: "RES001", content: "Hi there!" },
@@ -170,7 +170,7 @@ const Chat = () => {
           },
         ]}
       >
-        <Navbar />
+        <ChatNavbar /> {/* ✅ Updated component used here */}
       </View>
     </SafeAreaView>
   );
@@ -229,6 +229,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 12,
     borderTopWidth: 1,
+    borderBottom:100,
     borderColor: "#ddd",
   },
   textInput: {
@@ -244,5 +245,7 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     padding: 8,
+  },
+  navWrapper: {
   },
 });
