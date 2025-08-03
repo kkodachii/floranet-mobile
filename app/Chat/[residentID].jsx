@@ -231,6 +231,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderBottom:100,
     borderColor: "#ddd",
+    marginBottom:1,
   },
   textInput: {
     flex: 1,
@@ -238,7 +239,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     backgroundColor: "#f2f2f2",
-    borderRadius: 20,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: "#ccc",
     marginRight: 10,
