@@ -99,7 +99,17 @@ const ChatHomepage = () => {
             <TouchableOpacity
               key={msg.residentID}
               style={[styles.messageCard, { backgroundColor: cardBackground }]}
-              onPress={() => router.push(`/Chat/${msg.residentID}`)}
+              onPress={() =>
+                router.push({
+                  pathname: `/Chat/${msg.residentID}`,
+                  params: {
+                    name: msg.residentName,
+                    avatar:
+                      msg.avatar ??
+                      "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+                  },
+                })
+              }
             >
               <Image
                 source={{
