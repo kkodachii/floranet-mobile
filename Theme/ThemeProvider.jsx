@@ -1,4 +1,3 @@
-// ThemeProvider.jsx
 import React, { createContext, useContext, useState } from "react";
 import { Appearance } from "react-native";
 
