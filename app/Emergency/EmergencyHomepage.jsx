@@ -25,23 +25,7 @@ const EmergencyHomepage = () => {
   };
 
   const handleEmergencyAlert = () => {
-    Alert.alert(
-      "Emergency Alert",
-      "Are you sure you want to send an emergency alert?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Send Alert",
-          style: "destructive",
-          onPress: () => {
-            Alert.alert("Alert Sent", "Emergency alert has been sent to authorities");
-          }
-        }
-      ]
-    );
+    router.push("/Emergency/Alert/Alert");
   };
 
   const EmergencyButton = ({ title, subtitle, icon, onPress, color, iconColor }) => (
