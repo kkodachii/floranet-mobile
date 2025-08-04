@@ -8,6 +8,7 @@ import {
   Alert,
   Image,
   ScrollView,
+  StatusBar,
 } from "react-native";
 import React, { useState } from "react";
 import * as ImagePicker from "expo-image-picker";
@@ -15,9 +16,8 @@ import Navbar from "../../components/Navbar";
 import Header from "../../components/HeaderBack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
-import { StatusBar } from "react-native";
 
-const categories = ["Events", "Announcements", "Business", "Vendor"];
+const categories = ["Event", "Announcement", "Business", "Vendor"];
 
 const CreatePost = () => {
   const insets = useSafeAreaInsets();
@@ -30,6 +30,10 @@ const CreatePost = () => {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [images, setImages] = useState([]);
 
+  const [eventDate, setEventDate] = useState("");
+  const [eventTime, setEventTime] = useState("");
+  const [eventLocation, setEventLocation] = useState("");
+
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
@@ -38,19 +42,30 @@ const CreatePost = () => {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      allowsMultipleSelection: true,
+      allowsMultipleSelection: selectedCategory !== "Event",
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
     });
 
     if (!result.canceled) {
       const selected = result.assets.map((asset) => asset.uri);
-      setImages((prev) => [...prev, ...selected]);
+
+      if (selectedCategory === "Event") {
+        setImages([selected[0]]); // Only allow one
+      } else {
+        setImages((prev) => [...prev, ...selected]);
+      }
     }
   };
 
   const handleSubmit = async () => {
-    if (!selectedCategory || !caption.trim() || images.length === 0) {
+    if (
+      !selectedCategory ||
+      !caption.trim() ||
+      images.length === 0 ||
+      (selectedCategory === "Event" &&
+        (!eventDate.trim() || !eventTime.trim() || !eventLocation.trim()))
+    ) {
       Alert.alert("Missing Fields", "Please complete all fields.");
       return;
     }
@@ -60,13 +75,26 @@ const CreatePost = () => {
       formData.append("caption", caption);
       formData.append("category", selectedCategory);
 
-      images.forEach((uri, index) => {
-        formData.append("images", {
-          uri,
-          name: `photo${index}.jpg`,
+      if (selectedCategory === "Event") {
+        const eventData = {
+          dateTime: `${eventDate} – ${eventTime}`,
+          location: eventLocation,
+        };
+        formData.append("event", JSON.stringify(eventData));
+        formData.append("eventImage", {
+          uri: images[0],
+          name: "eventImage.jpg",
           type: "image/jpeg",
         });
-      });
+      } else {
+        images.forEach((uri, index) => {
+          formData.append("images", {
+            uri,
+            name: `photo${index}.jpg`,
+            type: "image/jpeg",
+          });
+        });
+      }
 
       const response = await fetch("https://your-api.com/posts", {
         method: "POST",
@@ -83,6 +111,9 @@ const CreatePost = () => {
         setCaption("");
         setImages([]);
         setSelectedCategory("");
+        setEventDate("");
+        setEventTime("");
+        setEventLocation("");
       } else {
         Alert.alert("Error", data.message || "Something went wrong.");
       }
@@ -123,7 +154,10 @@ const CreatePost = () => {
                         selectedCategory === cat ? "#28942c" : "#e0e0e0",
                     },
                   ]}
-                  onPress={() => setSelectedCategory(cat)}
+                  onPress={() => {
+                    setSelectedCategory(cat);
+                    setImages([]); // reset images on category change
+                  }}
                 >
                   <Text
                     style={[
@@ -156,9 +190,55 @@ const CreatePost = () => {
             />
           </View>
 
+          {/* Event Inputs */}
+          {selectedCategory === "Event" && (
+            <>
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>
+                  Event Date
+                </Text>
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder="e.g., Fri, 2 June"
+                  placeholderTextColor="#888"
+                  value={eventDate}
+                  onChangeText={setEventDate}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>
+                  Event Time
+                </Text>
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder="e.g., 11:00 AM"
+                  placeholderTextColor="#888"
+                  value={eventTime}
+                  onChangeText={setEventTime}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>
+                  Location
+                </Text>
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder="e.g., Clubhouse, Community Area"
+                  placeholderTextColor="#888"
+                  value={eventLocation}
+                  onChangeText={setEventLocation}
+                />
+              </View>
+            </>
+          )}
+
           {/* Image Picker */}
           <TouchableOpacity style={styles.uploadBtn} onPress={pickImages}>
-            <Text style={styles.uploadBtnText}>Add Photos</Text>
+            <Text style={styles.uploadBtnText}>
+              {selectedCategory === "Event" ? "Add Event Banner" : "Add Photos"}
+            </Text>
           </TouchableOpacity>
 
           {/* Image Preview */}
@@ -203,7 +283,7 @@ const styles = StyleSheet.create({
   form: {
     paddingHorizontal: 24,
     paddingBottom: 40,
-    paddingTop:62,
+    paddingTop: 62,
   },
   inputGroup: {
     marginBottom: 16,
@@ -234,7 +314,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   chipText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "500",
   },
   uploadBtn: {
