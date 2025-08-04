@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { Ionicons } from "@expo/vector-icons";
 
-const MainProfile = () => {
+const OtherBusiness = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, theme } = useTheme();
@@ -32,7 +32,6 @@ const MainProfile = () => {
 
   const residentData = {
     residentName: "Juan Dela Cruz",
-    residentID: "B3A - L23",
     houseNumber: "23",
     street: "Blk B3A",
     contactNumber: "09171234567",
@@ -66,10 +65,7 @@ const MainProfile = () => {
             </TouchableOpacity>
           </View>
 
-          <Text style={[styles.name, { color: textColor }]}>{residentData.residentName}</Text>
-          <Text style={[styles.subText, { color: textColor }]}>
-            Resident ID: {residentData.residentID}
-          </Text>
+          <Text style={[styles.name, { color: textColor }]}>{residentData.businessName}</Text>
 
           <View style={styles.profileActions}>
             <TouchableOpacity
@@ -87,97 +83,51 @@ const MainProfile = () => {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.infoHeader}>
-            <Text style={styles.sectionTitle}>Details</Text>
-            <TouchableOpacity onPress={() => setModalVisible(true)}>
-              <Ionicons name="eye-outline" size={22} color={textColor} />
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.sectionTitle}>Ratings and Reviews</Text>
 
           <View style={[styles.infoContainer, { backgroundColor: cardBackground }]}>
-            {!hideSensitiveInfo ? (
-              <>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>House Number:</Text>
-                  <Text style={[styles.infoText, { color: textColor }]}>
-                    {residentData.houseNumber}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Street:</Text>
-                  <Text style={[styles.infoText, { color: textColor }]}>{residentData.street}</Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Contact Number:</Text>
-                  <Text style={[styles.infoText, { color: textColor }]}>
-                    {residentData.contactNumber}
-                  </Text>
-                </View>
-              </>
-            ) : (
-              <>
-                <Text style={{ color: "gray", marginBottom: 10 }}>
-                  This information is hidden from other users.
-                </Text>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>House Number:</Text>
-                  <Text style={[styles.infoText, { color: textColor }]}>
-                    {residentData.houseNumber}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Street:</Text>
-                  <Text style={[styles.infoText, { color: textColor }]}>
-                    {residentData.street}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Contact Number:</Text>
-                  <Text style={[styles.infoText, { color: textColor }]}>
-                    {residentData.contactNumber}
-                  </Text>
-                </View>
-              </>
-            )}
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
+              {[...Array(5)].map((_, i) => (
+                <Ionicons
+                  key={i}
+                  name={i < 4 ? "star" : "star-outline"}
+                  size={18}
+                  color="gold"
+                  style={{ marginRight: 2 }}
+                />
+              ))}
+              <Text style={[styles.infoText, { color: textColor, marginLeft: 6 }]}>
+                4.0 (12 reviews)
+              </Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoLabel, { marginBottom: 4 }]}>Maria S.:</Text>
+              <Text style={[styles.infoText, { color: textColor, flex: 1 }]}>
+                Great service, friendly staff!
+              </Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoLabel, { marginBottom: 4 }]}>Luis G.:</Text>
+              <Text style={[styles.infoText, { color: textColor, flex: 1 }]}>
+                My go-to barbershop every month. Highly recommended.
+              </Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoLabel, { marginBottom: 4 }]}>Anne C.:</Text>
+              <Text style={[styles.infoText, { color: textColor, flex: 1 }]}>
+                Quick and clean haircut. Will return!
+              </Text>
+            </View>
           </View>
-
-          <Text style={styles.sectionTitle}>Business</Text>
-
-          {residentData.businessName ? (
-            <View style={[styles.vendorContainer, { backgroundColor: cardBackground }]}>
-              <View style={styles.vendorProfileImage} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.vendorName, { color: textColor }]}>
-                  {residentData.businessName}
-                </Text>
-                <TouchableOpacity
-                  style={[styles.actionButton, { borderColor: textColor, marginTop: 8 }]}
-                  onPress={() => router.push("/Profile/MainBusiness")}
-                >
-                  <Text style={[styles.buttonText, { color: textColor }]}>Open Profile</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
-              <Text style={[styles.subText, { color: textColor }]}>None</Text>
-              <TouchableOpacity
-                style={[styles.actionButton, { borderColor: textColor, marginTop: 8 }]}
-                onPress={() => router.push("/Business/Create")}
-              >
-                <Text style={[styles.buttonText, { color: textColor }]}>Create Business</Text>
-              </TouchableOpacity>
-            </View>
-          )}
 
           <Text style={styles.sectionTitle}>Services</Text>
 
           {residentData.services.length > 0 ? (
             <View
-              style={[
-                styles.infoContainer,
-                { backgroundColor: cardBackground, alignSelf: "stretch" },
-              ]}
+              style={[styles.infoContainer, { backgroundColor: cardBackground, alignSelf: "stretch" }]}
             >
               {residentData.services.map((service, index) => (
                 <Text
@@ -190,11 +140,7 @@ const MainProfile = () => {
               <TouchableOpacity
                 style={[
                   styles.actionButton,
-                  {
-                    borderColor: textColor,
-                    alignSelf: "flex-start",
-                    marginTop: 10,
-                  },
+                  { borderColor: textColor, alignSelf: "flex-start", marginTop: 10 },
                 ]}
                 onPress={() => router.push("/Profile/EditServices")}
               >
@@ -284,7 +230,7 @@ const MainProfile = () => {
   );
 };
 
-export default MainProfile;
+export default OtherBusiness;
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
@@ -321,39 +267,18 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: "row",
     justifyContent: "flex-start",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 10,
+    gap: 6,
   },
   infoLabel: {
     fontWeight: "600",
     fontSize: 14,
     color: "green",
-    marginRight: 6,
   },
   infoText: {
     fontSize: 16,
   },
-  vendorContainer: {
-    width: "100%",
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  vendorProfileImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#bbb",
-  },
-  vendorName: { fontSize: 16, fontWeight: "600" },
   navWrapper: { backgroundColor: "#fff" },
   actionButton: {
     flexDirection: "row",
@@ -399,13 +324,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-  },
-  infoHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 1,
-    alignSelf: "stretch",
   },
   profileActions: {
     flexDirection: "row",

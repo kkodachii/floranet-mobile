@@ -6,9 +6,8 @@ import {
   ScrollView,
   StatusBar,
   TouchableOpacity,
-  Modal,
 } from "react-native";
-import React, { useState } from "react";
+import React from "react";
 import Navbar from "../../components/Navbar";
 import Header from "../../components/Header";
 import { useRouter } from "expo-router";
@@ -16,13 +15,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { Ionicons } from "@expo/vector-icons";
 
-const MainProfile = () => {
+const OtherProfile = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, theme } = useTheme();
-
-  const [modalVisible, setModalVisible] = useState(false);
-  const [hideSensitiveInfo, setHideSensitiveInfo] = useState(false);
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
@@ -41,10 +37,6 @@ const MainProfile = () => {
     posts: [],
   };
 
-  const handlePickProfilePicture = () => {
-    console.log("Open camera or gallery to pick profile picture.");
-  };
-
   return (
     <SafeAreaView
       style={[styles.safeArea, { paddingTop: insets.top, backgroundColor: colors.background }]}
@@ -58,12 +50,6 @@ const MainProfile = () => {
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <View style={styles.profileImageWrapper}>
             <View style={[styles.placeholderImage, { borderColor: buttonBackground }]} />
-            <TouchableOpacity
-              style={[styles.cameraButton, { backgroundColor: buttonBackground }]}
-              onPress={handlePickProfilePicture}
-            >
-              <Ionicons name="camera" size={18} color={textColor} />
-            </TouchableOpacity>
           </View>
 
           <Text style={[styles.name, { color: textColor }]}>{residentData.residentName}</Text>
@@ -74,9 +60,9 @@ const MainProfile = () => {
           <View style={styles.profileActions}>
             <TouchableOpacity
               style={[styles.actionButton, { borderColor: textColor }]}
-              onPress={() => router.push("/Profile/EditProfile")}
+              onPress={() => router.push("/Chat")}
             >
-              <Text style={[styles.buttonText, { color: textColor }]}>Edit Profile</Text>
+              <Text style={[styles.buttonText, { color: textColor }]}>Message</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -87,58 +73,25 @@ const MainProfile = () => {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.infoHeader}>
-            <Text style={styles.sectionTitle}>Details</Text>
-            <TouchableOpacity onPress={() => setModalVisible(true)}>
-              <Ionicons name="eye-outline" size={22} color={textColor} />
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.sectionTitle}>Details</Text>
 
           <View style={[styles.infoContainer, { backgroundColor: cardBackground }]}>
-            {!hideSensitiveInfo ? (
-              <>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>House Number:</Text>
-                  <Text style={[styles.infoText, { color: textColor }]}>
-                    {residentData.houseNumber}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Street:</Text>
-                  <Text style={[styles.infoText, { color: textColor }]}>{residentData.street}</Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Contact Number:</Text>
-                  <Text style={[styles.infoText, { color: textColor }]}>
-                    {residentData.contactNumber}
-                  </Text>
-                </View>
-              </>
-            ) : (
-              <>
-                <Text style={{ color: "gray", marginBottom: 10 }}>
-                  This information is hidden from other users.
-                </Text>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>House Number:</Text>
-                  <Text style={[styles.infoText, { color: textColor }]}>
-                    {residentData.houseNumber}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Street:</Text>
-                  <Text style={[styles.infoText, { color: textColor }]}>
-                    {residentData.street}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Contact Number:</Text>
-                  <Text style={[styles.infoText, { color: textColor }]}>
-                    {residentData.contactNumber}
-                  </Text>
-                </View>
-              </>
-            )}
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>House Number:</Text>
+              <Text style={[styles.infoText, { color: textColor }]}>
+                {residentData.houseNumber}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Street:</Text>
+              <Text style={[styles.infoText, { color: textColor }]}>{residentData.street}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Contact Number:</Text>
+              <Text style={[styles.infoText, { color: textColor }]}>
+                {residentData.contactNumber}
+              </Text>
+            </View>
           </View>
 
           <Text style={styles.sectionTitle}>Business</Text>
@@ -152,22 +105,14 @@ const MainProfile = () => {
                 </Text>
                 <TouchableOpacity
                   style={[styles.actionButton, { borderColor: textColor, marginTop: 8 }]}
-                  onPress={() => router.push("/Profile/MainBusiness")}
+                  onPress={() => router.push("/Business/Profile")}
                 >
-                  <Text style={[styles.buttonText, { color: textColor }]}>Open Profile</Text>
+                  <Text style={[styles.buttonText, { color: textColor }]}>Visit Profile</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ) : (
-            <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
-              <Text style={[styles.subText, { color: textColor }]}>None</Text>
-              <TouchableOpacity
-                style={[styles.actionButton, { borderColor: textColor, marginTop: 8 }]}
-                onPress={() => router.push("/Business/Create")}
-              >
-                <Text style={[styles.buttonText, { color: textColor }]}>Create Business</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={[styles.subText, { color: textColor }]}>None</Text>
           )}
 
           <Text style={styles.sectionTitle}>Services</Text>
@@ -187,43 +132,10 @@ const MainProfile = () => {
                   • {service}
                 </Text>
               ))}
-              <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  {
-                    borderColor: textColor,
-                    alignSelf: "flex-start",
-                    marginTop: 10,
-                  },
-                ]}
-                onPress={() => router.push("/Profile/EditServices")}
-              >
-                <Text style={[styles.buttonText, { color: textColor }]}>Edit Services</Text>
-              </TouchableOpacity>
             </View>
           ) : (
-            <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
-              <Text style={[styles.subText, { color: textColor }]}>None</Text>
-              <TouchableOpacity
-                style={[styles.actionButton, { borderColor: textColor, marginTop: 8 }]}
-                onPress={() => router.push("/Profile/AddService")}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
-                  <Ionicons name="add-outline" size={16} color={textColor} />
-                  <Text style={[styles.buttonText, { color: textColor, marginLeft: 6 }]}>
-                    Add Service
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
+            <Text style={[styles.subText, { color: textColor }]}>None</Text>
           )}
-
-          <TouchableOpacity
-            style={[styles.actionButton, { borderColor: textColor }]}
-            onPress={() => router.push("/Profile/ManagePost")}
-          >
-            <Text style={[styles.buttonText, { color: textColor }]}>Manage Posts</Text>
-          </TouchableOpacity>
 
           <Text style={styles.sectionTitle}>Previous Posts</Text>
           <View style={[styles.infoContainer, { backgroundColor: cardBackground, alignSelf: "stretch" }]}>
@@ -242,49 +154,13 @@ const MainProfile = () => {
         >
           <Navbar />
         </View>
-
-        <Modal
-          visible={modalVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Privacy Settings</Text>
-              <Text
-                style={styles.modalOption}
-                onPress={() => {
-                  setHideSensitiveInfo(true);
-                  setModalVisible(false);
-                }}
-              >
-                Hide to Other users
-              </Text>
-              <Text
-                style={styles.modalOption}
-                onPress={() => {
-                  setHideSensitiveInfo(false);
-                  setModalVisible(false);
-                }}
-              >
-                Show to other users
-              </Text>
-              <Text
-                style={[styles.modalOption, { color: "red" }]}
-                onPress={() => setModalVisible(false)}
-              >
-                Cancel
-              </Text>
-            </View>
-          </View>
-        </Modal>
       </View>
     </SafeAreaView>
   );
 };
 
-export default MainProfile;
+export default OtherProfile;
+
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
