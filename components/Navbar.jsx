@@ -37,7 +37,7 @@ const Navbar = () => {
       label: "Message",
       icon: "chatbubble-outline",
       iconActive: "chatbubble",
-      route: "/Community/ChatHomepage",
+      route: "/Chat/ChatHomepage",
     },
     {
       id: "profile",

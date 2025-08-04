@@ -95,7 +95,7 @@ const CommunityHomepage = () => {
   };
 
   const handleChatPress = () => {
-    router.push("/chat");
+    router.push("/Chat/ChatHomepage");
   };
 
   const posts = [
