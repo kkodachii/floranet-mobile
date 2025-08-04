@@ -21,8 +21,7 @@ const EmergencyHomepage = () => {
   };
 
   const handleFileComplaints = () => {
-    // Navigate to complaints page
-    Alert.alert("File Complaints", "Complaints form will be opened");
+    router.push("/Emergency/Complaint/Complaint");
   };
 
   const handleEmergencyAlert = () => {

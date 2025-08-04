@@ -7,54 +7,51 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../Theme/ThemeProvider";
 import { StatusBar } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
-const CCTV = () => {
+const Complaints = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, theme } = useTheme();
-  const [activeTab, setActiveTab] = useState('request');
-  const [requestReason, setRequestReason] = useState('');
-  const [requestDate, setRequestDate] = useState('');
-  const [requestLocation, setRequestLocation] = useState('');
-  const [requestTime, setRequestTime] = useState('');
+  const [activeTab, setActiveTab] = useState('general');
+  const [complaintTitle, setComplaintTitle] = useState('');
+  const [complaintDescription, setComplaintDescription] = useState('');
+  const [complaintCategory, setComplaintCategory] = useState('');
+  const [complaintPriority, setComplaintPriority] = useState('');
   const [followUpMessage, setFollowUpMessage] = useState('');
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
-  const [selectedRequestId, setSelectedRequestId] = useState(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedTime, setSelectedTime] = useState(new Date());
+  const [selectedComplaintId, setSelectedComplaintId] = useState(null);
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const cardBackground = theme === "light" ? "#ffffff" : "#1F2633";
   const textColor = colors.text;
 
-  // Mock data for ongoing requests
-  const [ongoingRequests, setOngoingRequests] = useState([
+  // Mock data for complaints
+  const [complaints, setComplaints] = useState([
     {
       id: '1',
-      reason: 'Theft investigation',
+      title: 'Noise from construction',
+      description: 'Excessive noise from construction work in Building B',
+      category: 'General',
+      priority: 'Medium',
       date: '2024-01-15',
-      location: 'Building A - Parking Lot',
-      time: '14:30',
       status: 'pending',
-      ticketNumber: 'CCTV-2024-001',
+      ticketNumber: 'COMP-2024-001',
       followUps: []
     },
     {
       id: '2',
-      reason: 'Vehicle accident',
+      title: 'Water supply issue',
+      description: 'No water supply in Building A for the past 2 days',
+      category: 'Service',
+      priority: 'High',
       date: '2024-01-14',
-      location: 'Main Entrance',
-      time: '09:15',
       status: 'processing',
-      ticketNumber: 'CCTV-2024-002',
+      ticketNumber: 'COMP-2024-002',
       followUps: [
         {
           id: '1',
-          message: 'Any updates on this request?',
+          message: 'Any updates on the water supply restoration?',
           date: '2024-01-15',
           time: '10:30'
         }
@@ -62,37 +59,50 @@ const CCTV = () => {
     },
     {
       id: '3',
-      reason: 'Suspicious activity',
+      title: 'Security concern',
+      description: 'Suspicious activity near the main gate',
+      category: 'General',
+      priority: 'High',
       date: '2024-01-13',
-      location: 'Building B - Lobby',
-      time: '16:45',
       status: 'completed',
-      ticketNumber: 'CCTV-2024-003',
+      ticketNumber: 'COMP-2024-003',
       followUps: []
     }
   ]);
 
-  const handleSendRequest = () => {
-    if (!requestReason.trim() || !requestDate.trim() || !requestLocation.trim() || !requestTime.trim()) {
+  const categories = [
+    { id: 'general', name: 'General', icon: 'alert-circle-outline' },
+    { id: 'service', name: 'Service', icon: 'construct-outline' }
+  ];
+
+  const priorities = [
+    { id: 'low', name: 'Low', color: '#50C878' },
+    { id: 'medium', name: 'Medium', color: '#FFA500' },
+    { id: 'high', name: 'High', color: '#E74C3C' }
+  ];
+
+  const handleSubmitComplaint = () => {
+    if (!complaintTitle.trim() || !complaintDescription.trim() || !complaintCategory || !complaintPriority) {
       return;
     }
 
-    const newRequest = {
+    const newComplaint = {
       id: Date.now().toString(),
-      reason: requestReason,
-      date: requestDate,
-      location: requestLocation,
-      time: requestTime,
+      title: complaintTitle,
+      description: complaintDescription,
+      category: complaintCategory,
+      priority: complaintPriority,
+      date: new Date().toISOString().split('T')[0],
       status: 'pending',
-      ticketNumber: `CCTV-2024-${String(ongoingRequests.length + 1).padStart(3, '0')}`,
+      ticketNumber: `COMP-2024-${String(complaints.length + 1).padStart(3, '0')}`,
       followUps: []
     };
 
-    setOngoingRequests([newRequest, ...ongoingRequests]);
-    setRequestReason('');
-    setRequestDate('');
-    setRequestLocation('');
-    setRequestTime('');
+    setComplaints([newComplaint, ...complaints]);
+    setComplaintTitle('');
+    setComplaintDescription('');
+    setComplaintCategory('');
+    setComplaintPriority('');
     setActiveTab('ongoing');
   };
 
@@ -114,13 +124,18 @@ const CCTV = () => {
     }
   };
 
+  const getPriorityColor = (priority) => {
+    const priorityObj = priorities.find(p => p.name === priority);
+    return priorityObj ? priorityObj.color : '#999';
+  };
+
   const handleFollowUp = () => {
     if (!followUpMessage.trim()) {
       return;
     }
 
-    const updatedRequests = ongoingRequests.map(request => {
-      if (request.id === selectedRequestId) {
+    const updatedComplaints = complaints.map(complaint => {
+      if (complaint.id === selectedComplaintId) {
         const newFollowUp = {
           id: Date.now().toString(),
           message: followUpMessage,
@@ -128,68 +143,23 @@ const CCTV = () => {
           time: new Date().toTimeString().split(' ')[0].substring(0, 5)
         };
         return {
-          ...request,
-          followUps: [...request.followUps, newFollowUp]
+          ...complaint,
+          followUps: [...complaint.followUps, newFollowUp]
         };
       }
-      return request;
+      return complaint;
     });
 
-    setOngoingRequests(updatedRequests);
+    setComplaints(updatedComplaints);
     setFollowUpMessage('');
     setShowFollowUpModal(false);
-    setSelectedRequestId(null);
+    setSelectedComplaintId(null);
   };
 
-  const openFollowUpModal = (requestId) => {
-    setSelectedRequestId(requestId);
+  const openFollowUpModal = (complaintId) => {
+    setSelectedComplaintId(complaintId);
     setShowFollowUpModal(true);
   };
-
-  const handleDateChange = (event, selectedDate) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      setSelectedDate(selectedDate);
-      setRequestDate(selectedDate.toISOString().split('T')[0]);
-    }
-  };
-
-  const handleTimeChange = (event, selectedTime) => {
-    setShowTimePicker(false);
-    if (selectedTime) {
-      setSelectedTime(selectedTime);
-      setRequestTime(selectedTime.toTimeString().split(' ')[0].substring(0, 5));
-    }
-  };
-
-  const formatDate = (date) => {
-    return date.toLocaleDateString('en-CA'); // YYYY-MM-DD format
-  };
-
-  const formatTime = (time) => {
-    return time.toTimeString().split(' ')[0].substring(0, 5);
-  };
-
-
-  const TabButton = ({ title, isActive, onPress }) => (
-    <TouchableOpacity
-      style={[
-        styles.tabButton,
-        {
-          backgroundColor: isActive ? '#28942c' : 'transparent',
-          borderColor: isActive ? '#28942c' : '#28942c',
-        }
-      ]}
-      onPress={onPress}
-    >
-      <Text style={[
-        styles.tabButtonText,
-        { color: isActive ? '#fff' : '#28942c' }
-      ]}>
-        {title}
-      </Text>
-    </TouchableOpacity>
-  );
 
   return (
     <SafeAreaView
@@ -204,19 +174,43 @@ const CCTV = () => {
       />
 
       <View style={styles.container}>
-        <HeaderBack title="CCTV Footage" />
+        <HeaderBack title="File Complaints" />
 
         <View style={styles.tabContainer}>
-          <TabButton
-            title="Send Request"
-            isActive={activeTab === 'request'}
-            onPress={() => setActiveTab('request')}
-          />
-          <TabButton
-            title="Ongoing Requests"
-            isActive={activeTab === 'ongoing'}
+          <TouchableOpacity
+            style={[
+              styles.tabButton,
+              {
+                backgroundColor: activeTab === 'general' ? '#28942c' : 'transparent',
+                borderColor: activeTab === 'general' ? '#28942c' : '#28942c',
+              }
+            ]}
+            onPress={() => setActiveTab('general')}
+          >
+            <Text style={[
+              styles.tabButtonText,
+              { color: activeTab === 'general' ? '#fff' : '#28942c' }
+            ]}>
+              File Complaint
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.tabButton,
+              {
+                backgroundColor: activeTab === 'ongoing' ? '#28942c' : 'transparent',
+                borderColor: activeTab === 'ongoing' ? '#28942c' : '#28942c',
+              }
+            ]}
             onPress={() => setActiveTab('ongoing')}
-          />
+          >
+            <Text style={[
+              styles.tabButtonText,
+              { color: activeTab === 'ongoing' ? '#fff' : '#28942c' }
+            ]}>
+              My Complaints
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <ScrollView 
@@ -224,121 +218,162 @@ const CCTV = () => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {activeTab === 'request' ? (
-            <View style={styles.requestForm}>
+          {activeTab === 'general' ? (
+            <View style={styles.complaintForm}>
               <View style={[styles.formCard, { backgroundColor: cardBackground }]}>
-                <Text style={[styles.formTitle, { color: textColor }]}>Request CCTV Footage</Text>
+                <Text style={[styles.formTitle, { color: textColor }]}>File a Complaint</Text>
                 
                 <View style={styles.inputContainer}>
-                  <Text style={[styles.inputLabel, { color: textColor }]}>Reason for Request</Text>
-                                        <TextInput
-                        style={[styles.textInput, { 
-                          backgroundColor: theme === "light" ? "#f8f9fa" : "#2A3441",
-                          color: textColor,
-                          borderColor: theme === "light" ? '#ccc' : '#444'
-                        }]}
-                        placeholder="Enter reason for CCTV footage request"
-                        placeholderTextColor={theme === "light" ? "#888" : "#aaa"}
-                        value={requestReason}
-                        onChangeText={setRequestReason}
-                        multiline
-                        numberOfLines={3}
-                      />
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Text style={[styles.inputLabel, { color: textColor }]}>Date of Incident</Text>
-                  <TouchableOpacity
-                    style={[styles.pickerButton, { 
-                      backgroundColor: theme === "light" ? "#f8f9fa" : "#2A3441",
-                      borderColor: theme === "light" ? '#e0e0e0' : '#444'
-                    }]}
-                    onPress={() => setShowDatePicker(true)}
-                  >
-                    <Text style={[styles.pickerButtonText, { color: requestDate ? textColor : (theme === "light" ? "#999" : "#888") }]}>
-                      {requestDate || "Select date"}
-                    </Text>
-                    <Ionicons name="calendar-outline" size={20} color={theme === "light" ? "#666" : "#aaa"} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Text style={[styles.inputLabel, { color: textColor }]}>Time of Incident</Text>
-                  <TouchableOpacity
-                    style={[styles.pickerButton, { 
-                      backgroundColor: theme === "light" ? "#f8f9fa" : "#2A3441",
-                      borderColor: theme === "light" ? '#e0e0e0' : '#444'
-                    }]}
-                    onPress={() => setShowTimePicker(true)}
-                  >
-                    <Text style={[styles.pickerButtonText, { color: requestTime ? textColor : (theme === "light" ? "#999" : "#888") }]}>
-                      {requestTime || "Select time"}
-                    </Text>
-                    <Ionicons name="time-outline" size={20} color={theme === "light" ? "#666" : "#aaa"} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Text style={[styles.inputLabel, { color: textColor }]}>Location of Incident</Text>
+                  <Text style={[styles.inputLabel, { color: textColor }]}>Complaint Title</Text>
                   <TextInput
                     style={[styles.textInput, { 
                       backgroundColor: theme === "light" ? "#f8f9fa" : "#2A3441",
                       color: textColor,
-                      borderColor: theme === "light" ? '#ccc' : '#444'
+                      borderColor: theme === "light" ? '#e0e0e0' : '#444'
                     }]}
-                    placeholder="e.g., Building A - Parking Lot"
-                    placeholderTextColor={theme === "light" ? "#888" : "#aaa"}
-                    value={requestLocation}
-                    onChangeText={setRequestLocation}
+                    placeholder="Brief title of your complaint"
+                    placeholderTextColor={theme === "light" ? "#999" : "#888"}
+                    value={complaintTitle}
+                    onChangeText={setComplaintTitle}
+                  />
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={[styles.inputLabel, { color: textColor }]}>Category</Text>
+                  <View style={styles.categoriesContainer}>
+                    {categories.map((category) => (
+                      <TouchableOpacity
+                        key={category.id}
+                        style={[
+                          styles.categoryButton,
+                          {
+                            backgroundColor: complaintCategory === category.name ? '#28942c' : 'transparent',
+                            borderColor: complaintCategory === category.name ? '#28942c' : (theme === "light" ? '#e0e0e0' : '#444'),
+                          }
+                        ]}
+                        onPress={() => setComplaintCategory(category.name)}
+                      >
+                        <Ionicons 
+                          name={category.icon} 
+                          size={18} 
+                          color={complaintCategory === category.name ? '#fff' : (theme === "light" ? '#666' : '#aaa')} 
+                        />
+                        <Text style={[
+                          styles.categoryButtonText,
+                          { color: complaintCategory === category.name ? '#fff' : textColor }
+                        ]}>
+                          {category.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={[styles.inputLabel, { color: textColor }]}>Priority</Text>
+                  <View style={styles.prioritiesContainer}>
+                    {priorities.map((priority) => (
+                      <TouchableOpacity
+                        key={priority.id}
+                        style={[
+                          styles.priorityButton,
+                          {
+                            backgroundColor: complaintPriority === priority.name ? priority.color : 'transparent',
+                            borderColor: complaintPriority === priority.name ? priority.color : priority.color,
+                          }
+                        ]}
+                        onPress={() => setComplaintPriority(priority.name)}
+                      >
+                        <Text style={[
+                          styles.priorityButtonText,
+                          { color: complaintPriority === priority.name ? '#fff' : priority.color }
+                        ]}>
+                          {priority.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={[styles.inputLabel, { color: textColor }]}>Description</Text>
+                  <TextInput
+                    style={[styles.textArea, { 
+                      backgroundColor: theme === "light" ? "#f8f9fa" : "#2A3441",
+                      color: textColor,
+                      borderColor: theme === "light" ? '#e0e0e0' : '#444'
+                    }]}
+                    placeholder="Describe your complaint in detail..."
+                    placeholderTextColor={theme === "light" ? "#999" : "#888"}
+                    value={complaintDescription}
+                    onChangeText={setComplaintDescription}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
                   />
                 </View>
 
                 <TouchableOpacity
-                  style={styles.submitButton}
-                  onPress={handleSendRequest}
+                  style={[
+                    styles.submitButton,
+                    { opacity: complaintTitle && complaintDescription && complaintCategory && complaintPriority ? 1 : 0.5 }
+                  ]}
+                  onPress={handleSubmitComplaint}
+                  disabled={!complaintTitle || !complaintDescription || !complaintCategory || !complaintPriority}
                 >
-                  <Text style={styles.submitButtonText}>Send Request</Text>
+                  <Text style={styles.submitButtonText}>Submit Complaint</Text>
                 </TouchableOpacity>
               </View>
 
               <View style={[styles.infoCard, { backgroundColor: cardBackground }]}>
                 <View style={styles.infoHeader}>
                   <Ionicons name="information-circle" size={24} color="#28942c" />
-                  <Text style={[styles.infoTitle, { color: textColor }]}>Request Guidelines</Text>
+                  <Text style={[styles.infoTitle, { color: textColor }]}>Complaint Guidelines</Text>
                 </View>
                 <Text style={[styles.infoText, { color: theme === "light" ? '#555' : '#ccc' }]}>
-                  • Provide a clear reason for your request{'\n'}
-                  • Include the specific date, time, and location of the incident{'\n'}
-                  • Be as specific as possible about the incident details{'\n'}
-                  • Requests are reviewed by admin within 24-48 hours{'\n'}
-                  • You will be notified when footage is available
+                  • Provide a clear and specific title for your complaint{'\n'}
+                  • Choose the appropriate category and priority level{'\n'}
+                  • Include relevant details and any supporting information{'\n'}
+                  • Complaints are reviewed within 24-48 hours{'\n'}
+                  • You will be notified of any updates or resolutions
                 </Text>
               </View>
             </View>
           ) : (
-            <View style={styles.ongoingRequests}>
+            <View style={styles.ongoingComplaints}>
               <Text style={[styles.sectionTitle, { color: '#28942c' }]}>
-                Your Requests ({ongoingRequests.length})
+                Your Complaints ({complaints.length})
               </Text>
               
-              {ongoingRequests.length > 0 ? (
-                <View style={styles.requestsList}>
-                  {ongoingRequests.map((item) => (
-                    <View key={item.id} style={[styles.requestCard, { backgroundColor: cardBackground }]}>
-                      <View style={styles.requestHeader}>
+              {complaints.length > 0 ? (
+                <View style={styles.complaintsList}>
+                  {complaints.map((item) => (
+                    <View key={item.id} style={[styles.complaintCard, { backgroundColor: cardBackground }]}>
+                      <View style={styles.complaintHeader}>
                         <Text style={[styles.ticketNumber, { color: textColor }]}>{item.ticketNumber}</Text>
                         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
                           <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
                         </View>
                       </View>
-                      <Text style={[styles.requestReason, { color: textColor }]}>{item.reason}</Text>
-                      <View style={styles.requestDetails}>
-                        <Text style={[styles.requestDetail, { color: theme === "light" ? '#888' : '#aaa' }]}>
-                          Location: {item.location}
-                        </Text>
-                        <Text style={[styles.requestDetail, { color: theme === "light" ? '#888' : '#aaa' }]}>
-                          Date: {item.date} at {item.time}
-                        </Text>
+                      
+                      <Text style={[styles.complaintTitle, { color: textColor }]}>{item.title}</Text>
+                      <Text style={[styles.complaintDescription, { color: theme === "light" ? '#666' : '#ccc' }]}>
+                        {item.description}
+                      </Text>
+                      
+                      <View style={styles.complaintDetails}>
+                        <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}>
+                          <Text style={[styles.detailLabel, { color: theme === "light" ? '#666' : '#aaa' }]}>Category</Text>
+                          <Text style={[styles.detailValue, { color: textColor }]}>{item.category}</Text>
+                        </View>
+                        <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}>
+                          <Text style={[styles.detailLabel, { color: theme === "light" ? '#666' : '#aaa' }]}>Priority</Text>
+                          <Text style={[styles.detailValue, { color: getPriorityColor(item.priority) }]}>{item.priority}</Text>
+                        </View>
+                        <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}>
+                          <Text style={[styles.detailLabel, { color: theme === "light" ? '#666' : '#aaa' }]}>Date</Text>
+                          <Text style={[styles.detailValue, { color: textColor }]}>{item.date}</Text>
+                        </View>
                       </View>
 
                       {item.followUps.length > 0 && (
@@ -347,7 +382,7 @@ const CCTV = () => {
                           { borderTopColor: theme === "light" ? '#eee' : '#444' }
                         ]}>
                           <Text style={[styles.followUpsTitle, { color: textColor }]}>Follow-ups:</Text>
-                                                    {item.followUps.map((followUp) => (
+                          {item.followUps.map((followUp) => (
                             <View key={followUp.id} style={[
                               styles.followUpItem, 
                               { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }
@@ -374,12 +409,12 @@ const CCTV = () => {
                 </View>
               ) : (
                 <View style={[styles.emptyState, { backgroundColor: cardBackground }]}>
-                  <Ionicons name="videocam-outline" size={48} color="#ccc" />
+                  <Ionicons name="document-text-outline" size={48} color="#ccc" />
                   <Text style={[styles.emptyStateText, { color: textColor }]}>
-                    No requests yet
+                    No complaints yet
                   </Text>
                   <Text style={[styles.emptyStateSubtext, { color: theme === "light" ? '#888' : '#aaa' }]}>
-                    Send your first CCTV footage request
+                    File your first complaint
                   </Text>
                 </View>
               )}
@@ -407,7 +442,7 @@ const CCTV = () => {
         animationType="fade"
         onRequestClose={() => {
           setShowFollowUpModal(false);
-          setSelectedRequestId(null);
+          setSelectedComplaintId(null);
           setFollowUpMessage('');
         }}
       >
@@ -422,7 +457,7 @@ const CCTV = () => {
                 style={styles.closeButton}
                 onPress={() => {
                   setShowFollowUpModal(false);
-                  setSelectedRequestId(null);
+                  setSelectedComplaintId(null);
                   setFollowUpMessage('');
                 }}
               >
@@ -431,7 +466,7 @@ const CCTV = () => {
             </View>
             
             <Text style={[styles.modalSubtitle, { color: theme === "light" ? '#666' : '#aaa' }]}>
-              Add additional information or ask for updates about your request
+              Add additional information or ask for updates about your complaint
             </Text>
             
             <TextInput
@@ -456,7 +491,7 @@ const CCTV = () => {
                 }]}
                 onPress={() => {
                   setShowFollowUpModal(false);
-                  setSelectedRequestId(null);
+                  setSelectedComplaintId(null);
                   setFollowUpMessage('');
                 }}
               >
@@ -477,32 +512,11 @@ const CCTV = () => {
           </View>
         </View>
       </Modal>
-
-      {/* Date Picker Modal */}
-      {showDatePicker && (
-        <DateTimePicker
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          value={selectedDate}
-          onChange={handleDateChange}
-          maximumDate={new Date()}
-        />
-      )}
-
-      {/* Time Picker Modal */}
-      {showTimePicker && (
-        <DateTimePicker
-          mode="time"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          value={selectedTime}
-          onChange={handleTimeChange}
-        />
-      )}
     </SafeAreaView>
   );
 };
 
-export default CCTV;
+export default Complaints;
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -537,7 +551,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 25,
     paddingBottom: 20,
   },
-  requestForm: {
+  complaintForm: {
     gap: 20,
   },
   formCard: {
@@ -568,6 +582,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+  },
+  textArea: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    minHeight: 100,
+    lineHeight: 22,
   },
   submitButton: {
     backgroundColor: '#28942c',
@@ -605,10 +627,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  ongoingRequests: {
+  ongoingComplaints: {
     gap: 16,
   },
-  requestsList: {
+  complaintsList: {
     gap: 12,
   },
   sectionTitle: {
@@ -616,7 +638,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 12,
   },
-  requestCard: {
+  complaintCard: {
     padding: 16,
     borderRadius: 16,
     marginBottom: 12,
@@ -627,7 +649,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  requestHeader: {
+  complaintHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -647,16 +669,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  requestReason: {
+  complaintTitle: {
     fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 8,
+    fontWeight: '600',
+    marginBottom: 4,
   },
-  requestDetails: {
-    gap: 4,
-  },
-  requestDetail: {
+  complaintDescription: {
     fontSize: 14,
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  complaintDetails: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  detailItem: {
+    flex: 1,
+    padding: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  detailLabel: {
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   followUpsContainer: {
     marginTop: 12,
@@ -688,6 +728,30 @@ const styles = StyleSheet.create({
   followUpButtonText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  emptyState: {
+    padding: 40,
+    borderRadius: 16,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  navWrapper: {
+    backgroundColor: '#fff',
   },
   modalOverlay: {
     flex: 1,
@@ -766,42 +830,40 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  emptyState: {
-    padding: 40,
-    borderRadius: 16,
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  emptyStateText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateSubtext: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  navWrapper: {
-    backgroundColor: '#fff',
-  },
-  pickerButton: {
+  categoriesContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    flexWrap: 'wrap',
+    gap: 8,
     marginTop: 8,
   },
-  pickerButtonText: {
-    fontSize: 16,
-    flex: 1,
+  categoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  categoryButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  prioritiesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  priorityButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  priorityButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 }); 
