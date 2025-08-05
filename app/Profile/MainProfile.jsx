@@ -47,7 +47,10 @@ const MainProfile = () => {
 
   return (
     <SafeAreaView
-      style={[styles.safeArea, { paddingTop: insets.top, backgroundColor: colors.background }]}
+      style={[
+        styles.safeArea,
+        { paddingTop: insets.top, backgroundColor: colors.background },
+      ]}
     >
       <StatusBar
         backgroundColor={statusBarBackground}
@@ -57,16 +60,26 @@ const MainProfile = () => {
         <Header />
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <View style={styles.profileImageWrapper}>
-            <View style={[styles.placeholderImage, { borderColor: buttonBackground }]} />
+            <View
+              style={[
+                styles.placeholderImage,
+                { borderColor: buttonBackground },
+              ]}
+            />
             <TouchableOpacity
-              style={[styles.cameraButton, { backgroundColor: buttonBackground }]}
+              style={[
+                styles.cameraButton,
+                { backgroundColor: buttonBackground },
+              ]}
               onPress={handlePickProfilePicture}
             >
               <Ionicons name="camera" size={18} color={textColor} />
             </TouchableOpacity>
           </View>
 
-          <Text style={[styles.name, { color: textColor }]}>{residentData.residentName}</Text>
+          <Text style={[styles.name, { color: textColor }]}>
+            {residentData.residentName}
+          </Text>
           <Text style={[styles.subText, { color: textColor }]}>
             Resident ID: {residentData.residentID}
           </Text>
@@ -76,14 +89,20 @@ const MainProfile = () => {
               style={[styles.actionButton, { borderColor: textColor }]}
               onPress={() => router.push("/Profile/EditProfile")}
             >
-              <Text style={[styles.buttonText, { color: textColor }]}>Edit Profile</Text>
+              <Text style={[styles.buttonText, { color: textColor }]}>
+                Edit Profile
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.iconButton, { borderColor: textColor }]}
               onPress={() => router.push("/Settings")}
             >
-              <Ionicons name="ellipsis-horizontal" size={14} color={textColor} />
+              <Ionicons
+                name="ellipsis-horizontal"
+                size={14}
+                color={textColor}
+              />
             </TouchableOpacity>
           </View>
 
@@ -94,7 +113,9 @@ const MainProfile = () => {
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.infoContainer, { backgroundColor: cardBackground }]}>
+          <View
+            style={[styles.infoContainer, { backgroundColor: cardBackground }]}
+          >
             {!hideSensitiveInfo ? (
               <>
                 <View style={styles.infoRow}>
@@ -105,7 +126,9 @@ const MainProfile = () => {
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Street:</Text>
-                  <Text style={[styles.infoText, { color: textColor }]}>{residentData.street}</Text>
+                  <Text style={[styles.infoText, { color: textColor }]}>
+                    {residentData.street}
+                  </Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Contact Number:</Text>
@@ -141,20 +164,30 @@ const MainProfile = () => {
             )}
           </View>
 
+          {/* Business Section */}
           <Text style={styles.sectionTitle}>Business</Text>
-
           {residentData.businessName ? (
-            <View style={[styles.vendorContainer, { backgroundColor: cardBackground }]}>
+            <View
+              style={[
+                styles.vendorContainer,
+                { backgroundColor: cardBackground },
+              ]}
+            >
               <View style={styles.vendorProfileImage} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.vendorName, { color: textColor }]}>
                   {residentData.businessName}
                 </Text>
                 <TouchableOpacity
-                  style={[styles.actionButton, { borderColor: textColor, marginTop: 8 }]}
+                  style={[
+                    styles.actionButton,
+                    { borderColor: textColor, marginTop: 8 },
+                  ]}
                   onPress={() => router.push("/Profile/MainBusiness")}
                 >
-                  <Text style={[styles.buttonText, { color: textColor }]}>Open Profile</Text>
+                  <Text style={[styles.buttonText, { color: textColor }]}>
+                    Open Profile
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -162,16 +195,21 @@ const MainProfile = () => {
             <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
               <Text style={[styles.subText, { color: textColor }]}>None</Text>
               <TouchableOpacity
-                style={[styles.actionButton, { borderColor: textColor, marginTop: 8 }]}
+                style={[
+                  styles.actionButton,
+                  { borderColor: textColor, marginTop: 8 },
+                ]}
                 onPress={() => router.push("/Business/Create")}
               >
-                <Text style={[styles.buttonText, { color: textColor }]}>Create Business</Text>
+                <Text style={[styles.buttonText, { color: textColor }]}>
+                  Create Business
+                </Text>
               </TouchableOpacity>
             </View>
           )}
 
+          {/* Services Section */}
           <Text style={styles.sectionTitle}>Services</Text>
-
           {residentData.services.length > 0 ? (
             <View
               style={[
@@ -182,7 +220,10 @@ const MainProfile = () => {
               {residentData.services.map((service, index) => (
                 <Text
                   key={index}
-                  style={[styles.infoText, { color: textColor, marginBottom: 6 }]}
+                  style={[
+                    styles.infoText,
+                    { color: textColor, marginBottom: 6 },
+                  ]}
                 >
                   • {service}
                 </Text>
@@ -198,19 +239,35 @@ const MainProfile = () => {
                 ]}
                 onPress={() => router.push("/Profile/EditServices")}
               >
-                <Text style={[styles.buttonText, { color: textColor }]}>Edit Services</Text>
+                <Text style={[styles.buttonText, { color: textColor }]}>
+                  Edit Services
+                </Text>
               </TouchableOpacity>
             </View>
           ) : (
             <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
               <Text style={[styles.subText, { color: textColor }]}>None</Text>
               <TouchableOpacity
-                style={[styles.actionButton, { borderColor: textColor, marginTop: 8 }]}
+                style={[
+                  styles.actionButton,
+                  { borderColor: textColor, marginTop: 8 },
+                ]}
                 onPress={() => router.push("/Profile/AddService")}
               >
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
                   <Ionicons name="add-outline" size={16} color={textColor} />
-                  <Text style={[styles.buttonText, { color: textColor, marginLeft: 6 }]}>
+                  <Text
+                    style={[
+                      styles.buttonText,
+                      { color: textColor, marginLeft: 6 },
+                    ]}
+                  >
                     Add Service
                   </Text>
                 </View>
@@ -218,16 +275,56 @@ const MainProfile = () => {
             </View>
           )}
 
+          {/* Community Section */}
+          <Text style={styles.sectionTitle}>Community</Text>
+          <View style={styles.avatarContainer}>
+            <View style={styles.placeholder}>
+              <Ionicons name="person" size={24} color="#ccc" />
+            </View>
+            <TouchableOpacity
+              style={[styles.inputButton, { borderColor: textColor, flex: 1 }]}
+              onPress={() => router.push("/Community/CreatePost")}
+            >
+              <Text style={[styles.inputButtonText, { color: textColor }]}>
+                What's on your mind?
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
             style={[styles.actionButton, { borderColor: textColor }]}
             onPress={() => router.push("/Profile/ManagePost")}
           >
-            <Text style={[styles.buttonText, { color: textColor }]}>Manage Posts</Text>
+            <Text style={[styles.buttonText, { color: textColor }]}>
+              Manage Posts
+            </Text>
           </TouchableOpacity>
 
+          {/* Previous Posts */}
           <Text style={styles.sectionTitle}>Previous Posts</Text>
-          <View style={[styles.infoContainer, { backgroundColor: cardBackground, alignSelf: "stretch" }]}>
-            <Text style={[styles.subText, { color: textColor }]}>Posts go here</Text>
+          <View
+            style={[
+              styles.infoContainer,
+              { backgroundColor: cardBackground, alignSelf: "stretch" },
+            ]}
+          >
+            {residentData.posts.length > 0 ? (
+              residentData.posts.map((post, index) => (
+                <Text
+                  key={index}
+                  style={[
+                    styles.infoText,
+                    { color: textColor, marginBottom: 6 },
+                  ]}
+                >
+                  • {post}
+                </Text>
+              ))
+            ) : (
+              <Text style={[styles.subText, { color: textColor }]}>
+                No posts yet
+              </Text>
+            )}
           </View>
         </ScrollView>
 
@@ -243,6 +340,7 @@ const MainProfile = () => {
           <Navbar />
         </View>
 
+        {/* Privacy Modal */}
         <Modal
           visible={modalVisible}
           animationType="slide"
@@ -320,7 +418,6 @@ const styles = StyleSheet.create({
   },
   infoRow: {
     flexDirection: "row",
-    justifyContent: "flex-start",
     alignItems: "center",
     marginBottom: 10,
   },
@@ -330,9 +427,7 @@ const styles = StyleSheet.create({
     color: "green",
     marginRight: 6,
   },
-  infoText: {
-    fontSize: 16,
-  },
+  infoText: { fontSize: 16 },
   vendorContainer: {
     width: "100%",
     borderRadius: 10,
@@ -365,10 +460,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginVertical: 10,
   },
-  buttonText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
+  buttonText: { fontSize: 14, fontWeight: "500" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -418,5 +510,29 @@ const styles = StyleSheet.create({
     padding: 8,
     borderWidth: 1,
     borderRadius: 8,
+  },
+  avatarContainer: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  placeholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#ddd",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  inputButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 8,
+  },
+  inputButtonText: {
+    fontSize: 14,
   },
 });
