@@ -164,7 +164,6 @@ const MainProfile = () => {
             )}
           </View>
 
-          {/* Business Section */}
           <Text style={styles.sectionTitle}>Business</Text>
           {residentData.businessName ? (
             <View
@@ -174,7 +173,7 @@ const MainProfile = () => {
               ]}
             >
               <View style={styles.vendorProfileImage} />
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, justifyContent: "center" }}>
                 <Text style={[styles.vendorName, { color: textColor }]}>
                   {residentData.businessName}
                 </Text>
@@ -194,21 +193,24 @@ const MainProfile = () => {
           ) : (
             <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
               <Text style={[styles.subText, { color: textColor }]}>None</Text>
-              <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  { borderColor: textColor, marginTop: 8 },
-                ]}
-                onPress={() => router.push("/Business/Create")}
-              >
-                <Text style={[styles.buttonText, { color: textColor }]}>
-                  Create Business
-                </Text>
-              </TouchableOpacity>
             </View>
           )}
 
-          {/* Services Section */}
+          <TouchableOpacity
+            style={[
+              styles.buttonAlt,
+              {
+                backgroundColor: buttonBackground,
+                borderColor: buttonBackground,
+              },
+            ]}
+            onPress={() => router.push("/Business/Create")}
+          >
+            <Text style={[styles.buttonAltText, { color: textColor }]}>
+              Create Another Business
+            </Text>
+          </TouchableOpacity>
+
           <Text style={styles.sectionTitle}>Services</Text>
           {residentData.services.length > 0 ? (
             <View
@@ -275,8 +277,7 @@ const MainProfile = () => {
             </View>
           )}
 
-          {/* Community Section */}
-          <Text style={styles.sectionTitle}>Community</Text>
+          <Text style={styles.sectionTitle}>Posts</Text>
           <View style={styles.avatarContainer}>
             <View style={styles.placeholder}>
               <Ionicons name="person" size={24} color="#ccc" />
@@ -292,15 +293,20 @@ const MainProfile = () => {
           </View>
 
           <TouchableOpacity
-            style={[styles.actionButton, { borderColor: textColor }]}
+            style={[
+              styles.buttonAlt,
+              {
+                backgroundColor: buttonBackground,
+                borderColor: buttonBackground,
+              },
+            ]}
             onPress={() => router.push("/Profile/ManagePost")}
           >
-            <Text style={[styles.buttonText, { color: textColor }]}>
+            <Text style={[styles.buttonAltText, { color: textColor }]}>
               Manage Posts
             </Text>
           </TouchableOpacity>
 
-          {/* Previous Posts */}
           <Text style={styles.sectionTitle}>Previous Posts</Text>
           <View
             style={[
@@ -340,7 +346,6 @@ const MainProfile = () => {
           <Navbar />
         </View>
 
-        {/* Privacy Modal */}
         <Modal
           visible={modalVisible}
           animationType="slide"
@@ -534,5 +539,19 @@ const styles = StyleSheet.create({
   },
   inputButtonText: {
     fontSize: 14,
+  },
+  buttonAlt: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderRadius: 8,
+    marginVertical: 10,
+    width: "100%",
+  },
+  buttonAltText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
 });
