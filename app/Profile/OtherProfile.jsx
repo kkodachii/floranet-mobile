@@ -39,7 +39,10 @@ const OtherProfile = () => {
 
   return (
     <SafeAreaView
-      style={[styles.safeArea, { paddingTop: insets.top, backgroundColor: colors.background }]}
+      style={[
+        styles.safeArea,
+        { paddingTop: insets.top, backgroundColor: colors.background },
+      ]}
     >
       <StatusBar
         backgroundColor={statusBarBackground}
@@ -49,10 +52,17 @@ const OtherProfile = () => {
         <Header />
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <View style={styles.profileImageWrapper}>
-            <View style={[styles.placeholderImage, { borderColor: buttonBackground }]} />
+            <View
+              style={[
+                styles.placeholderImage,
+                { borderColor: buttonBackground },
+              ]}
+            />
           </View>
 
-          <Text style={[styles.name, { color: textColor }]}>{residentData.residentName}</Text>
+          <Text style={[styles.name, { color: textColor }]}>
+            {residentData.residentName}
+          </Text>
           <Text style={[styles.subText, { color: textColor }]}>
             Resident ID: {residentData.residentID}
           </Text>
@@ -62,20 +72,28 @@ const OtherProfile = () => {
               style={[styles.actionButton, { borderColor: textColor }]}
               onPress={() => router.push("/Chat")}
             >
-              <Text style={[styles.buttonText, { color: textColor }]}>Message</Text>
+              <Text style={[styles.buttonText, { color: textColor }]}>
+                Message
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.iconButton, { borderColor: textColor }]}
               onPress={() => router.push("/Settings")}
             >
-              <Ionicons name="ellipsis-horizontal" size={14} color={textColor} />
+              <Ionicons
+                name="ellipsis-horizontal"
+                size={14}
+                color={textColor}
+              />
             </TouchableOpacity>
           </View>
 
           <Text style={styles.sectionTitle}>Details</Text>
 
-          <View style={[styles.infoContainer, { backgroundColor: cardBackground }]}>
+          <View
+            style={[styles.infoContainer, { backgroundColor: cardBackground }]}
+          >
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>House Number:</Text>
               <Text style={[styles.infoText, { color: textColor }]}>
@@ -84,7 +102,9 @@ const OtherProfile = () => {
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Street:</Text>
-              <Text style={[styles.infoText, { color: textColor }]}>{residentData.street}</Text>
+              <Text style={[styles.infoText, { color: textColor }]}>
+                {residentData.street}
+              </Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Contact Number:</Text>
@@ -97,17 +117,27 @@ const OtherProfile = () => {
           <Text style={styles.sectionTitle}>Business</Text>
 
           {residentData.businessName ? (
-            <View style={[styles.vendorContainer, { backgroundColor: cardBackground }]}>
+            <View
+              style={[
+                styles.vendorContainer,
+                { backgroundColor: cardBackground },
+              ]}
+            >
               <View style={styles.vendorProfileImage} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.vendorName, { color: textColor }]}>
                   {residentData.businessName}
                 </Text>
                 <TouchableOpacity
-                  style={[styles.actionButton, { borderColor: textColor, marginTop: 8 }]}
-                  onPress={() => router.push("/Business/Profile")}
+                  style={[
+                    styles.actionButton,
+                    { borderColor: textColor, marginTop: 8 },
+                  ]}
+                  onPress={() => router.push("/Profile/OtherBusiness")}
                 >
-                  <Text style={[styles.buttonText, { color: textColor }]}>Visit Profile</Text>
+                  <Text style={[styles.buttonText, { color: textColor }]}>
+                    Visit Profile
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -127,7 +157,10 @@ const OtherProfile = () => {
               {residentData.services.map((service, index) => (
                 <Text
                   key={index}
-                  style={[styles.infoText, { color: textColor, marginBottom: 6 }]}
+                  style={[
+                    styles.infoText,
+                    { color: textColor, marginBottom: 6 },
+                  ]}
                 >
                   • {service}
                 </Text>
@@ -138,8 +171,15 @@ const OtherProfile = () => {
           )}
 
           <Text style={styles.sectionTitle}>Previous Posts</Text>
-          <View style={[styles.infoContainer, { backgroundColor: cardBackground, alignSelf: "stretch" }]}>
-            <Text style={[styles.subText, { color: textColor }]}>Posts go here</Text>
+          <View
+            style={[
+              styles.infoContainer,
+              { backgroundColor: cardBackground, alignSelf: "stretch" },
+            ]}
+          >
+            <Text style={[styles.subText, { color: textColor }]}>
+              Posts go here
+            </Text>
           </View>
         </ScrollView>
 
@@ -160,7 +200,6 @@ const OtherProfile = () => {
 };
 
 export default OtherProfile;
-
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
