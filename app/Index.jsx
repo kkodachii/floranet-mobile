@@ -1,259 +1,129 @@
-import React from "react";
 import {
   StyleSheet,
   Text,
   View,
-  SafeAreaView,
+  TextInput,
   TouchableOpacity,
   Image,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import React, { useState } from "react";
 import { useRouter } from "expo-router";
-import Navbar from "../components/Navbar";
-import Header from "../components/Header";
-import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
-import { useTheme } from "../Theme/ThemeProvider";
-import { StatusBar } from "react-native";
 
 const Index = () => {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { colors, theme } = useTheme();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
-  const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
-  const cardBackground = theme === "light" ? "#ffffff" : "#14181F";
-  const buttonBackground = theme === "light" ? "#e1e5ea" : "#1F2633";
-  const textColor = colors.text;
+  const handleLogin = () => {
+    // You can add login validation here
+    router.push("/MainHomepage");
+  };
 
   return (
-    <SafeAreaView
-      style={[
-        styles.safeArea,
-        { paddingTop: insets.top, backgroundColor: colors.background },
-      ]}
-    >
-      <StatusBar
-        backgroundColor={statusBarBackground}
-        barStyle={theme === "light" ? "dark-content" : "light-content"}
-      />
-      <View style={styles.container}>
-        <Header />
-
-        <View style={styles.content}>
-          <AccountDetails
-            homeownerName="Juan Dela Cruz"
-            residentId="B3A - L23"
-            avatarUri={null}
-            cardBackground={cardBackground}
-            textColor={textColor}
-          />
-          <View style={styles.buttonGrid}>
-            <MenuButton
-              icon={<Ionicons name="wallet" size={30} color={textColor} />}
-              label="FINANCE"
-              onPress={() => router.push("/Finance/FinanceHomepage/")}
-              buttonBackground={buttonBackground}
-              textColor={textColor}
-            />
-            <MenuButton
-              icon={<FontAwesome5 name="users" size={30} color={textColor} />}
-              label="COMMUNITY"
-              onPress={() => router.push("/Community/CommunityHomepage")}
-              buttonBackground={buttonBackground}
-              textColor={textColor}
-            />
-            <MenuButton
-              icon={<MaterialIcons name="shield" size={30} color={textColor} />}
-              label="SECURITY"
-              onPress={() => router.push("/Security/SecurityHomepage")}
-              buttonBackground={buttonBackground}
-              textColor={textColor}
-            />
-            <MenuButton
-              icon={
-                <MaterialIcons name="emergency" size={30} color={textColor} />
-              }
-              label="EMERGENCY"
-              onPress={() => router.push("/Emergency/EmergencyHomepage")}
-              buttonBackground={buttonBackground}
-              textColor={textColor}
-            />
-          </View>
-        </View>
-
-        <View
-          style={[
-            styles.navWrapper,
-            {
-              paddingBottom: insets.bottom || 16,
-              backgroundColor: navBarBackground,
-            },
-          ]}
-        >
-          <Navbar />
-        </View>
-      </View>
-    </SafeAreaView>
-  );
-};
-
-const AccountDetails = ({
-  residentId,
-  homeownerName,
-  avatarUri,
-  cardBackground,
-  textColor,
-}) => (
-  <View style={[styles.paymentCard, { backgroundColor: cardBackground }]}>
-    <View style={styles.cardHeader}>
-      <View style={styles.avatarContainer}>
-        {avatarUri ? (
-          <Image source={{ uri: avatarUri }} style={styles.avatar} />
-        ) : (
-          <View style={styles.placeholder}>
-            <Ionicons name="person" size={35} color="#ccc" />
-          </View>
-        )}
-      </View>
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>Homeowner</Text>
-      </View>
-    </View>
-
-    <View style={styles.cardContent}>
-      <Text style={[styles.homeownerName, { color: textColor }]}>
-        {homeownerName}
-      </Text>
-      <Text style={styles.residentId}>Resident ID: {residentId}</Text>
-
-      <TouchableOpacity
-        style={[styles.detailsButton, { borderColor: textColor }]}
-      >
-        <Text style={[styles.detailsButtonText, { color: textColor }]}>
-          More Details
+    <View style={styles.container}>
+      {/* Logo Placeholder */}
+      <View style={styles.logoContainer}>
+        <View style={styles.logoPlaceholder}></View>
+        <Text style={styles.tagline}>
+          Join our community of homeowners and make managing your home simpler,
+          smarter, and safer
         </Text>
+      </View>
+
+      {/* Input Fields */}
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Password"
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+      />
+
+      {/* Forgot Password */}
+      <TouchableOpacity
+        style={styles.forgotPassword}
+        onPress={() => router.push("/Authentication/ForgotPassword")}
+      >
+        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+      </TouchableOpacity>
+
+      {/* Login Button */}
+      <TouchableOpacity style={styles.button} onPress={handleLogin}>
+        <Text style={styles.buttonText}>Login</Text>
+      </TouchableOpacity>
+
+      {/* Register Redirect */}
+      <TouchableOpacity
+        style={styles.registerButton}
+        onPress={() => router.push("/Authentication/RegisterScreen")}
+      >
+        <Text style={styles.registerText}>Don’t have an account? Register</Text>
       </TouchableOpacity>
     </View>
-  </View>
-);
-
-const MenuButton = ({ icon, label, onPress, buttonBackground, textColor }) => (
-  <TouchableOpacity
-    style={[styles.button, { backgroundColor: buttonBackground }]}
-    onPress={onPress}
-  >
-    <View style={styles.iconWrapper}>{icon}</View>
-    <Text style={[styles.buttonText, { color: textColor }]}>{label}</Text>
-  </TouchableOpacity>
-);
+  );
+};
 
 export default Index;
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
   container: {
     flex: 1,
-    justifyContent: "space-between",
-  },
-  content: {
-    flex: 1,
+    padding: 24,
     justifyContent: "center",
+    backgroundColor: "#fff",
+  },
+  logoContainer: {
     alignItems: "center",
-    gap: 16,
+    marginBottom: 32,
   },
-  navWrapper: {},
-  paymentCard: {
-    borderRadius: 16,
-    padding: 20,
-    width: 310,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
+  logoPlaceholder: {
+    width: 100,
+    height: 100,
+    backgroundColor: "#ccc",
+    borderRadius: 50,
+    marginBottom: 16,
   },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 10,
-  },
-  avatarContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 35,
-    overflow: "hidden",
-  },
-  avatar: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 25,
-  },
-  placeholder: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 25,
-    backgroundColor: "#e0e0e0",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  badge: {
-    backgroundColor: "#28942c",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  badgeText: {
-    color: "#ffff",
-  },
-  cardContent: {
-    alignItems: "flex-start",
-  },
-  residentId: {
-    color: "#28942c",
+  tagline: {
+    textAlign: "center",
     fontSize: 16,
-    marginBottom: 15,
+    color: "#333",
+    paddingHorizontal: 10,
   },
-  homeownerName: {
-    fontSize: 32,
-    fontWeight: "bold",
-    marginBottom: 3,
-  },
-  detailsButton: {
+  input: {
     borderWidth: 1,
-    borderColor: "#2f3b4c",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginBottom: 3,
+    borderColor: "#ccc",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
   },
-  detailsButtonText: {
-    color: "#2f3b4c",
-    fontSize: 14,
-    fontWeight: "600",
+  forgotPassword: {
+    alignItems: "flex-end",
+    marginBottom: 20,
   },
-  buttonGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 12,
+  forgotPasswordText: {
+    color: "#007bff",
   },
   button: {
-    flexDirection: "column",
+    backgroundColor: "#007bff",
+    padding: 16,
+    borderRadius: 8,
     alignItems: "center",
-    borderRadius: 16,
-    paddingVertical: 20,
-    paddingHorizontal: 24,
-    width: 150,
-    height: 90,
+    marginBottom: 16,
   },
   buttonText: {
-    marginTop: 3,
-    fontSize: 14,
-    flexShrink: 1,
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  registerButton: {
+    alignItems: "center",
+  },
+  registerText: {
+    color: "#007bff",
   },
 });
