@@ -42,7 +42,7 @@ const ChatHomepage = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [userSearch, setUserSearch] = useState("");
 
-  const statusBarBackground = theme === "light" ? "#f7f8fa" : "#181c23";
+  const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const chatBg = theme === "light" ? "#f7f8fa" : "#181c23";
   const cardBg = theme === "light" ? "#fff" : "#232a34";
   const borderColor = theme === "light" ? "#e0e0e0" : "#333";
@@ -234,8 +234,16 @@ const ChatHomepage = () => {
   );
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: chatBg }] }>
-      <StatusBar backgroundColor={statusBarBackground} barStyle={theme === "light" ? "dark-content" : "light-content"} />
+    <SafeAreaView
+      style={[
+        styles.safeArea,
+        { paddingTop: insets.top, backgroundColor: colors.background },
+      ]}
+    >
+      <StatusBar
+        backgroundColor={statusBarBackground}
+        barStyle={theme === "light" ? "dark-content" : "light-content"}
+      />
       <View style={styles.container}>
         <Header />
         <View style={styles.content}>
