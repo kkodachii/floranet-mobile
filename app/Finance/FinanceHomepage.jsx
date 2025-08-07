@@ -27,8 +27,6 @@ const FinanceHomepage = () => {
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
-  const cardBackground = theme === "light" ? "#ffffff" : "#14181F";
-  const textColor = colors.text;
 
   return (
     <SafeAreaView
@@ -42,89 +40,132 @@ const FinanceHomepage = () => {
         barStyle={theme === "light" ? "dark-content" : "light-content"}
       />
       
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <View style={styles.container}>
         <Header />
-        <View style={[styles.card, { backgroundColor: cardBackground }]}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.month}>{paymentData.month} Payment</Text>
-            <Text style={styles.dueDate}>Due at: {paymentData.dueDate}</Text>
+        
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.headerSection}>
+            <Text style={[styles.pageTitle, { color: colors.text }]}>Finance</Text>
           </View>
 
-          <Text style={[styles.amount, { color: textColor }]}>
-            ₱{paymentData.amount.toFixed(2)}
-          </Text>
-
-          <TouchableOpacity
-            style={styles.payButton}
-            onPress={() => router.push("/Finance/Pay")}
-          >
-            <Text style={styles.payButtonText}>Pay Now</Text>
-          </TouchableOpacity>
-
-          <View style={styles.extraButtonsContainer}>
-            <TouchableOpacity
-              style={[styles.extraButton, { borderColor: textColor }]}
-            >
-              <Text style={[styles.extraButtonText, { color: textColor }]}>
-                Link GCash
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.extraButton, { borderColor: textColor }]}
-            >
-              <Text style={[styles.extraButtonText, { color: textColor }]}>
-                Pay via GCash
-              </Text>
-            </TouchableOpacity>
+          {/* Payment Overview Card */}
+          <View style={[styles.paymentCard, { backgroundColor: theme === "light" ? "#ffffff" : "#14181F" }]}>
+            <View style={styles.paymentHeader}>
+              <View style={styles.paymentInfo}>
+                <Text style={[styles.paymentLabel, { color: colors.text, opacity: 0.7 }]}>
+                  Current Payment
+                </Text>
+                <Text style={[styles.paymentMonth, { color: colors.text }]}>
+                  {paymentData.month} 2025
+                </Text>
+              </View>
+              <View style={styles.amountContainer}>
+                <Text style={[styles.amount, { color: colors.text }]}>
+                  ₱{paymentData.amount.toFixed(2)}
+                </Text>
+                <Text style={[styles.dueDate, { color: colors.text, opacity: 0.6 }]}>
+                  Due: {paymentData.dueDate}
+                </Text>
+              </View>
+            </View>
           </View>
-        </View>
+
+          {/* Quick Actions */}
+          <View style={styles.quickActionsContainer}>
+            <View style={styles.quickActionsGrid}>
+              <TouchableOpacity 
+                style={[styles.quickActionButton, { backgroundColor: colors.card }]}
+                onPress={() => router.push("/Finance/QRPayment")}
+              >
+                <View style={styles.quickActionIcon}>
+                  <Ionicons name="qr-code" size={24} color="#4A90E2" />
+                </View>
+                <Text style={[styles.quickActionText, { color: colors.text }]}>
+                  QR Payment
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.quickActionButton, { backgroundColor: colors.card }]}
+                onPress={() => router.push("/Finance/PaymentHistory")}
+              >
+                <View style={styles.quickActionIcon}>
+                  <Ionicons name="time" size={24} color="#50C878" />
+                </View>
+                <Text style={[styles.quickActionText, { color: colors.text }]}>
+                  History
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Recent Payments */}
+          <View style={styles.recentSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Payments</Text>
+              <TouchableOpacity onPress={() => router.push("/Finance/PaymentHistory")}>
+                <Text style={[styles.viewAllText, { color: "#4A90E2" }]}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={[styles.recentPaymentsCard, { backgroundColor: colors.card }]}>
+              <View style={styles.recentPaymentItem}>
+                <View style={styles.recentPaymentInfo}>
+                  <Text style={[styles.recentPaymentMonth, { color: colors.text }]}>July 2025</Text>
+                  <Text style={[styles.recentPaymentTime, { color: colors.text, opacity: 0.6 }]}>10:32 AM</Text>
+                </View>
+                <View style={styles.recentPaymentAmount}>
+                  <Text style={[styles.recentAmount, { color: colors.text }]}>₱300.00</Text>
+                  <View style={styles.statusBadge}>
+                    <Ionicons name="checkmark-circle" size={12} color="#50C878" />
+                    <Text style={styles.statusText}>Paid</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.recentPaymentItem}>
+                <View style={styles.recentPaymentInfo}>
+                  <Text style={[styles.recentPaymentMonth, { color: colors.text }]}>June 2025</Text>
+                  <Text style={[styles.recentPaymentTime, { color: colors.text, opacity: 0.6 }]}>2:45 PM</Text>
+                </View>
+                <View style={styles.recentPaymentAmount}>
+                  <Text style={[styles.recentAmount, { color: colors.text }]}>₱500.00</Text>
+                  <View style={styles.statusBadge}>
+                    <Ionicons name="checkmark-circle" size={12} color="#50C878" />
+                    <Text style={styles.statusText}>Paid</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Info Card */}
+          <View style={[styles.infoCard, { backgroundColor: colors.card }]}>
+            <View style={styles.infoHeader}>
+              <Ionicons name="information-circle" size={24} color="#50C878" />
+              <Text style={[styles.infoTitle, { color: colors.text }]}>Payment Information</Text>
+            </View>
+            <Text style={[styles.infoText, { color: colors.text, opacity: 0.7 }]}>
+              Make your monthly payments on time to avoid late fees. You can pay using various methods including GCash QR, direct GCash payment, or bank transfer.
+            </Text>
+          </View>
+        </ScrollView>
 
         <View
-          style={[styles.historySection, { backgroundColor: cardBackground }]}
+          style={[
+            styles.navWrapper,
+            {
+              paddingBottom: insets.bottom || 16,
+              backgroundColor: navBarBackground,
+            },
+          ]}
         >
-          <Text style={styles.historyTitle}>Recent Payments</Text>
-
-          <View style={styles.historyItem}>
-            <Text style={[styles.historyDate, { color: textColor }]}>
-              July 2025
-            </Text>
-            <Text style={[styles.historyAmount, { color: textColor }]}>
-              ₱300.00
-            </Text>
-          </View>
-
-          <View style={styles.historyItem}>
-            <Text style={[styles.historyDate, { color: textColor }]}>
-              June 2025
-            </Text>
-            <Text style={[styles.historyAmount, { color: textColor }]}>
-              ₱500.00
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.historyButton}
-            onPress={() => router.push("/Finance/PaymentHistory")}
-          >
-            <Ionicons name="time" size={18} color={textColor} />
-            <Text style={[styles, { color: textColor }]}>
-              Expand Full History
-            </Text>
-          </TouchableOpacity>
+          <Navbar />
         </View>
-      </ScrollView>
-
-      <View
-        style={[
-          styles.navWrapper,
-          {
-            paddingBottom: insets.bottom || 16,
-            backgroundColor: navBarBackground,
-          },
-        ]}
-      >
-        <Navbar />
       </View>
     </SafeAreaView>
   );
@@ -136,121 +177,189 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+  container: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
-    paddingBottom: 16,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
-  card: {
-    marginTop: 65,
-    marginHorizontal: 25,
-    marginBottom: 20,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    marginBottom: 12,
-  },
-  month: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#28942c",
-  },
-  dueDate: {
-    fontSize: 15,
-    color: "#888",
-  },
-  amount: {
-    fontSize: 40,
-    fontWeight: "bold",
+  headerSection: {
+    marginTop: 20,
     marginBottom: 16,
   },
-  payButton: {
-    flexDirection: "center",
-    alignItems: "center",
-    backgroundColor: "#28942c",
-    paddingVertical: 10,
-    paddingHorizontal: 60,
-    borderRadius: 8,
+  pageTitle: {
+    fontSize: 32,
+    fontWeight: "bold",
+    marginBottom: 8,
   },
-  payButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+  paymentCard: {
+    padding: 24,
+    borderRadius: 20,
+    marginBottom: 30,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  historySection: {
-    marginTop: 10,
-    marginHorizontal: 25,
-    borderRadius: 16,
-    padding: 20,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  historyTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#28942c",
-    marginBottom: 12,
-  },
-  historyItem: {
+  paymentHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 6,
+    alignItems: "flex-start",
   },
-  historyDate: {
-    fontSize: 14,
-    color: "#555",
+  paymentInfo: {
+    flex: 1,
   },
-  historyAmount: {
+  paymentLabel: {
     fontSize: 14,
+    marginBottom: 4,
+  },
+  paymentMonth: {
+    fontSize: 20,
     fontWeight: "600",
-    color: "#2f3b4c",
   },
-  historyButton: {
+  amountContainer: {
+    alignItems: "flex-end",
+  },
+  amount: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  dueDate: {
+    fontSize: 12,
+  },
+  quickActionsContainer: {
+    marginBottom: 30,
+  },
+  quickActionsGrid: {
     flexDirection: "row",
-    alignItems: "center",
-    marginTop: 12,
+    gap: 12,
   },
-  historyButtonText: {
-    color: "#2f3b4c",
-    marginLeft: 6,
+  quickActionButton: {
+    flex: 1,
+    padding: 20,
+    borderRadius: 16,
+    alignItems: "center",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  quickActionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(74, 144, 226, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  quickActionText: {
     fontSize: 14,
     fontWeight: "500",
+    textAlign: "center",
+  },
+  recentSection: {
+    marginBottom: 30,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  recentPaymentsCard: {
+    padding: 20,
+    borderRadius: 16,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  recentPaymentItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.1)",
+  },
+  recentPaymentInfo: {
+    flex: 1,
+  },
+  recentPaymentMonth: {
+    fontSize: 16,
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  recentPaymentTime: {
+    fontSize: 14,
+  },
+  recentPaymentAmount: {
+    alignItems: "flex-end",
+  },
+  recentAmount: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  statusText: {
+    fontSize: 12,
+    color: "#50C878",
+    fontWeight: "500",
+    marginLeft: 4,
+  },
+  infoCard: {
+    padding: 20,
+    borderRadius: 16,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  infoHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   navWrapper: {
     backgroundColor: "#fff",
-  },
-  extraButtonsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    marginTop: 12,
-    gap: 10,
-  },
-  extraButton: {
-    flex: 1,
-    backgroundColor: "ffff",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#2f3b4c",
-  },
-  extraButtonText: {
-    color: "#2f3b4c",
-    fontWeight: "600",
-    fontSize: 14,
   },
 });

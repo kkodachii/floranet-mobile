@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  ScrollView,
 } from "react-native";
 import React, { useState } from "react";
 import Navbar from "../../components/Navbar";
@@ -13,6 +14,7 @@ import Header from "../../components/HeaderBack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { StatusBar } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 const Pay = () => {
   const insets = useSafeAreaInsets();
@@ -68,51 +70,85 @@ const Pay = () => {
       />
 
       <View style={styles.container}>
-        <Header title="Pay" />
+        <Header title="Make Payment" />
 
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Amount</Text>
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Enter amount"
-              placeholderTextColor="#888"
-              keyboardType="numeric"
-              value={amount}
-              onChangeText={setAmount}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              Homeowner Name
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.headerSection}>
+            <Text style={[styles.pageTitle, { color: colors.text }]}>Payment Details</Text>
+            <Text style={[styles.pageSubtitle, { color: colors.text, opacity: 0.7 }]}>
+              Enter your payment information below
             </Text>
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Enter homeowner name"
-              placeholderTextColor="#888"
-              value={name}
-              onChangeText={setName}
-            />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              Resident ID
+          <View style={[styles.formCard, { backgroundColor: colors.card }]}>
+            <View style={styles.formHeader}>
+              <Ionicons name="card" size={24} color="#50C878" />
+              <Text style={[styles.formTitle, { color: colors.text }]}>Payment Form</Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text }]}>Amount (₱)</Text>
+              <View style={[styles.inputContainer, { borderColor: colors.text, opacity: 0.2 }]}>
+                <Ionicons name="cash" size={20} color="#50C878" style={styles.inputIcon} />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder="Enter amount"
+                  placeholderTextColor="#888"
+                  keyboardType="numeric"
+                  value={amount}
+                  onChangeText={setAmount}
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text }]}>Homeowner Name</Text>
+              <View style={[styles.inputContainer, { borderColor: colors.text, opacity: 0.2 }]}>
+                <Ionicons name="person" size={20} color="#4A90E2" style={styles.inputIcon} />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder="Enter homeowner name"
+                  placeholderTextColor="#888"
+                  value={name}
+                  onChangeText={setName}
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text }]}>Resident ID</Text>
+              <View style={[styles.inputContainer, { borderColor: colors.text, opacity: 0.2 }]}>
+                <Ionicons name="id-card" size={20} color="#FF6B35" style={styles.inputIcon} />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder="Enter resident ID"
+                  placeholderTextColor="#888"
+                  value={residentId}
+                  onChangeText={setResidentId}
+                />
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+              <Ionicons name="checkmark-circle" size={20} color="#fff" />
+              <Text style={styles.submitButtonText}>Submit Payment</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.infoCard, { backgroundColor: colors.card }]}>
+            <View style={styles.infoHeader}>
+              <Ionicons name="information-circle" size={24} color="#4A90E2" />
+              <Text style={[styles.infoTitle, { color: colors.text }]}>Payment Information</Text>
+            </View>
+            <Text style={[styles.infoText, { color: colors.text, opacity: 0.7 }]}>
+              Please ensure all information is correct before submitting. Payment will be processed immediately and you will receive a confirmation receipt.
             </Text>
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Enter resident ID"
-              placeholderTextColor="#888"
-              value={residentId}
-              onChangeText={setResidentId}
-            />
           </View>
-
-          <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-            <Text style={styles.buttonText}>Submit</Text>
-          </TouchableOpacity>
-        </View>
+        </ScrollView>
 
         <View
           style={[
@@ -138,40 +174,120 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    justifyContent: "space-between",
   },
-  form: {
+  scrollView: {
     flex: 1,
-    paddingHorizontal: 24,
-    justifyContent: "center",
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  headerSection: {
+    marginTop: 20,
+    marginBottom: 30,
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: 8,
+  },
+  pageSubtitle: {
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  formCard: {
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 24,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  formHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  formTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginLeft: 8,
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   label: {
     fontSize: 16,
     fontWeight: "500",
     marginBottom: 8,
   },
-  input: {
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "#28942c",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: "#28942c",
-    padding: 14,
-    borderRadius: 8,
+  inputContainer: {
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 24,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
   },
-  buttonText: {
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 12,
+  },
+  submitButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#50C878",
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginTop: 8,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  submitButtonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+    marginLeft: 8,
+  },
+  infoCard: {
+    padding: 20,
+    borderRadius: 16,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  infoHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   navWrapper: {
     backgroundColor: "#fff",
