@@ -173,11 +173,27 @@ const CommunityHomepage = () => {
             <Text style={[styles.title, { color: textColor }]}>
               Community Hub
             </Text>
-            <TouchableOpacity
-              onPress={() => router.push("/Community/ChatHomepage")}
-            >
-              <Ionicons name="chatbubble-outline" size={24} color={textColor} />
-            </TouchableOpacity>
+            <View style={styles.iconGroup}>
+              <TouchableOpacity
+                onPress={() => router.push("/Community/Search")}
+              >
+                <Ionicons
+                  name="search-outline"
+                  size={24}
+                  color={textColor}
+                  style={{ marginRight: 16 }}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.push("/Community/ChatHomepage")}
+              >
+                <Ionicons
+                  name="chatbubble-outline"
+                  size={24}
+                  color={textColor}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.chipContainer}>
@@ -376,11 +392,7 @@ const CommunityHomepage = () => {
                     ]}
                   >
                     <TouchableOpacity
-                      onPress={() =>
-                        router.push(
-                          `/profile/${post.homeownerName.replace(" ", "")}`
-                        )
-                      }
+                      onPress={() => router.push("/Profile/OtherProfile")}
                       style={styles.postHeaderRow}
                     >
                       <View style={styles.avatarContainer}>
@@ -502,6 +514,7 @@ const CommunityHomepage = () => {
                           size={20}
                           color={textColor}
                         />
+
                         <Text style={[styles.iconText, { color: textColor }]}>
                           Comment
                         </Text>
@@ -621,4 +634,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   inputButtonText: { fontSize: 14 },
+  iconGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
 });
