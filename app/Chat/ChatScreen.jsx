@@ -32,6 +32,7 @@ const ChatScreen = () => {
   const flatListRef = useRef(null);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const keyboardOpenRef = useRef(false);
+  const [appState, setAppState] = useState(AppState.currentState);
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const chatBg = theme === "light" ? "#f7f8fa" : "#181c23";
@@ -107,25 +108,16 @@ const ChatScreen = () => {
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       setKeyboardOpen(false);
       keyboardOpenRef.current = false;
-      // Ensure container resets to proper position
-      setTimeout(() => {
-        setKeyboardOpen(false);
-        keyboardOpenRef.current = false;
-      }, 50);
     });
     
     // Listen for app state changes to close keyboard when app loses focus
     const handleAppStateChange = (nextAppState) => {
+      setAppState(nextAppState);
       if (nextAppState === 'background' || nextAppState === 'inactive') {
         Keyboard.dismiss();
-        // Immediately reset keyboard state
+        // Force reset keyboard state immediately
         setKeyboardOpen(false);
         keyboardOpenRef.current = false;
-        // Force a small delay to ensure the keyboard is fully dismissed and state is reset
-        setTimeout(() => {
-          setKeyboardOpen(false);
-          keyboardOpenRef.current = false;
-        }, 100);
       } else if (nextAppState === 'active') {
         // When app becomes active again, ensure keyboard state is reset
         setKeyboardOpen(false);
@@ -250,7 +242,7 @@ const ChatScreen = () => {
         style={[styles.container]}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-        enabled={keyboardOpenRef.current}
+        enabled={keyboardOpen}
       >
         {/* Header */}
         <View style={[styles.headerStandard, { 
@@ -299,7 +291,7 @@ const ChatScreen = () => {
             {
               backgroundColor: colors.navbg || (theme === "dark" ? "#1a1a1a" : "#ffffff"),
               borderTopColor: theme === "dark" ? "#333" : "#ccc",
-              paddingBottom: keyboardOpenRef.current ? (insets.bottom + 40) : (insets.bottom || 16),
+              paddingBottom: keyboardOpen ? 40 : (insets.bottom || 16),
             },
           ]}
         >
