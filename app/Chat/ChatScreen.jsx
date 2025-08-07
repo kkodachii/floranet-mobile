@@ -12,11 +12,13 @@ import {
   SafeAreaView,
   StatusBar,
   Keyboard,
+  AppState,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import HeaderBack from "../../components/HeaderBack";
 
 const ChatScreen = () => {
   const insets = useSafeAreaInsets();
@@ -29,8 +31,9 @@ const ChatScreen = () => {
   const [newMessage, setNewMessage] = useState("");
   const flatListRef = useRef(null);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const keyboardOpenRef = useRef(false);
 
-  const statusBarBackground = theme === "light" ? "#f7f8fa" : "#181c23";
+  const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const chatBg = theme === "light" ? "#f7f8fa" : "#181c23";
   const bubbleOwn = "#28942c";
   const bubbleOther = theme === "light" ? "#fff" : "#232a34";
@@ -97,11 +100,45 @@ const ChatScreen = () => {
   }, [messages]);
 
   useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardOpen(false));
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardOpen(true);
+      keyboardOpenRef.current = true;
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardOpen(false);
+      keyboardOpenRef.current = false;
+      // Ensure container resets to proper position
+      setTimeout(() => {
+        setKeyboardOpen(false);
+        keyboardOpenRef.current = false;
+      }, 50);
+    });
+    
+    // Listen for app state changes to close keyboard when app loses focus
+    const handleAppStateChange = (nextAppState) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        Keyboard.dismiss();
+        // Immediately reset keyboard state
+        setKeyboardOpen(false);
+        keyboardOpenRef.current = false;
+        // Force a small delay to ensure the keyboard is fully dismissed and state is reset
+        setTimeout(() => {
+          setKeyboardOpen(false);
+          keyboardOpenRef.current = false;
+        }, 100);
+      } else if (nextAppState === 'active') {
+        // When app becomes active again, ensure keyboard state is reset
+        setKeyboardOpen(false);
+        keyboardOpenRef.current = false;
+      }
+    };
+    
+    const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+    
     return () => {
       showSub.remove();
       hideSub.remove();
+      appStateSubscription?.remove();
     };
   }, []);
 
@@ -178,15 +215,18 @@ const ChatScreen = () => {
 
   if (!chat) {
     return (
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: chatBg }] }>
-        <StatusBar backgroundColor={statusBarBackground} barStyle={theme === "light" ? "dark-content" : "light-content"} />
+      <SafeAreaView
+        style={[
+          styles.safeArea,
+          { paddingTop: insets.top, backgroundColor: colors.background },
+        ]}
+      >
+        <StatusBar
+          backgroundColor={statusBarBackground}
+          barStyle={theme === "light" ? "dark-content" : "light-content"}
+        />
         <View style={styles.container}>
-          <View style={styles.headerStandard}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={textColor} />
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: textColor }]}>Chat</Text>
-          </View>
+          <HeaderBack title="Chat" />
           <View style={styles.errorContainer}>
             <Text style={[styles.errorText, { color: textColor }]}>Chat not found</Text>
           </View>
@@ -196,15 +236,27 @@ const ChatScreen = () => {
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: chatBg }] }>
-      <StatusBar backgroundColor={statusBarBackground} barStyle={theme === "light" ? "dark-content" : "light-content"} />
+    <SafeAreaView
+      style={[
+        styles.safeArea,
+        { paddingTop: insets.top, backgroundColor: colors.background },
+      ]}
+    >
+      <StatusBar
+        backgroundColor={statusBarBackground}
+        barStyle={theme === "light" ? "dark-content" : "light-content"}
+      />
       <KeyboardAvoidingView
-        style={[styles.container, keyboardOpen && { marginBottom: Platform.OS === 'ios' ? 0 : 0 }]}
+        style={[styles.container]}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        enabled={keyboardOpenRef.current}
       >
         {/* Header */}
-        <View style={styles.headerStandard}>
+        <View style={[styles.headerStandard, { 
+          backgroundColor: theme === "light" ? "#ffffff" : "#14181F",
+          borderColor: theme === "light" ? "#e0e0e0" : "#333"
+        }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={textColor} />
           </TouchableOpacity>
@@ -240,29 +292,40 @@ const ChatScreen = () => {
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
 
-        {/* Message Input */}
-        <View style={[styles.inputBar, { backgroundColor: inputBg, borderTopColor: borderColor }, keyboardOpen && { marginBottom: Platform.OS === 'ios' ? 44 : 36 } ]}>
-          <TouchableOpacity style={styles.attachButton}>
-            <Ionicons name="add" size={24} color={timeColor} />
-          </TouchableOpacity>
-          <View style={[styles.inputWrapper, { backgroundColor: chatBg, borderColor: borderColor }] }>
-            <TextInput
-              style={[styles.textInput, { color: textColor }]}
-              placeholder="Type a message..."
-              placeholderTextColor={timeColor}
-              value={newMessage}
-              onChangeText={setNewMessage}
-              multiline
-              maxLength={500}
-            />
+        {/* Custom Message Input Bar */}
+        <View
+          style={[
+            styles.messageInputContainer,
+            {
+              backgroundColor: colors.navbg || (theme === "dark" ? "#1a1a1a" : "#ffffff"),
+              borderTopColor: theme === "dark" ? "#333" : "#ccc",
+              paddingBottom: keyboardOpenRef.current ? (insets.bottom + 40) : (insets.bottom || 16),
+            },
+          ]}
+        >
+          <View style={styles.inputRow}>
+            <TouchableOpacity style={styles.attachButton}>
+              <Ionicons name="add" size={24} color={timeColor} />
+            </TouchableOpacity>
+            <View style={[styles.inputWrapper, { backgroundColor: chatBg, borderColor: borderColor }] }>
+              <TextInput
+                style={[styles.textInput, { color: textColor }]}
+                placeholder="Type a message..."
+                placeholderTextColor={timeColor}
+                value={newMessage}
+                onChangeText={setNewMessage}
+                multiline
+                maxLength={500}
+              />
+            </View>
+            <TouchableOpacity
+              style={[styles.sendButton, { backgroundColor: newMessage.trim() ? "#28942c" : borderColor }]}
+              onPress={sendMessage}
+              disabled={newMessage.trim() === ""}
+            >
+              <Ionicons name="send" size={20} color={newMessage.trim() ? "#fff" : timeColor} />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={[styles.sendButton, { backgroundColor: newMessage.trim() ? "#28942c" : borderColor }]}
-            onPress={sendMessage}
-            disabled={newMessage.trim() === ""}
-          >
-            <Ionicons name="send" size={20} color={newMessage.trim() ? "#fff" : timeColor} />
-          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -282,8 +345,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderColor: "#e0e0e0",
-    backgroundColor: "transparent",
     minHeight: 60,
   },
   backButton: {
@@ -386,13 +447,14 @@ const styles = StyleSheet.create({
     marginTop: 2,
     alignSelf: "flex-end",
   },
-  inputBar: {
-    flexDirection: "row",
-    alignItems: "flex-end",
+  messageInputContainer: {
     borderTopWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 12,
-    paddingBottom: Platform.OS === 'ios' ? 12 : 8,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
   },
   attachButton: {
     marginRight: 6,
