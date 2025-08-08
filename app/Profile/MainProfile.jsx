@@ -96,7 +96,7 @@ const MainProfile = () => {
 
             <TouchableOpacity
               style={[styles.iconButton, { borderColor: textColor }]}
-              onPress={() => router.push("/Settings")}
+              onPress={() => router.push("/Settings/MainSettings")}
             >
               <Ionicons
                 name="ellipsis-horizontal"
