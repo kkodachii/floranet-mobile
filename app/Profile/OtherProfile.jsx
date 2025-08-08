@@ -70,7 +70,7 @@ const OtherProfile = () => {
           <View style={styles.profileActions}>
             <TouchableOpacity
               style={[styles.actionButton, { borderColor: textColor }]}
-              onPress={() => router.push("/Chat")}
+              onPress={() => router.push("/Chat/ChatScreen")}
             >
               <Text style={[styles.buttonText, { color: textColor }]}>
                 Message
@@ -79,7 +79,7 @@ const OtherProfile = () => {
 
             <TouchableOpacity
               style={[styles.iconButton, { borderColor: textColor }]}
-              onPress={() => router.push("/Settings")}
+              onPress={() => router.push("/Options/MainOptions")}
             >
               <Ionicons
                 name="ellipsis-horizontal"

@@ -144,7 +144,7 @@ const MainBusiness = () => {
           <View style={styles.profileActions}>
             <TouchableOpacity
               style={[styles.actionButton, { borderColor: textColor }]}
-              onPress={() => router.push("/Profile/EditProfile")}
+              onPress={() => router.push("/Chat/ChatScreen")}
             >
               <Text style={[styles.buttonText, { color: textColor }]}>
                 Message
@@ -153,7 +153,7 @@ const MainBusiness = () => {
 
             <TouchableOpacity
               style={[styles.iconButton, { borderColor: textColor }]}
-              onPress={() => setModalVisible(true)}
+              onPress={() => router.push("/Options/MainOptions")}
             >
               <Ionicons
                 name="ellipsis-horizontal"
