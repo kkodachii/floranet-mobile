@@ -8,6 +8,11 @@ import {
   Image,
   StatusBar,
   Animated,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  FlatList,
 } from "react-native";
 import React, { useState, useRef, useEffect } from "react";
 import Navbar from "../../components/Navbar";
@@ -48,6 +53,100 @@ const CommunityHomepage = () => {
   const [interestedStates, setInterestedStates] = useState({});
   const [likedPosts, setLikedPosts] = useState({});
   const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  // Comment bottom sheet states
+  const [isCommentSheetVisible, setCommentSheetVisible] = useState(false);
+  const [selectedPostIndex, setSelectedPostIndex] = useState(null);
+  const [newComment, setNewComment] = useState("");
+  const [comments, setComments] = useState({
+    0: [
+      {
+        id: 1,
+        author: "Anna Cruz",
+        content: "Great event! Looking forward to it.",
+        time: "2 hours ago",
+        avatar: null,
+      },
+      {
+        id: 2,
+        author: "Mark Santos",
+        content: "Will there be parking available?",
+        time: "1 hour ago",
+        avatar: null,
+      },
+    ],
+    1: [
+      {
+        id: 3,
+        author: "Lisa Reyes",
+        content: "I saw a gray cat near the playground yesterday!",
+        time: "30 minutes ago",
+        avatar: null,
+      },
+    ],
+    2: [
+      {
+        id: 4,
+        author: "Tom Garcia",
+        content: "Do you deliver? I'm interested in your vegetables.",
+        time: "45 minutes ago",
+        avatar: null,
+      },
+    ],
+  });
+
+  const openCommentSheet = (postIndex) => {
+    setSelectedPostIndex(postIndex);
+    setCommentSheetVisible(true);
+  };
+  
+  const closeCommentSheet = () => {
+    setCommentSheetVisible(false);
+    setSelectedPostIndex(null);
+    setNewComment("");
+  };
+
+  const handleAddComment = () => {
+    if (newComment.trim() && selectedPostIndex !== null) {
+      const newCommentObj = {
+        id: Date.now(),
+        author: "You",
+        content: newComment.trim(),
+        time: "Just now",
+        avatar: null,
+      };
+      
+      setComments(prev => ({
+        ...prev,
+        [selectedPostIndex]: [...(prev[selectedPostIndex] || []), newCommentObj]
+      }));
+      
+      setNewComment("");
+    }
+  };
+
+  const renderComment = ({ item }) => (
+    <View style={[styles.commentItem, { borderBottomColor: colors.border || '#e0e0e0' }]}>
+      <View style={styles.commentAvatar}>
+        {item.avatar ? (
+          <Image source={{ uri: item.avatar }} style={styles.commentAvatarImage} />
+        ) : (
+          <View style={[styles.commentAvatarPlaceholder, { backgroundColor: colors.border || '#e0e0e0' }]}>
+            <Text style={[styles.commentAvatarText, { color: textColor }]}>
+              {item.author.charAt(0)}
+            </Text>
+          </View>
+        )}
+      </View>
+      <View style={styles.commentContent}>
+        <View style={[styles.commentBubble, { backgroundColor: buttonBackground }]}>
+          <Text style={[styles.commentAuthor, { color: textColor }]}>{item.author}</Text>
+          <Text style={[styles.commentText, { color: textColor }]}>{item.content}</Text>
+        </View>
+        <Text style={[styles.commentTime, { color: colors.textSecondary || '#666' }]}>{item.time}</Text>
+      </View>
+    </View>
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -118,7 +217,7 @@ const CommunityHomepage = () => {
       residentID: "B3A - L23",
       houseNumber: "23",
       street: "Blk B3A",
-      businessName: "Juan’s Buko Shake",
+      businessName: "Juan's Buko Shake",
       contactNumber: "09171234567",
     },
     {
@@ -150,7 +249,7 @@ const CommunityHomepage = () => {
       residentID: "A1 - L5",
       houseNumber: "5",
       street: "Blk A1",
-      businessName: "Pedro’s Farm Goods",
+      businessName: "Pedro's Farm Goods",
       contactNumber: "09183456789",
     },
   ];
@@ -499,35 +598,32 @@ const CommunityHomepage = () => {
                           color={isLiked ? "green" : textColor}
                         />
                         <Text style={[styles.iconText, { color: textColor }]}>
-                          {post.likes}
+                          {post.likes + (isLiked ? 1 : 0)}
                         </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
                         style={styles.iconButton}
-                        onPress={() =>
-                          router.push(`Community/CommentSection/${index}`)
-                        }
+                        onPress={() => openCommentSheet(index)}
                       >
                         <Ionicons
                           name="chatbubble-outline"
                           size={20}
                           color={textColor}
                         />
-
                         <Text style={[styles.iconText, { color: textColor }]}>
                           Comment
                         </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        onPress={() => router.push(`/CommentSection/${index}`)}
+                        onPress={() => openCommentSheet(index)}
                         style={{ marginLeft: "auto" }}
                       >
                         <Text
                           style={[styles.commentCount, { color: textColor }]}
                         >
-                          {post.commentCount} comments
+                          {(comments[index] || []).length} comments
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -537,6 +633,82 @@ const CommunityHomepage = () => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Comments Bottom Sheet Modal */}
+      <Modal
+        animationType="slide"
+        transparent
+        visible={isCommentSheetVisible}
+        onRequestClose={closeCommentSheet}
+      >
+        <KeyboardAvoidingView
+          style={styles.bottomSheetOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <TouchableOpacity
+            style={styles.bottomSheetOverlay}
+            activeOpacity={1}
+            onPress={closeCommentSheet}
+          >
+            <TouchableOpacity
+              style={[styles.commentBottomSheet, { backgroundColor: cardBackground }]}
+              activeOpacity={1}
+            >
+              <View style={styles.bottomSheetHeader}>
+                <Text style={[styles.bottomSheetTitle, { color: textColor }]}>
+                  Comments ({selectedPostIndex !== null ? (comments[selectedPostIndex] || []).length : 0})
+                </Text>
+                <TouchableOpacity onPress={closeCommentSheet}>
+                  <Ionicons name="close" size={28} color={textColor} />
+                </TouchableOpacity>
+              </View>
+              
+              <FlatList
+                data={selectedPostIndex !== null ? comments[selectedPostIndex] || [] : []}
+                renderItem={renderComment}
+                keyExtractor={(item) => item.id.toString()}
+                style={styles.commentsList}
+                showsVerticalScrollIndicator={false}
+              />
+              
+              <View style={[styles.commentInputContainer, { 
+                backgroundColor: cardBackground, 
+                borderTopColor: colors.border || '#e0e0e0' 
+              }]}>
+                <View style={styles.commentInputRow}>
+                  <View style={styles.commentInputAvatar}>
+                    <View style={[styles.commentAvatarPlaceholder, { backgroundColor: colors.border || '#e0e0e0' }]}>
+                      <Text style={[styles.commentAvatarText, { color: textColor }]}>U</Text>
+                    </View>
+                  </View>
+                  <TextInput
+                    style={[styles.commentInput, { 
+                      backgroundColor: buttonBackground, 
+                      color: textColor,
+                      borderColor: colors.border || '#e0e0e0'
+                    }]}
+                    placeholder="Write a comment..."
+                    placeholderTextColor={colors.textSecondary || '#666'}
+                    value={newComment}
+                    onChangeText={setNewComment}
+                    multiline
+                  />
+                  <TouchableOpacity
+                    style={[styles.sendButton, { 
+                      backgroundColor: newComment.trim() ? colors.primary || '#007AFF' : colors.border || '#e0e0e0'
+                    }]}
+                    onPress={handleAddComment}
+                    disabled={!newComment.trim()}
+                  >
+                    <Ionicons name="send" size={16} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </Modal>
+
       <View
         style={[
           styles.navWrapper,
@@ -637,5 +809,115 @@ const styles = StyleSheet.create({
   iconGroup: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  
+  // Bottom Sheet Styles
+  bottomSheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  commentBottomSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '80%',
+    paddingTop: 20,
+  },
+  bottomSheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  bottomSheetTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  
+  // Comment Styles
+  commentsList: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  commentItem: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+  },
+  commentAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  commentAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+  },
+  commentAvatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  commentAvatarText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  commentContent: {
+    flex: 1,
+  },
+  commentBubble: {
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+    padding: 8,
+    marginBottom: 4,
+  },
+  commentAuthor: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  commentText: {
+    fontSize: 14,
+  },
+  commentTime: {
+    fontSize: 11,
+    marginLeft: 8,
+  },
+  commentInputContainer: {
+    borderTopWidth: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  commentInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  commentInputAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  commentInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    maxHeight: 80,
+    marginRight: 8,
+  },
+  sendButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
