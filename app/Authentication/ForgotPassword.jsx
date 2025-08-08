@@ -1,82 +1,87 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+} from "react-native";
+import { useTheme } from "../../Theme/ThemeProvider";
 
-export default function ForgotPassword() {
-  const [email, setEmail] = useState('');
-  const router = useRouter();
+const ForgotPassword = () => {
+  const { colors } = useTheme();
+  const [email, setEmail] = useState("");
 
   const handleResetPassword = () => {
-    alert(`Reset link sent to ${email}`);
-    router.replace('/');
+    if (email.trim() === "") {
+      Alert.alert("Error", "Please enter your email.");
+      return;
+    }
+
+    Alert.alert("Success", "Password reset instructions sent to your email.");
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Forgot Password</Text>
-      <Text style={styles.instructions}>
-        Enter your email address and we’ll send you a link to reset your password.
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.text }]}>Forgot Password</Text>
+      <Text style={[styles.subtext, { color: colors.text }]}>
+        Enter your email address to receive a password reset link.
       </Text>
 
       <TextInput
-        placeholder="EMAIL"
+        style={[styles.input, { color: colors.text, borderColor: colors.text }]}
+        placeholder="Email"
+        placeholderTextColor={colors.text + "99"}
         value={email}
         onChangeText={setEmail}
-        style={styles.input}
         keyboardType="email-address"
+        autoCapitalize="none"
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleResetPassword}>
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: "green" }]}
+        onPress={handleResetPassword}
+      >
         <Text style={styles.buttonText}>Send Reset Link</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => router.replace('/')}>
-        <Text style={styles.loginText}>Back to Login</Text>
       </TouchableOpacity>
     </View>
   );
-}
+};
+
+export default ForgotPassword;
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
-    paddingTop: 80,
-    backgroundColor: '#fff',
     flex: 1,
-    alignItems: 'center',
+    padding: 24,
+    justifyContent: "center",
   },
   title: {
     fontSize: 28,
-    marginBottom: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
+    marginBottom: 8,
   },
-  instructions: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#555',
+  subtext: {
+    fontSize: 16,
+    marginBottom: 24,
   },
   input: {
-    width: '100%',
-    borderColor: '#ccc',
     borderWidth: 1,
     borderRadius: 8,
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
     marginBottom: 20,
   },
   button: {
-    backgroundColor: '#2e86de',
-    padding: 15,
+    paddingVertical: 12,
     borderRadius: 8,
-    width: '100%',
-    alignItems: 'center',
+    alignItems: "center",
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  loginText: {
-    marginTop: 20,
-    color: '#2e86de',
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

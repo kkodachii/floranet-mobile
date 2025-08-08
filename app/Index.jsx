@@ -8,62 +8,79 @@ import {
 } from "react-native";
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
+import Logo from "../assets/floranet.png";
+import { useTheme } from "../Theme/ThemeProvider";
 
 const Index = () => {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const { colors } = useTheme();
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
 
   const handleLogin = () => {
-    // You can add login validation here
     router.push("/MainHomepage");
   };
 
   return (
-    <View style={styles.container}>
-      {/* Logo Placeholder */}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.logoContainer}>
-        <View style={styles.logoPlaceholder}></View>
-        <Text style={styles.tagline}>
+        <Image source={Logo} style={styles.logo} />
+        <Text style={styles.brand}>
+          <Text style={{ color: colors.text }}>Flora</Text>
+          <Text style={{ color: "#28942c" }}>Net</Text>
+        </Text>
+        <Text style={[styles.tagline, { color: colors.text }]}>
           Join our community of homeowners and make managing your home simpler,
           smarter, and safer
         </Text>
       </View>
 
-      {/* Input Fields */}
       <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
+        style={[
+          styles.input,
+          { backgroundColor: colors.background, color: colors.text }
+        ]}
+        placeholder="Resident ID / Email / Username"
+        placeholderTextColor={colors.text + "99"}
+        value={identifier}
+        onChangeText={setIdentifier}
       />
+
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          { backgroundColor: colors.background, color: colors.text }
+        ]}
         placeholder="Password"
+        placeholderTextColor={colors.text + "99"}
         secureTextEntry
         value={password}
         onChangeText={setPassword}
       />
 
-      {/* Forgot Password */}
       <TouchableOpacity
         style={styles.forgotPassword}
         onPress={() => router.push("/Authentication/ForgotPassword")}
       >
-        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+        <Text style={[styles.forgotPasswordText, { color: "#28942c" }]}>
+          Forgot Password?
+        </Text>
       </TouchableOpacity>
 
-      {/* Login Button */}
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: "#28942c" }]}
+        onPress={handleLogin}
+      >
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
 
-      {/* Register Redirect */}
       <TouchableOpacity
         style={styles.registerButton}
         onPress={() => router.push("/Authentication/RegisterScreen")}
       >
-        <Text style={styles.registerText}>Don’t have an account? Register</Text>
+        <Text style={styles.registerText}>
+          Don’t have an account? Register
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -76,23 +93,25 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     justifyContent: "center",
-    backgroundColor: "#fff",
   },
   logoContainer: {
     alignItems: "center",
     marginBottom: 32,
   },
-  logoPlaceholder: {
-    width: 100,
-    height: 100,
-    backgroundColor: "#ccc",
-    borderRadius: 50,
-    marginBottom: 16,
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 8,
+    resizeMode: "contain",
+  },
+  brand: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: 12,
   },
   tagline: {
     textAlign: "center",
     fontSize: 16,
-    color: "#333",
     paddingHorizontal: 10,
   },
   input: {
@@ -107,10 +126,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   forgotPasswordText: {
-    color: "#007bff",
+    fontWeight: "500",
   },
   button: {
-    backgroundColor: "#007bff",
     padding: 16,
     borderRadius: 8,
     alignItems: "center",
@@ -124,6 +142,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   registerText: {
-    color: "#007bff",
+    color: "#28942c",
   },
 });
