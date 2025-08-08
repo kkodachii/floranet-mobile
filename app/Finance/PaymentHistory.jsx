@@ -96,7 +96,7 @@ const PaymentHistory = () => {
   ];
 
   const PaymentCard = ({ item, index }) => (
-    <View style={[styles.paymentCard, { backgroundColor: colors.card }]}>
+                <View style={[styles.paymentCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
       <View style={styles.paymentHeader}>
         <View style={styles.paymentInfo}>
           <Text style={[styles.paymentMonth, { color: colors.text }]}>

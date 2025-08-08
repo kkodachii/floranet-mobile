@@ -78,7 +78,7 @@ const FinanceHomepage = () => {
           <View style={styles.quickActionsContainer}>
             <View style={styles.quickActionsGrid}>
               <TouchableOpacity 
-                style={[styles.quickActionButton, { backgroundColor: colors.card }]}
+                style={[styles.quickActionButton, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}
                 onPress={() => router.push("/Finance/QRPayment")}
               >
                 <View style={styles.quickActionIcon}>
@@ -90,7 +90,7 @@ const FinanceHomepage = () => {
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={[styles.quickActionButton, { backgroundColor: colors.card }]}
+                style={[styles.quickActionButton, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}
                 onPress={() => router.push("/Finance/PaymentHistory")}
               >
                 <View style={styles.quickActionIcon}>
@@ -112,7 +112,7 @@ const FinanceHomepage = () => {
               </TouchableOpacity>
             </View>
             
-            <View style={[styles.recentPaymentsCard, { backgroundColor: colors.card }]}>
+            <View style={[styles.recentPaymentsCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
               <View style={styles.recentPaymentItem}>
                 <View style={styles.recentPaymentInfo}>
                   <Text style={[styles.recentPaymentMonth, { color: colors.text }]}>July 2025</Text>
@@ -144,7 +144,7 @@ const FinanceHomepage = () => {
           </View>
 
           {/* Info Card */}
-          <View style={[styles.infoCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.infoCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.infoHeader}>
               <Ionicons name="information-circle" size={24} color="#50C878" />
               <Text style={[styles.infoTitle, { color: colors.text }]}>Payment Information</Text>

@@ -84,7 +84,7 @@ const Pay = () => {
             </Text>
           </View>
 
-          <View style={[styles.formCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.formCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.formHeader}>
               <Ionicons name="card" size={24} color="#50C878" />
               <Text style={[styles.formTitle, { color: colors.text }]}>Payment Form</Text>
@@ -139,7 +139,7 @@ const Pay = () => {
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.infoCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.infoCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.infoHeader}>
               <Ionicons name="information-circle" size={24} color="#4A90E2" />
               <Text style={[styles.infoTitle, { color: colors.text }]}>Payment Information</Text>

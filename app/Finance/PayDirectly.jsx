@@ -83,7 +83,7 @@ const PayDirectly = () => {
             </Text>
           </View>
 
-          <View style={[styles.formCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.formCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.formHeader}>
               <Ionicons name="phone-portrait" size={24} color="#FF6B35" />
               <Text style={[styles.formTitle, { color: colors.text }]}>Payment Details</Text>
@@ -141,7 +141,7 @@ const PayDirectly = () => {
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.infoCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.infoCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.infoHeader}>
               <Ionicons name="information-circle" size={24} color="#4A90E2" />
               <Text style={[styles.infoTitle, { color: colors.text }]}>GCash Payment</Text>
@@ -151,7 +151,7 @@ const PayDirectly = () => {
             </Text>
           </View>
 
-          <View style={[styles.securityCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.securityCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.securityHeader}>
               <Ionicons name="shield-checkmark" size={24} color="#50C878" />
               <Text style={[styles.securityTitle, { color: colors.text }]}>Security</Text>

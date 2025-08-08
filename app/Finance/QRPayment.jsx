@@ -5,12 +5,11 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Image,
-  TextInput,
+  Modal,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "../../components/Navbar";
 import Header from "../../components/HeaderBack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -35,42 +34,81 @@ const QRPayment = () => {
   const [qrGenerated, setQrGenerated] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState(null);
   const [statusChecking, setStatusChecking] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalType, setModalType] = useState(null); // 'generated' | 'waiting' | 'paid' | 'not_paid' | 'error' | 'loading'
+  const [modalMessage, setModalMessage] = useState("");
+  const [expiresAt, setExpiresAt] = useState(null);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [isExpired, setIsExpired] = useState(false);
+  const [qrFullScreenVisible, setQrFullScreenVisible] = useState(false);
+
+  const modalConfigMap = {
+    generated: { title: 'QR Generated', icon: 'checkmark-circle', color: '#22C55E' },
+    waiting: { title: 'Waiting for Payment', icon: 'hourglass', color: '#F59E0B' },
+    paid: { title: 'Payment Successful', icon: 'checkmark-done', color: '#22C55E' },
+    not_paid: { title: 'Payment Not Completed', icon: 'close-circle', color: '#EF4444' },
+    error: { title: 'Error', icon: 'alert-circle', color: '#EF4444' },
+    loading: { title: 'Checking payment status...', icon: null, color: '#4A90E2' },
+  };
+
+  const showModal = (type, message = "") => {
+    setModalType(type);
+    setModalMessage(message);
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+  };
+
+  const formatTime = (totalSeconds) => {
+    const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+    const seconds = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
+    return `${minutes}:${seconds}`;
+  };
+
+  useEffect(() => {
+    if (!expiresAt) return;
+    const intervalId = setInterval(() => {
+      const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+      setRemainingSeconds(remaining);
+      if (remaining === 0) {
+        setIsExpired(true);
+      }
+    }, 1000);
+    return () => clearInterval(intervalId);
+  }, [expiresAt]);
 
   const generateQRCode = async () => {
     const parsedAmount = parseFloat(amount);
-    if (!amount || isNaN(parsedAmount) || parsedAmount < 20) {
-      Alert.alert("Invalid Amount", "Please enter a valid amount (minimum ₱20.00)");
+    if (!amount || isNaN(parsedAmount) || parsedAmount <= 0) {
+      showModal('error', 'Invalid amount configured.');
       return;
     }
 
     setIsLoading(true);
     try {
-      // 1) Create Payment Intent
       const pi = await createPaymentIntent(parsedAmount, `Payment for Floranet - ${parsedAmount} PHP`);
       if (!pi.success) {
-        Alert.alert("Error", pi.error || 'Failed to create payment intent');
+        showModal('error', pi.error || 'Failed to create payment intent');
         setIsLoading(false);
         return;
       }
       setPaymentIntentId(pi.id);
       setPaymentIntentClientKey(pi.clientKey || null);
 
-      // 2) Create a QRPH payment method
       const pm = await createQrphPaymentMethod({
         name: 'Customer',
         email: 'customer@example.com',
-        address: {
-          line1: '', line2: '', city: '', state: '', postal_code: '', country: ''
-        },
+        address: { line1: '', line2: '', city: '', state: '', postal_code: '', country: '' },
         phone: ''
       });
       if (!pm.success) {
-        Alert.alert("Error", pm.error || 'Failed to create QR payment method');
+        showModal('error', pm.error || 'Failed to create QR payment method');
         setIsLoading(false);
         return;
       }
 
-      // 3) Attach payment method to the payment intent to get QR display
       const attach = await attachPaymentIntent(pi.id, pm.id, pi.clientKey);
       if (attach.success) {
         setQrCodeData({
@@ -82,20 +120,15 @@ const QRPayment = () => {
           }
         });
         setQrGenerated(true);
-        Alert.alert("Success", "QR Code generated successfully!");
-        console.log("QR + PI Details:", {
-          Payment_Intent_ID: pi.id,
-          Client_Key: pi.clientKey,
-          QR_Image: !!attach.qrImage,
-          QR_Data: !!attach.qrData,
-          Sent_Amount: parsedAmount,
-        });
+        setPaymentStatus('pending');
+        setIsExpired(false);
+        setExpiresAt(Date.now() + 30 * 60 * 1000); // 30 minutes
       } else {
-        Alert.alert("Error", attach.error);
+        showModal('error', attach.error || 'Failed to attach payment method');
       }
     } catch (error) {
       console.error('Error generating QR code:', error);
-      Alert.alert("Error", "Network error. Please check your connection and try again.");
+      showModal('error', 'Network error. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -105,25 +138,44 @@ const QRPayment = () => {
     setQrCodeData(null);
     setQrGenerated(false);
     setPaymentStatus(null);
-    setAmount("300"); // Reset amount to a default value
+    setAmount("300");
+    setExpiresAt(null);
+    setRemainingSeconds(0);
+    setIsExpired(false);
   };
 
   const checkPaymentStatus = async () => {
     if (!paymentIntentId) return;
 
     setStatusChecking(true);
+    // Show spinner-only modal while checking
+    setModalType('loading');
+    setModalMessage('');
+    setModalVisible(true);
     try {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
       const result = await getPaymentIntent(paymentIntentId);
       if (result.success) {
-        setPaymentStatus(result.status);
-        if (result.status === 'succeeded' || result.status === 'paid') {
-          Alert.alert("Payment Successful!", "Your payment has been received.");
+        const status = result.status;
+        if (status === 'succeeded' || status === 'paid') {
+          setPaymentStatus('paid');
+          setModalType('paid');
+          setModalMessage('Your payment has been received.');
+        } else {
+          setPaymentStatus(prev => prev || 'pending');
+          setModalType('waiting');
+          setModalMessage('Payment is pending. Please complete the payment in your wallet app.');
         }
       } else {
         console.error('Status check error:', result.error);
+        setModalType('error');
+        setModalMessage(result.error || 'Unable to check payment status');
       }
     } catch (error) {
       console.error('Error checking payment status:', error);
+      setModalType('error');
+      setModalMessage('Network error while checking payment status.');
     } finally {
       setStatusChecking(false);
     }
@@ -150,223 +202,255 @@ const QRPayment = () => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.headerSection}>
-            <Text style={[styles.pageTitle, { color: colors.text }]}>PayMongo QR Payment</Text>
-            <Text style={[styles.pageSubtitle, { color: colors.text, opacity: 0.7 }]}>
-              Generate QR code for instant payment via GCash, PayMaya, and other e-wallets
-            </Text>
+            <Text style={[styles.pageTitle, { color: colors.text }]}>QR Payment</Text>
           </View>
 
-          {/* Payment Amount Input */}
-          <View style={[styles.amountCard, { backgroundColor: colors.card }]}>
-            <View style={styles.amountHeader}>
-              <Ionicons name="cash" size={24} color="#50C878" />
-              <Text style={[styles.amountTitle, { color: colors.text }]}>Payment Amount</Text>
+          {/* Amount Card */}
+          <View style={[styles.amountCard, { backgroundColor: theme === "light" ? "#ffffff" : "#14181F" }]}> 
+            <View style={styles.cardHeaderRow}>
+              <View style={styles.cardHeaderInfo}>
+                <Text style={[styles.amountLabel, { color: colors.text, opacity: 0.7 }]}>Amount to Pay</Text>
+                <Text style={[styles.amountLarge, { color: colors.text }]}>₱{parseFloat(amount).toFixed(2)}</Text>
+              </View>
+              <View style={styles.cardHeaderIconWrap}>
+                <Ionicons name="cash-outline" size={24} color="#50C878" />
+              </View>
             </View>
-            <Text style={{ color: colors.text, opacity: 0.7, marginBottom: 8 }}>
-              Minimum amount: ₱20.00
-            </Text>
-            <View style={styles.amountInputContainer}>
-              <Text style={[styles.currencySymbol, { color: colors.text }]}>₱</Text>
-              <TextInput
-                style={[styles.amountInput, { color: colors.text }]}
-                value={amount}
-                onChangeText={text => {
-                  // Allow only numbers and decimal point
-                  const sanitized = text.replace(/[^0-9.]/g, '');
-                  setAmount(sanitized);
-                }}
-                keyboardType="numeric"
-                placeholder="Enter amount"
-                placeholderTextColor={colors.text + '50'}
-                editable={true}
-              />
-            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                { backgroundColor: "#22C55E" }
+              ]}
+              onPress={generateQRCode}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="qr-code-outline" size={18} color="#fff" />
+                  <Text style={styles.primaryButtonText}>Generate QR Code</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
 
-          {/* Generate QR Code Button */}
-          <TouchableOpacity
-            style={[
-              styles.generateButton,
-              { backgroundColor: "#22C55E" }
-            ]}
-            onPress={generateQRCode}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <>
-                <Ionicons 
-                  name="qr-code" 
-                  size={20} 
-                  color="#fff" 
-                />
-                <Text style={styles.generateButtonText}>
-                  Generate QR Code
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          {/* QR Code Section - only show if generated */}
+          {/* QR Code Card */}
           {qrGenerated && (
-            <View style={[styles.qrCard, { backgroundColor: colors.card }]}>
-              <View style={styles.qrHeader}>
-                <Ionicons name="qr-code" size={24} color="#4A90E2" />
-                <Text style={[styles.qrTitle, { color: colors.text }]}>Scan QR Code</Text>
+            <View style={[styles.qrCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}> 
+              <View style={styles.cardHeaderRow}>
+                <View style={styles.headerLeft}>
+                  <View style={styles.sectionIconWrap}>
+                    <Ionicons name="qr-code-outline" size={20} color="#4A90E2" />
+                  </View>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Scan QR Code</Text>
+                </View>
               </View>
-              <View style={styles.qrCodeContainer}>
-                {qrCodeData?.attributes?.qr_image ? (
-                  <Image
-                    source={{ uri: qrCodeData.attributes.qr_image }}
-                    style={styles.qrCodeImage}
-                    resizeMode="contain"
-                  />
-                ) : qrCodeData?.attributes?.qr?.image?.uri || qrCodeData?.attributes?.qr?.image?.data_uri ? (
-                  <Image 
-                    source={{ 
-                      uri: qrCodeData.attributes.qr.image.uri || qrCodeData.attributes.qr.image.data_uri 
-                    }}
-                    style={styles.qrCodeImage}
-                    resizeMode="contain"
-                  />
-                ) : qrCodeData?.attributes?.qr?.data_uri ? (
-                  <Image 
-                    source={{ uri: qrCodeData.attributes.qr.data_uri }}
-                    style={styles.qrCodeImage}
-                    resizeMode="contain"
-                  />
-                ) : qrCodeData?.attributes?.qr?.data ? (
-                  <View style={styles.qrCodeGenerated}>
-                    <QRCode
-                      value={qrCodeData.attributes.qr.data}
-                      size={200}
-                      color="#000000"
-                      backgroundColor="#FFFFFF"
+
+              <View style={[styles.qrFrame, { borderColor: theme === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.12)', backgroundColor: theme === 'light' ? '#FFFFFF' : '#0F1420' }]}> 
+
+                {/* Pressable QR */}
+                <TouchableOpacity activeOpacity={0.9} onPress={() => setQrFullScreenVisible(true)} style={styles.qrTapArea}>
+                  {qrCodeData?.attributes?.qr_image ? (
+                    <Image
+                      source={{ uri: qrCodeData.attributes.qr_image }}
+                      style={styles.qrCodeImage}
+                      resizeMode="contain"
                     />
-                    <Text style={[styles.qrCodeText, { color: colors.text, opacity: 0.7, marginTop: 12 }]}>Generated QR Code</Text>
-                  </View>
-                ) : (
-                  <View style={styles.qrCodeFallback}>
-                    <Ionicons name="qr-code" size={120} color="#4A90E2" />
-                    <Text style={[styles.qrCodeText, { color: colors.text, opacity: 0.7 }]}>QR Code Generated</Text>
-                    <Text style={[styles.qrCodeSubtext, { color: colors.text, opacity: 0.5 }]}>QR data available but image not displayed</Text>
-                  </View>
-                )}
-                {qrCodeData?.id && (
-                  <View style={styles.qrCodeInfo}>
-                    <Text style={[styles.qrCodeId, { color: colors.text, opacity: 0.8 }]}>QR ID: {qrCodeData.id}</Text>
-                    <Text style={[styles.qrCodeAmount, { color: colors.text, opacity: 0.8 }]}>Amount: ₱{parseFloat(amount).toFixed(2)}</Text>
-                    {qrCodeData?.attributes?.qr?.id && (
-                      <Text style={[styles.qrCodeId, { color: colors.text, opacity: 0.8 }]}>QR Code ID: {qrCodeData.attributes.qr.id}</Text>
-                    )}
-                    {qrCodeData?.attributes?.qr?.data && (
-                      <Text style={[styles.qrCodeData, { color: colors.text, opacity: 0.6 }]}>QR Data: {qrCodeData.attributes.qr.data.substring(0, 50)}...</Text>
-                    )}
-                  </View>
-                )}
+                  ) : qrCodeData?.attributes?.qr?.image?.uri || qrCodeData?.attributes?.qr?.image?.data_uri ? (
+                    <Image 
+                      source={{ 
+                        uri: qrCodeData.attributes.qr.image.uri || qrCodeData.attributes.qr.image.data_uri 
+                      }}
+                      style={styles.qrCodeImage}
+                      resizeMode="contain"
+                    />
+                  ) : qrCodeData?.attributes?.qr?.data_uri ? (
+                    <Image 
+                      source={{ uri: qrCodeData.attributes.qr.data_uri }}
+                      style={styles.qrCodeImage}
+                      resizeMode="contain"
+                    />
+                  ) : qrCodeData?.attributes?.qr?.data ? (
+                    <View style={styles.qrCodeGenerated}>
+                      <QRCode
+                        value={qrCodeData.attributes.qr.data}
+                        size={220}
+                        color="#000000"
+                        backgroundColor="#FFFFFF"
+                      />
+                    </View>
+                  ) : null}
+                </TouchableOpacity>
               </View>
-              {/* Check Status Button and Payment Status Display remain unchanged */}
+
               <TouchableOpacity
                 style={[
-                  styles.statusButton,
-                  { backgroundColor: "#50C878" }
+                  styles.primaryButton,
+                  { backgroundColor: "#4A90E2", opacity: isExpired ? 0.7 : 1 }
                 ]}
                 onPress={checkPaymentStatus}
                 disabled={statusChecking}
               >
-                {statusChecking ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="refresh-circle" size={20} color="#fff" />
-                    <Text style={styles.generateButtonText}>Check Payment Status</Text>
-                  </>
-                )}
+                <Ionicons name="refresh-circle" size={18} color="#fff" />
+                <Text style={styles.primaryButtonText}>Check Payment Status</Text>
               </TouchableOpacity>
-              {paymentStatus && (
-                <View style={styles.statusContainer}>
-                  <Text style={[
-                    styles.statusText, 
-                    { 
-                      color: paymentStatus === 'paid' ? '#50C878' : 
-                             paymentStatus === 'pending' ? '#FFA500' : '#FF6B6B'
-                    }
-                  ]}>
-                    Status: {paymentStatus.toUpperCase()}
-                  </Text>
-                </View>
-              )}
             </View>
           )}
 
-          {/* Instructions */}
-          <View style={[styles.instructionsCard, { backgroundColor: colors.card }]}>
-            <View style={styles.instructionsHeader}>
+          {/* Info Card */}
+          <View style={[styles.infoCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}> 
+            <View style={styles.infoHeaderRow}>
               <Ionicons name="information-circle" size={24} color="#50C878" />
-              <Text style={[styles.instructionsTitle, { color: colors.text }]}>How to Pay</Text>
+              <Text style={[styles.infoTitle, { color: colors.text }]}>How it works</Text>
+            </View>
+            <Text style={[styles.infoText, { color: colors.text, opacity: 0.7 }]}>
+              Tap Generate QR Code, then scan it with your e-wallet app. After paying, tap Check Payment Status to confirm.
+            </Text>
+          </View>
+
+          {/* Steps Card */}
+          <View style={[styles.stepsCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}> 
+            <View style={styles.stepsHeaderRow}>
+              <Ionicons name="list" size={24} color="#4A90E2" />
+              <Text style={[styles.stepsTitle, { color: colors.text }]}>Steps to Pay</Text>
             </View>
             
-            <View style={styles.instructionStep}>
+            <View style={styles.stepItem}>
               <View style={styles.stepNumber}>
                 <Text style={styles.stepNumberText}>1</Text>
               </View>
-              <Text style={[styles.instructionText, { color: colors.text }]}>
-                Generate QR code by clicking the button above
+              <Text style={[styles.stepText, { color: colors.text }]}>
+                Tap "Generate QR Code" button above
               </Text>
             </View>
             
-            <View style={styles.instructionStep}>
+            <View style={styles.stepItem}>
               <View style={styles.stepNumber}>
                 <Text style={styles.stepNumberText}>2</Text>
               </View>
-              <Text style={[styles.instructionText, { color: colors.text }]}>
-                Open your preferred e-wallet app (GCash, PayMaya, etc.)
+              <Text style={[styles.stepText, { color: colors.text }]}>
+                Open your e-wallet app (GCash, PayMaya, etc.)
               </Text>
             </View>
             
-            <View style={styles.instructionStep}>
+            <View style={styles.stepItem}>
               <View style={styles.stepNumber}>
                 <Text style={styles.stepNumberText}>3</Text>
               </View>
-              <Text style={[styles.instructionText, { color: colors.text }]}>
-                Tap "Pay QR" or "Scan QR" and scan the generated QR code
+              <Text style={[styles.stepText, { color: colors.text }]}>
+                Tap "Pay QR" or "Scan QR" in your wallet
               </Text>
             </View>
             
-            <View style={styles.instructionStep}>
+            <View style={styles.stepItem}>
               <View style={styles.stepNumber}>
                 <Text style={styles.stepNumberText}>4</Text>
               </View>
-              <Text style={[styles.instructionText, { color: colors.text }]}>
-                Confirm payment and wait for confirmation
+              <Text style={[styles.stepText, { color: colors.text }]}>
+                Scan the generated QR code
+              </Text>
+            </View>
+            
+            <View style={styles.stepItem}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>5</Text>
+              </View>
+              <Text style={[styles.stepText, { color: colors.text }]}>
+                Confirm payment amount and complete transaction
+              </Text>
+            </View>
+            
+            <View style={styles.stepItem}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>6</Text>
+              </View>
+              <Text style={[styles.stepText, { color: colors.text }]}>
+                Tap "Check Payment Status" to verify payment
               </Text>
             </View>
           </View>
+        </ScrollView>
 
-          {/* Supported Wallets */}
-          <View style={[styles.walletsCard, { backgroundColor: colors.card }]}>
-            <View style={styles.walletsHeader}>
-              <Ionicons name="wallet" size={24} color="#50C878" />
-              <Text style={[styles.walletsTitle, { color: colors.text }]}>Supported Wallets</Text>
-            </View>
-            
-            <View style={styles.walletList}>
-              <View style={styles.walletItem}>
-                <Text style={[styles.walletName, { color: colors.text }]}>• GCash</Text>
-              </View>
-              <View style={styles.walletItem}>
-                <Text style={[styles.walletName, { color: colors.text }]}>• PayMaya</Text>
-              </View>
-              <View style={styles.walletItem}>
-                <Text style={[styles.walletName, { color: colors.text }]}>• GrabPay</Text>
-              </View>
-              <View style={styles.walletItem}>
-                <Text style={[styles.walletName, { color: colors.text }]}>• Coins.ph</Text>
-              </View>
+        {/* Status Modal */}
+        <Modal
+          visible={modalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={closeModal}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContainer, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}> 
+              {modalType === 'loading' ? (
+                <>
+                  <ActivityIndicator size="large" color="#4A90E2" />
+                  <Text style={[styles.modalTitle, { color: colors.text, marginTop: 12 }]}>Checking payment status...</Text>
+                </>
+              ) : (
+                <>
+                  {!!modalType && (
+                    <View style={[styles.modalIconWrapper, { backgroundColor: (modalConfigMap[modalType]?.color || '#4A90E2') + '20' }]}> 
+                      <Ionicons name={modalConfigMap[modalType]?.icon || 'information-circle'} size={36} color={modalConfigMap[modalType]?.color || '#4A90E2'} />
+                    </View>
+                  )}
+                  <Text style={[styles.modalTitle, { color: colors.text }]}> 
+                    {modalType ? modalConfigMap[modalType]?.title : 'Status'}
+                  </Text>
+                  {!!modalMessage && (
+                    <Text style={[styles.modalMessage, { color: colors.text, opacity: 0.8 }]}> 
+                      {modalMessage}
+                    </Text>
+                  )}
+                  <TouchableOpacity style={[styles.modalButton, { backgroundColor: modalConfigMap[modalType]?.color || '#4A90E2' }]} onPress={closeModal}>
+                    <Text style={styles.modalButtonText}>OK</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
-        </ScrollView>
+        </Modal>
+
+        {/* Fullscreen QR Modal */}
+        <Modal
+          visible={qrFullScreenVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setQrFullScreenVisible(false)}
+        >
+          <TouchableOpacity style={styles.fullscreenOverlay} activeOpacity={1} onPress={() => setQrFullScreenVisible(false)}>
+            <View style={styles.fullscreenCenter}>
+              {qrCodeData?.attributes?.qr_image ? (
+                <Image
+                  source={{ uri: qrCodeData.attributes.qr_image }}
+                  style={styles.fullscreenQrImage}
+                  resizeMode="contain"
+                />
+              ) : qrCodeData?.attributes?.qr?.image?.uri || qrCodeData?.attributes?.qr?.image?.data_uri ? (
+                <Image 
+                  source={{ 
+                    uri: qrCodeData.attributes.qr.image.uri || qrCodeData.attributes.qr.image.data_uri 
+                  }}
+                  style={styles.fullscreenQrImage}
+                  resizeMode="contain"
+                />
+              ) : qrCodeData?.attributes?.qr?.data_uri ? (
+                <Image 
+                  source={{ uri: qrCodeData.attributes.qr.data_uri }}
+                  style={styles.fullscreenQrImage}
+                  resizeMode="contain"
+                />
+              ) : qrCodeData?.attributes?.qr?.data ? (
+                <QRCode
+                  value={qrCodeData.attributes.qr.data}
+                  size={340}
+                  color="#000000"
+                  backgroundColor="#FFFFFF"
+                />
+              ) : null}
+            </View>
+          </TouchableOpacity>
+        </Modal>
 
         <View
           style={[
@@ -387,255 +471,100 @@ const QRPayment = () => {
 export default QRPayment;
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  headerSection: {
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  pageTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  pageSubtitle: {
-    fontSize: 16,
-    lineHeight: 22,
-  },
+  safeArea: { flex: 1 },
+  container: { flex: 1 },
+  scrollView: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 20 },
+  headerSection: { marginTop: 20, marginBottom: 16 },
+  pageTitle: { fontSize: 32, fontWeight: "bold", marginBottom: 8 },
+
+  // Cards
   amountCard: {
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 24,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  amountHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  amountTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  amountInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-  },
-  currencySymbol: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginRight: 4,
-  },
-  amountInput: {
-    fontSize: 40,
-    fontWeight: "bold",
-    flex: 1,
-    textAlign: "center",
-    paddingHorizontal: 10,
+    padding: 24,
+    borderRadius: 20,
+    marginBottom: 30,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
   qrCard: {
     padding: 20,
     borderRadius: 16,
-    marginBottom: 24,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    marginBottom: 30,
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  qrHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
+
+  // Card headers
+  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  cardHeaderInfo: { flex: 1 },
+  cardHeaderIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(74,144,226,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  qrTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  qrCodeContainer: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  qrCodePlaceholder: {
-    alignItems: "center",
-    padding: 20,
-  },
-  qrCodeGenerated: {
-    alignItems: "center",
-    padding: 20,
-  },
-  qrCodeImage: {
-    width: 200,
-    height: 200,
-    marginBottom: 16,
-  },
-  qrCodeFallback: {
-    alignItems: "center",
-    padding: 20,
-  },
-  qrCodeText: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  qrCodeSubtext: {
-    fontSize: 14,
-    textAlign: "center",
-  },
-  qrCodeInfo: {
-    alignItems: "center",
-    marginTop: 12,
-  },
-  qrCodeId: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  qrCodeAmount: {
-    fontSize: 12,
-  },
-  qrCodeData: {
-    fontSize: 10,
-    marginTop: 4,
-  },
-  generateButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+  sectionTitle: { fontSize: 20, fontWeight: '600' },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+
+  // Amount typography
+  amountLabel: { fontSize: 14 },
+  amountLarge: { fontSize: 28, fontWeight: '700', marginTop: 2 },
+
+  // Buttons
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     borderRadius: 12,
-    marginTop: 8,
+    gap: 8,
   },
-  generateButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  statusButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    marginTop: 12,
-  },
-  statusContainer: {
-    alignItems: "center",
-    marginTop: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: "rgba(80, 200, 120, 0.1)",
-  },
-  statusText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  instructionsCard: {
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 24,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  instructionsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  instructionsTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  instructionStep: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 12,
-  },
-  stepNumber: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#4A90E2",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-    marginTop: 2,
-  },
-  stepNumberText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  instructionText: {
-    fontSize: 14,
-    lineHeight: 20,
-    flex: 1,
-  },
-  walletsCard: {
-    padding: 20,
-    borderRadius: 16,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  walletsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  walletsTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  walletList: {
-    marginTop: 8,
-  },
-  walletItem: {
-    marginBottom: 8,
-  },
-  walletName: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  navWrapper: {
-    backgroundColor: "#fff",
-  },
+  primaryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600', marginLeft: 8 },
+
+  // QR
+  // removed waiting/expire pills from UI
+  qrFrame: { alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 16, alignSelf: 'stretch' },
+  qrTapArea: { padding: 8, marginTop: 4 },
+  qrCodeGenerated: { alignItems: 'center', paddingVertical: 12 },
+  qrCodeImage: { width: 220, height: 220, marginBottom: 0 },
+  sectionIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(74,144,226,0.1)', alignItems: 'center', justifyContent: 'center' },
+
+  // Info
+  infoCard: { padding: 20, borderRadius: 16, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, marginBottom: 20 },
+  infoHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  infoTitle: { fontSize: 16, fontWeight: '600', marginLeft: 8 },
+  infoText: { fontSize: 14, lineHeight: 20 },
+
+  // Steps
+  stepsCard: { padding: 20, borderRadius: 16, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
+  stepsHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  stepsTitle: { fontSize: 16, fontWeight: '600', marginLeft: 8 },
+  stepItem: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
+  stepNumber: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#4A90E2', justifyContent: 'center', alignItems: 'center', marginRight: 12, marginTop: 2 },
+  stepNumberText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  stepText: { fontSize: 14, lineHeight: 20, flex: 1 },
+
+  // Nav/footer
+  navWrapper: { backgroundColor: "#fff" },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  modalContainer: { width: '100%', borderRadius: 16, padding: 20, alignItems: 'center' },
+  modalIconWrapper: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 6 },
+  modalMessage: { fontSize: 14, textAlign: 'center', marginBottom: 16 },
+  modalButton: { marginTop: 8, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 10 },
+  modalButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+
+  // Fullscreen Overlay
+  fullscreenOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' },
+  fullscreenCenter: { width: '100%', paddingHorizontal: 24, alignItems: 'center' },
+  fullscreenQrImage: { width: 360, height: 360 },
 }); 

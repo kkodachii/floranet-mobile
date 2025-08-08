@@ -83,7 +83,7 @@ const PayLink = () => {
             </Text>
           </View>
 
-          <View style={[styles.formCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.formCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.formHeader}>
               <Ionicons name="wallet" size={24} color="#50C878" />
               <Text style={[styles.formTitle, { color: colors.text }]}>GCash Information</Text>
@@ -139,7 +139,7 @@ const PayLink = () => {
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.infoCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.infoCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.infoHeader}>
               <Ionicons name="information-circle" size={24} color="#4A90E2" />
               <Text style={[styles.infoTitle, { color: colors.text }]}>GCash Linking</Text>
@@ -149,7 +149,7 @@ const PayLink = () => {
             </Text>
           </View>
 
-          <View style={[styles.benefitsCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.benefitsCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.benefitsHeader}>
               <Ionicons name="checkmark-circle" size={24} color="#50C878" />
               <Text style={[styles.benefitsTitle, { color: colors.text }]}>Benefits</Text>

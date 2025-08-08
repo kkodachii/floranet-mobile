@@ -84,7 +84,7 @@ const Receipt = () => {
           </View>
 
           {/* Receipt Header */}
-          <View style={[styles.receiptHeader, { backgroundColor: colors.card }]}>
+          <View style={[styles.receiptHeader, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.logoSection}>
               <View style={styles.logoContainer}>
                 <Ionicons name="home" size={32} color="#50C878" />
@@ -110,7 +110,7 @@ const Receipt = () => {
           </View>
 
           {/* Receipt Details */}
-          <View style={[styles.receiptCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.receiptCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="receipt" size={24} color="#4A90E2" />
               <Text style={[styles.cardTitle, { color: colors.text }]}>Transaction Details</Text>
@@ -124,7 +124,7 @@ const Receipt = () => {
           </View>
 
           {/* Resident Information */}
-          <View style={[styles.receiptCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.receiptCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="person" size={24} color="#50C878" />
               <Text style={[styles.cardTitle, { color: colors.text }]}>Resident Information</Text>
@@ -136,7 +136,7 @@ const Receipt = () => {
           </View>
 
           {/* Payment Amount */}
-          <View style={[styles.amountCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.amountCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.amountHeader}>
               <Ionicons name="cash" size={24} color="#50C878" />
               <Text style={[styles.amountTitle, { color: colors.text }]}>Payment Amount</Text>
@@ -146,7 +146,7 @@ const Receipt = () => {
           </View>
 
           {/* Admin Information */}
-          <View style={[styles.receiptCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.receiptCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="shield-checkmark" size={24} color="#FF6B35" />
               <Text style={[styles.cardTitle, { color: colors.text }]}>Processed By</Text>
@@ -174,7 +174,7 @@ const Receipt = () => {
           </View>
 
           {/* Footer */}
-          <View style={[styles.footerCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.footerCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <Text style={[styles.footerText, { color: colors.text, opacity: 0.7 }]}>
               This is an official receipt from Floranet Association. Please keep this receipt for your records. For any questions, please contact the admin office.
             </Text>

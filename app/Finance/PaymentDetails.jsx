@@ -78,7 +78,7 @@ const PaymentDetails = () => {
           </View>
 
           {/* Payment Status Card */}
-          <View style={[styles.statusCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.statusCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.statusHeader}>
               <Ionicons name="checkmark-circle" size={32} color="#50C878" />
               <Text style={[styles.statusText, { color: colors.text }]}>Payment Successful</Text>
@@ -92,7 +92,7 @@ const PaymentDetails = () => {
           </View>
 
           {/* Payment Details Card */}
-          <View style={[styles.detailsCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.detailsCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="document-text" size={24} color="#4A90E2" />
               <Text style={[styles.cardTitle, { color: colors.text }]}>Transaction Details</Text>
@@ -125,7 +125,7 @@ const PaymentDetails = () => {
           </View>
 
           {/* Resident Information Card */}
-          <View style={[styles.detailsCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.detailsCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="person" size={24} color="#50C878" />
               <Text style={[styles.cardTitle, { color: colors.text }]}>Resident Information</Text>
@@ -169,7 +169,7 @@ const PaymentDetails = () => {
           </View>
 
           {/* Info Card */}
-          <View style={[styles.infoCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.infoCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
             <View style={styles.infoHeader}>
               <Ionicons name="information-circle" size={24} color="#4A90E2" />
               <Text style={[styles.infoTitle, { color: colors.text }]}>Payment Information</Text>
