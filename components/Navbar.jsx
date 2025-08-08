@@ -23,7 +23,7 @@ const Navbar = () => {
       label: "Home",
       icon: "home-outline",
       iconActive: "home",
-      route: "/Index",
+      route: "/MainHomepage",
     },
     {
       id: "community",
