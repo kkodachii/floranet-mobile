@@ -6,25 +6,34 @@ import {
   ScrollView,
   StatusBar,
   TouchableOpacity,
+  Modal,
 } from "react-native";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "../../components/Navbar";
 import Header from "../../components/Header";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, Feather } from "@expo/vector-icons";
+import * as NavigationBar from "expo-navigation-bar";
 
 const OtherProfile = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, theme } = useTheme();
+  const [modalVisible, setModalVisible] = useState(false);
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const cardBackground = theme === "light" ? "#ffffff" : "#14181F";
   const buttonBackground = theme === "light" ? "#e1e5ea" : "#1F2633";
   const textColor = colors.text;
+
+  // 🔹 Lock navigation bar color so it doesn't change when modal opens
+  useEffect(() => {
+    NavigationBar.setBackgroundColorAsync(navBarBackground);
+    NavigationBar.setButtonStyleAsync(theme === "light" ? "dark" : "light");
+  }, [theme, navBarBackground]);
 
   const residentData = {
     residentName: "Juan Dela Cruz",
@@ -36,6 +45,18 @@ const OtherProfile = () => {
     services: ["Haircut", "Shave"],
     posts: [],
   };
+
+  const handleAction = (action) => {
+    setModalVisible(false);
+    console.log(`${action} clicked`);
+  };
+
+  const ActionItem = ({ icon, label, onPress, color }) => (
+    <TouchableOpacity style={styles.actionItem} onPress={onPress} activeOpacity={0.6}>
+      <Feather name={icon} size={22} color={color || textColor} />
+      <Text style={[styles.actionText, { color: color || textColor }]}>{label}</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView
@@ -79,7 +100,7 @@ const OtherProfile = () => {
 
             <TouchableOpacity
               style={[styles.iconButton, { borderColor: textColor }]}
-              onPress={() => router.push("/Options/MainOptions")}
+              onPress={() => setModalVisible(true)}
             >
               <Ionicons
                 name="ellipsis-horizontal"
@@ -183,6 +204,26 @@ const OtherProfile = () => {
           </View>
         </ScrollView>
 
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.overlay}
+            activeOpacity={1}
+            onPressOut={() => setModalVisible(false)}
+          >
+            <View style={[styles.sheet, { backgroundColor: colors.background }]}>
+              <ActionItem icon="alert-circle" label="Report Profile" onPress={() => handleAction("Report Profile")} />
+              <ActionItem icon="slash" label="Block User" onPress={() => handleAction("Block User")} />
+              <ActionItem icon="share-2" label="Share Profile" onPress={() => handleAction("Share Profile")} />
+              <ActionItem icon="x" label="Cancel" color="red" onPress={() => setModalVisible(false)} />
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
         <View
           style={[
             styles.navWrapper,
@@ -284,43 +325,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    width: "80%",
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  modalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 20 },
-  modalOption: { fontSize: 16, paddingVertical: 10 },
   profileImageWrapper: {
     position: "relative",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 10,
-  },
-  cameraButton: {
-    position: "absolute",
-    bottom: 5,
-    right: 5,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  infoHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 1,
-    alignSelf: "stretch",
   },
   profileActions: {
     flexDirection: "row",
@@ -333,5 +342,27 @@ const styles = StyleSheet.create({
     padding: 8,
     borderWidth: 1,
     borderRadius: 8,
+  },
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  sheet: {
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    paddingBottom: 10,
+    paddingTop: 8,
+  },
+  actionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  actionText: {
+    marginLeft: 14,
+    fontSize: 18,
+    fontWeight: "500",
   },
 });

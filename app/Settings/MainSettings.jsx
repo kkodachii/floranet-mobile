@@ -8,6 +8,7 @@ import {
   Alert,
   StatusBar,
   TextInput,
+  Dimensions,
 } from "react-native";
 import React, { useState } from "react";
 import Navbar from "../../components/Navbar";
@@ -17,8 +18,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { Feather } from "@expo/vector-icons";
 
+const screenHeight = Dimensions.get("window").height;
+
 const SettingItem = ({ icon, label, onPress, textColor }) => (
-  <TouchableOpacity style={styles.settingItem} onPress={onPress}>
+  <TouchableOpacity
+    style={styles.settingItem}
+    onPress={onPress}
+    activeOpacity={0.6}
+  >
     {icon}
     <Text style={[styles.settingText, { color: textColor }]}>{label}</Text>
   </TouchableOpacity>
@@ -31,7 +38,6 @@ const Settings = () => {
 
   const backgroundColor = colors.background;
   const textColor = colors.text;
-  const cardBackground = theme === "light" ? "#f0f0f0" : "#1e1e1e";
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
 
@@ -40,6 +46,7 @@ const Settings = () => {
   const [showAppearance, setShowAppearance] = useState(false);
   const [showSecurity, setShowSecurity] = useState(false);
   const [showLinked, setShowLinked] = useState(false);
+  const [scrollEnabled, setScrollEnabled] = useState(false);
 
   const filterMatch = (label) =>
     label.toLowerCase().includes(searchTerm.toLowerCase());
@@ -61,11 +68,17 @@ const Settings = () => {
       <View style={styles.container}>
         <Header title="Settings" />
 
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={[styles.settingsContainer, { backgroundColor: cardBackground }]}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          scrollEnabled={scrollEnabled}
+          onContentSizeChange={(contentWidth, contentHeight) => {
+            setScrollEnabled(contentHeight > screenHeight - insets.top - 100);
+          }}
+        >
+          <View>
             {/* Search Bar */}
             <View style={styles.searchContainer}>
-              <Feather name="search" size={20} color={textColor} />
+              <Feather name="search" size={24} color={textColor} />
               <TextInput
                 placeholder="Search settings..."
                 placeholderTextColor={textColor}
@@ -76,24 +89,26 @@ const Settings = () => {
             </View>
 
             {/* Account Section */}
-            <View style={styles.dropdownHeaderRow}>
+            <TouchableOpacity
+              style={styles.dropdownHeaderRow}
+              onPress={() => setShowAccount(!showAccount)}
+              activeOpacity={0.6}
+            >
               <View style={styles.dropdownHeader}>
-                <Feather name="user" size={20} color={textColor} />
+                <Feather name="user" size={26} color={textColor} />
                 <Text style={[styles.settingText, { color: textColor }]}>Account</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowAccount(!showAccount)}>
-                <Feather
-                  name={showAccount ? "chevron-up" : "chevron-down"}
-                  size={20}
-                  color={textColor}
-                />
-              </TouchableOpacity>
-            </View>
+              <Feather
+                name={showAccount ? "chevron-up" : "chevron-down"}
+                size={26}
+                color={textColor}
+              />
+            </TouchableOpacity>
             {showAccount && (
               <View style={styles.dropdownGroup}>
                 {filterMatch("Edit Profile") && (
                   <SettingItem
-                    icon={<Feather name="edit" size={20} color={textColor} />}
+                    icon={<Feather name="edit" size={24} color={textColor} />}
                     label="Edit Profile"
                     onPress={() => router.push("Profile/EditProfile")}
                     textColor={textColor}
@@ -101,7 +116,7 @@ const Settings = () => {
                 )}
                 {filterMatch("Manage Posts") && (
                   <SettingItem
-                    icon={<Feather name="file-text" size={20} color={textColor} />}
+                    icon={<Feather name="file-text" size={24} color={textColor} />}
                     label="Manage Posts"
                     onPress={() => router.push("Profile/ManagePost")}
                     textColor={textColor}
@@ -109,7 +124,7 @@ const Settings = () => {
                 )}
                 {filterMatch("Activity Logs") && (
                   <SettingItem
-                    icon={<Feather name="activity" size={20} color={textColor} />}
+                    icon={<Feather name="activity" size={24} color={textColor} />}
                     label="Activity Logs"
                     onPress={() => router.push("Profile/ActivityLogs")}
                     textColor={textColor}
@@ -117,7 +132,7 @@ const Settings = () => {
                 )}
                 {filterMatch("Share Profile") && (
                   <SettingItem
-                    icon={<Feather name="share-2" size={20} color={textColor} />}
+                    icon={<Feather name="share-2" size={24} color={textColor} />}
                     label="Share Profile"
                     onPress={() => Alert.alert("Share", "Profile link copied!")}
                     textColor={textColor}
@@ -125,7 +140,7 @@ const Settings = () => {
                 )}
                 {filterMatch("Delete / Deactivate Account") && (
                   <SettingItem
-                    icon={<Feather name="trash" size={20} color={textColor} />}
+                    icon={<Feather name="trash" size={24} color={textColor} />}
                     label="Delete / Deactivate Account"
                     onPress={() =>
                       Alert.alert(
@@ -145,24 +160,26 @@ const Settings = () => {
             )}
 
             {/* Appearance */}
-            <View style={styles.dropdownHeaderRow}>
+            <TouchableOpacity
+              style={styles.dropdownHeaderRow}
+              onPress={() => setShowAppearance(!showAppearance)}
+              activeOpacity={0.6}
+            >
               <View style={styles.dropdownHeader}>
-                <Feather name="eye" size={20} color={textColor} />
+                <Feather name="eye" size={26} color={textColor} />
                 <Text style={[styles.settingText, { color: textColor }]}>Appearance</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowAppearance(!showAppearance)}>
-                <Feather
-                  name={showAppearance ? "chevron-up" : "chevron-down"}
-                  size={20}
-                  color={textColor}
-                />
-              </TouchableOpacity>
-            </View>
+              <Feather
+                name={showAppearance ? "chevron-up" : "chevron-down"}
+                size={26}
+                color={textColor}
+              />
+            </TouchableOpacity>
             {showAppearance && (
               <View style={styles.dropdownGroup}>
                 {filterMatch("Dark Mode") && (
                   <SettingItem
-                    icon={<Feather name="moon" size={20} color={textColor} />}
+                    icon={<Feather name="moon" size={24} color={textColor} />}
                     label={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
                     onPress={handleThemeToggle}
                     textColor={textColor}
@@ -172,24 +189,26 @@ const Settings = () => {
             )}
 
             {/* Security & Privacy */}
-            <View style={styles.dropdownHeaderRow}>
+            <TouchableOpacity
+              style={styles.dropdownHeaderRow}
+              onPress={() => setShowSecurity(!showSecurity)}
+              activeOpacity={0.6}
+            >
               <View style={styles.dropdownHeader}>
-                <Feather name="lock" size={20} color={textColor} />
+                <Feather name="lock" size={26} color={textColor} />
                 <Text style={[styles.settingText, { color: textColor }]}>Security & Privacy</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowSecurity(!showSecurity)}>
-                <Feather
-                  name={showSecurity ? "chevron-up" : "chevron-down"}
-                  size={20}
-                  color={textColor}
-                />
-              </TouchableOpacity>
-            </View>
+              <Feather
+                name={showSecurity ? "chevron-up" : "chevron-down"}
+                size={26}
+                color={textColor}
+              />
+            </TouchableOpacity>
             {showSecurity && (
               <View style={styles.dropdownGroup}>
                 {filterMatch("Change Password") && (
                   <SettingItem
-                    icon={<Feather name="key" size={20} color={textColor} />}
+                    icon={<Feather name="key" size={24} color={textColor} />}
                     label="Change Password"
                     onPress={() => Alert.alert("Security", "Change password clicked")}
                     textColor={textColor}
@@ -197,7 +216,7 @@ const Settings = () => {
                 )}
                 {filterMatch("Two-Factor Authentication") && (
                   <SettingItem
-                    icon={<Feather name="shield" size={20} color={textColor} />}
+                    icon={<Feather name="shield" size={24} color={textColor} />}
                     label="Two-Factor Authentication"
                     onPress={() => Alert.alert("Security", "2FA toggled")}
                     textColor={textColor}
@@ -205,7 +224,7 @@ const Settings = () => {
                 )}
                 {filterMatch("Blocked Users") && (
                   <SettingItem
-                    icon={<Feather name="slash" size={20} color={textColor} />}
+                    icon={<Feather name="slash" size={24} color={textColor} />}
                     label="Blocked Users"
                     onPress={() => Alert.alert("Security", "No blocked users yet")}
                     textColor={textColor}
@@ -215,24 +234,26 @@ const Settings = () => {
             )}
 
             {/* Linked Accounts */}
-            <View style={styles.dropdownHeaderRow}>
+            <TouchableOpacity
+              style={styles.dropdownHeaderRow}
+              onPress={() => setShowLinked(!showLinked)}
+              activeOpacity={0.6}
+            >
               <View style={styles.dropdownHeader}>
-                <Feather name="link" size={20} color={textColor} />
+                <Feather name="link" size={26} color={textColor} />
                 <Text style={[styles.settingText, { color: textColor }]}>Linked Accounts</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowLinked(!showLinked)}>
-                <Feather
-                  name={showLinked ? "chevron-up" : "chevron-down"}
-                  size={20}
-                  color={textColor}
-                />
-              </TouchableOpacity>
-            </View>
+              <Feather
+                name={showLinked ? "chevron-up" : "chevron-down"}
+                size={26}
+                color={textColor}
+              />
+            </TouchableOpacity>
             {showLinked && (
               <View style={styles.dropdownGroup}>
                 {filterMatch("GCash") && (
                   <SettingItem
-                    icon={<Feather name="credit-card" size={20} color={textColor} />}
+                    icon={<Feather name="credit-card" size={24} color={textColor} />}
                     label="GCash: Linked"
                     onPress={() => Alert.alert("GCash", "Your GCash account is linked.")}
                     textColor={textColor}
@@ -241,9 +262,10 @@ const Settings = () => {
               </View>
             )}
 
+            {/* Other Options */}
             {filterMatch("Notifications") && (
               <SettingItem
-                icon={<Feather name="bell" size={20} color={textColor} />}
+                icon={<Feather name="bell" size={24} color={textColor} />}
                 label="Notifications"
                 onPress={() => router.push("/Settings/Notifications")}
                 textColor={textColor}
@@ -251,7 +273,7 @@ const Settings = () => {
             )}
             {filterMatch("Report a problem") && (
               <SettingItem
-                icon={<Feather name="alert-circle" size={20} color={textColor} />}
+                icon={<Feather name="alert-circle" size={24} color={textColor} />}
                 label="Report a problem"
                 onPress={() => Alert.alert("Report a Problem", "Functionality coming soon.")}
                 textColor={textColor}
@@ -259,7 +281,7 @@ const Settings = () => {
             )}
             {filterMatch("About") && (
               <SettingItem
-                icon={<Feather name="info" size={20} color={textColor} />}
+                icon={<Feather name="info" size={24} color={textColor} />}
                 label="About"
                 onPress={() => Alert.alert("About", "App version 1.0.0\nDeveloped by YourName")}
                 textColor={textColor}
@@ -268,8 +290,12 @@ const Settings = () => {
 
             {/* Logout */}
             {filterMatch("Logout") && (
-              <TouchableOpacity style={styles.settingItem} onPress={handleLogout}>
-                <Feather name="log-out" size={20} color={textColor} />
+              <TouchableOpacity
+                style={styles.settingItem}
+                onPress={handleLogout}
+                activeOpacity={0.6}
+              >
+                <Feather name="log-out" size={24} color={textColor} />
                 <Text style={[styles.settingText, { color: textColor }]}>Logout</Text>
               </TouchableOpacity>
             )}
@@ -305,30 +331,29 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     padding: 20,
-  },
-  settingsContainer: {
-    borderRadius: 12,
-    padding: 10,
+    paddingBottom: 80,
   },
   settingItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 5,
   },
   settingText: {
-    marginLeft: 12,
-    fontSize: 16,
+    marginLeft: 14,
+    fontSize: 18,
+    fontWeight: "500",
   },
   dropdownGroup: {
-    paddingLeft: 32,
+    paddingLeft: 40,
   },
   dropdownHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 5,
+    paddingVertical: 16,
+    paddingHorizontal: 10,
+    borderRadius: 8,
   },
   dropdownHeader: {
     flexDirection: "row",
@@ -338,16 +363,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ccc3',
-    padding: 3,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ccc3",
+    padding: 6,
     borderRadius: 15,
     marginBottom: 10,
   },
   searchInput: {
     flex: 1,
     marginLeft: 10,
-    fontSize: 16,
+    fontSize: 18,
   },
 });

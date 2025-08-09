@@ -15,7 +15,7 @@ import Header from "../../components/Header";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, Feather } from "@expo/vector-icons";
 
 // Dummy data
 const residentData = {
@@ -111,6 +111,24 @@ const MainBusiness = () => {
     </View>
   );
 
+  const handleAction = (action) => {
+    setModalVisible(false);
+    console.log(`${action} clicked`);
+  };
+
+  const ActionItem = ({ icon, label, onPress, color }) => (
+    <TouchableOpacity
+      style={styles.actionItem}
+      onPress={onPress}
+      activeOpacity={0.6}
+    >
+      <Feather name={icon} size={22} color={color || textColor} />
+      <Text style={[styles.actionText, { color: color || textColor }]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView
       style={[
@@ -128,10 +146,7 @@ const MainBusiness = () => {
           {/* Profile Picture */}
           <View style={styles.profileImageWrapper}>
             <View
-              style={[
-                styles.placeholderImage,
-                { borderColor: buttonBackground },
-              ]}
+              style={[styles.placeholderImage, { borderColor: buttonBackground }]}
             />
           </View>
 
@@ -153,13 +168,9 @@ const MainBusiness = () => {
 
             <TouchableOpacity
               style={[styles.iconButton, { borderColor: textColor }]}
-              onPress={() => router.push("/Options/MainOptions")}
+              onPress={() => setModalVisible(true)}
             >
-              <Ionicons
-                name="ellipsis-horizontal"
-                size={14}
-                color={textColor}
-              />
+              <Ionicons name="ellipsis-horizontal" size={14} color={textColor} />
             </TouchableOpacity>
           </View>
 
@@ -191,9 +202,7 @@ const MainBusiness = () => {
               </TouchableOpacity>
             </View>
 
-            <View
-              style={[styles.divider, { backgroundColor: colors.border }]}
-            />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
             <View style={styles.reviewsContainer}>
               <Text style={[styles.recentReviewsTitle, { color: textColor }]}>
@@ -233,10 +242,7 @@ const MainBusiness = () => {
                 {residentData.services.map((service, index) => (
                   <Text
                     key={index}
-                    style={[
-                      styles.infoText,
-                      { color: textColor, marginBottom: 6 },
-                    ]}
+                    style={[styles.infoText, { color: textColor, marginBottom: 6 }]}
                   >
                     • {service}
                   </Text>
@@ -258,9 +264,7 @@ const MainBusiness = () => {
             {residentData.posts.length > 0 ? (
               <Text style={{ color: textColor }}>Posts go here</Text>
             ) : (
-              <Text style={[styles.subText, { color: textColor }]}>
-                No posts yet.
-              </Text>
+              <Text style={[styles.subText, { color: textColor }]}>No posts yet.</Text>
             )}
           </View>
         </ScrollView>
@@ -278,49 +282,42 @@ const MainBusiness = () => {
           <Navbar />
         </View>
 
-        {/* Modal */}
+        {/* Action Modal */}
         <Modal
-          visible={modalVisible}
           animationType="slide"
           transparent={true}
+          visible={modalVisible}
           onRequestClose={() => setModalVisible(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View
-              style={[
-                styles.modalContent,
-                { backgroundColor: colors.card || "#fff" },
-              ]}
-            >
-              <Text style={[styles.modalTitle, { color: textColor }]}>
-                Privacy Settings
-              </Text>
-              <Text
-                style={[styles.modalOption, { color: textColor }]}
-                onPress={() => {
-                  setHideSensitiveInfo(true);
-                  setModalVisible(false);
-                }}
-              >
-                Hide from other users
-              </Text>
-              <Text
-                style={[styles.modalOption, { color: textColor }]}
-                onPress={() => {
-                  setHideSensitiveInfo(false);
-                  setModalVisible(false);
-                }}
-              >
-                Show to other users
-              </Text>
-              <Text
-                style={[styles.modalOption, { color: "red" }]}
+          <TouchableOpacity
+            style={styles.overlay}
+            activeOpacity={1}
+            onPressOut={() => setModalVisible(false)}
+          >
+            <View style={[styles.sheet, { backgroundColor: colors.background }]}>
+              <ActionItem
+                icon="alert-circle"
+                label="Report Business"
+                onPress={() => handleAction("Report Profile")}
+              />
+              <ActionItem
+                icon="slash"
+                label="Block Business"
+                onPress={() => handleAction("Block User")}
+              />
+              <ActionItem
+                icon="share-2"
+                label="Share Business Profile"
+                onPress={() => handleAction("Share Profile")}
+              />
+              <ActionItem
+                icon="x"
+                label="Cancel"
+                color="red"
                 onPress={() => setModalVisible(false)}
-              >
-                Cancel
-              </Text>
+              />
             </View>
-          </View>
+          </TouchableOpacity>
         </Modal>
       </View>
     </SafeAreaView>
@@ -528,26 +525,27 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginLeft: 48,
   },
-  showMoreReviews: {
-    alignItems: "center",
-    paddingVertical: 8,
-    marginTop: 8,
+
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
   },
-  showMoreText: {
-    fontSize: 14,
-    fontWeight: "500",
+  sheet: {
+     borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    paddingBottom: 10,
+    paddingTop: 8,
   },
-  buttonAlt: {
+  actionItem: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     paddingVertical: 10,
     paddingHorizontal: 20,
-    borderRadius: 8,
-    marginVertical: 10,
-    width: "100%",
   },
-  buttonAltText: {
-    fontSize: 14,
+  actionText: {
+    marginLeft: 14,
+    fontSize: 18,
     fontWeight: "500",
   },
 });

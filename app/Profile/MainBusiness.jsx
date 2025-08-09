@@ -166,7 +166,7 @@ const MainBusiness = () => {
 
             <TouchableOpacity
               style={[styles.iconButton, { borderColor: textColor }]}
-              onPress={() => setModalVisible(true)}
+               onPress={() => router.push("/Settings/MainSettings")}
             >
               <Ionicons
                 name="ellipsis-horizontal"
