@@ -64,20 +64,14 @@ const MainHomepage = () => {
               textColor={textColor}
             />
             <MenuButton
-              icon={<MaterialIcons name="shield" size={30} color={textColor} />}
-              label="SECURITY"
-              onPress={() => router.push("/Security/SecurityHomepage")}
-              buttonBackground={buttonBackground}
-              textColor={textColor}
-            />
-            <MenuButton
               icon={
                 <MaterialIcons name="emergency" size={30} color={textColor} />
               }
-              label="EMERGENCY"
+              label="SECURITY AND EMERGENCY"
               onPress={() => router.push("/Emergency/EmergencyHomepage")}
               buttonBackground={buttonBackground}
               textColor={textColor}
+              fullWidth
             />
           </View>
         </View>
@@ -138,9 +132,9 @@ const AccountDetails = ({
   </View>
 );
 
-const MenuButton = ({ icon, label, onPress, buttonBackground, textColor }) => (
+const MenuButton = ({ icon, label, onPress, buttonBackground, textColor, fullWidth }) => (
   <TouchableOpacity
-    style={[styles.button, { backgroundColor: buttonBackground }]}
+    style={[styles.button, fullWidth && styles.buttonWide, { backgroundColor: buttonBackground }]}
     onPress={onPress}
   >
     <View style={styles.iconWrapper}>{icon}</View>
@@ -250,6 +244,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     width: 150,
     height: 90,
+  },
+  buttonWide: {
+    width: 310,
   },
   buttonText: {
     marginTop: 3,
