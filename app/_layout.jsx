@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import * as NavigationBar from "expo-navigation-bar";
 import { ThemeProvider, useTheme } from "../Theme/ThemeProvider";
+import { NotificationProvider } from "../services/NotificationContext";
 
 function AppLayout() {
   const { colors, theme } = useTheme();
@@ -36,7 +37,9 @@ function AppLayout() {
 export default function LayoutWrapper() {
   return (
     <ThemeProvider>
-      <AppLayout />
+      <NotificationProvider>
+        <AppLayout />
+      </NotificationProvider>
     </ThemeProvider>
   );
 }
