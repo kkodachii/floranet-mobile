@@ -1,6 +1,6 @@
 {
   "expo": {
-    "scheme":"floranetmobile",
+    "scheme": "floranetmobile",
     "name": "floranet-mobile",
     "slug": "floranet-mobile",
     "version": "1.0.0",
@@ -19,15 +19,23 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#ffffff",
+        "package": "com.hyem23.floranetmobile"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.hyem23.floranetmobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d56b29be-a8c4-44f3-98d9-9fd80e1da57e"
+      }
+    }
   }
 }

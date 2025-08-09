@@ -1,14 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 
-const Option = () => {
+const EditServices = () => {
   return (
     <View>
-      <Text>Option</Text>
+      <Text>EditServices</Text>
     </View>
   )
 }
 
-export default Option
+export default EditServices
 
 const styles = StyleSheet.create({})
