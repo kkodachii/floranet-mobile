@@ -11,13 +11,12 @@ import {
 } from "react-native";
 import React, { useState } from "react";
 import Navbar from "../../components/Navbar";
-import Header from "../../components/Header";
+import Header from "../../components/HeaderBack";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { Ionicons, Feather } from "@expo/vector-icons";
 
-// Dummy data
 const residentData = {
   residentName: "Juan Dela Cruz",
   houseNumber: "23",
@@ -141,12 +140,14 @@ const MainBusiness = () => {
         barStyle={theme === "light" ? "dark-content" : "light-content"}
       />
       <View style={styles.container}>
-        <Header />
+        <Header title="Settings" />
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          {/* Profile Picture */}
           <View style={styles.profileImageWrapper}>
             <View
-              style={[styles.placeholderImage, { borderColor: buttonBackground }]}
+              style={[
+                styles.placeholderImage,
+                { borderColor: buttonBackground },
+              ]}
             />
           </View>
 
@@ -170,7 +171,11 @@ const MainBusiness = () => {
               style={[styles.iconButton, { borderColor: textColor }]}
               onPress={() => setModalVisible(true)}
             >
-              <Ionicons name="ellipsis-horizontal" size={14} color={textColor} />
+              <Ionicons
+                name="ellipsis-horizontal"
+                size={14}
+                color={textColor}
+              />
             </TouchableOpacity>
           </View>
 
@@ -202,7 +207,9 @@ const MainBusiness = () => {
               </TouchableOpacity>
             </View>
 
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View
+              style={[styles.divider, { backgroundColor: colors.border }]}
+            />
 
             <View style={styles.reviewsContainer}>
               <Text style={[styles.recentReviewsTitle, { color: textColor }]}>
@@ -242,7 +249,10 @@ const MainBusiness = () => {
                 {residentData.services.map((service, index) => (
                   <Text
                     key={index}
-                    style={[styles.infoText, { color: textColor, marginBottom: 6 }]}
+                    style={[
+                      styles.infoText,
+                      { color: textColor, marginBottom: 6 },
+                    ]}
                   >
                     • {service}
                   </Text>
@@ -264,7 +274,9 @@ const MainBusiness = () => {
             {residentData.posts.length > 0 ? (
               <Text style={{ color: textColor }}>Posts go here</Text>
             ) : (
-              <Text style={[styles.subText, { color: textColor }]}>No posts yet.</Text>
+              <Text style={[styles.subText, { color: textColor }]}>
+                No posts yet.
+              </Text>
             )}
           </View>
         </ScrollView>
@@ -294,7 +306,9 @@ const MainBusiness = () => {
             activeOpacity={1}
             onPressOut={() => setModalVisible(false)}
           >
-            <View style={[styles.sheet, { backgroundColor: colors.background }]}>
+            <View
+              style={[styles.sheet, { backgroundColor: colors.background }]}
+            >
               <ActionItem
                 icon="alert-circle"
                 label="Report Business"
@@ -532,7 +546,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   sheet: {
-     borderTopLeftRadius: 12,
+    borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
     paddingBottom: 10,
     paddingTop: 8,

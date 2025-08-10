@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import React, { useState, useEffect } from "react";
 import Navbar from "../../components/Navbar";
-import Header from "../../components/Header";
+import Header from "../../components/HeaderBack";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
@@ -29,7 +29,6 @@ const OtherProfile = () => {
   const buttonBackground = theme === "light" ? "#e1e5ea" : "#1F2633";
   const textColor = colors.text;
 
-  // 🔹 Lock navigation bar color so it doesn't change when modal opens
   useEffect(() => {
     NavigationBar.setBackgroundColorAsync(navBarBackground);
     NavigationBar.setButtonStyleAsync(theme === "light" ? "dark" : "light");
@@ -52,9 +51,15 @@ const OtherProfile = () => {
   };
 
   const ActionItem = ({ icon, label, onPress, color }) => (
-    <TouchableOpacity style={styles.actionItem} onPress={onPress} activeOpacity={0.6}>
+    <TouchableOpacity
+      style={styles.actionItem}
+      onPress={onPress}
+      activeOpacity={0.6}
+    >
       <Feather name={icon} size={22} color={color || textColor} />
-      <Text style={[styles.actionText, { color: color || textColor }]}>{label}</Text>
+      <Text style={[styles.actionText, { color: color || textColor }]}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 
@@ -70,7 +75,7 @@ const OtherProfile = () => {
         barStyle={theme === "light" ? "dark-content" : "light-content"}
       />
       <View style={styles.container}>
-        <Header />
+        <Header title="Settings" />
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <View style={styles.profileImageWrapper}>
             <View
@@ -215,11 +220,30 @@ const OtherProfile = () => {
             activeOpacity={1}
             onPressOut={() => setModalVisible(false)}
           >
-            <View style={[styles.sheet, { backgroundColor: colors.background }]}>
-              <ActionItem icon="alert-circle" label="Report Profile" onPress={() => handleAction("Report Profile")} />
-              <ActionItem icon="slash" label="Block User" onPress={() => handleAction("Block User")} />
-              <ActionItem icon="share-2" label="Share Profile" onPress={() => handleAction("Share Profile")} />
-              <ActionItem icon="x" label="Cancel" color="red" onPress={() => setModalVisible(false)} />
+            <View
+              style={[styles.sheet, { backgroundColor: colors.background }]}
+            >
+              <ActionItem
+                icon="alert-circle"
+                label="Report Profile"
+                onPress={() => handleAction("Report Profile")}
+              />
+              <ActionItem
+                icon="slash"
+                label="Block User"
+                onPress={() => handleAction("Block User")}
+              />
+              <ActionItem
+                icon="share-2"
+                label="Share Profile"
+                onPress={() => handleAction("Share Profile")}
+              />
+              <ActionItem
+                icon="x"
+                label="Cancel"
+                color="red"
+                onPress={() => setModalVisible(false)}
+              />
             </View>
           </TouchableOpacity>
         </Modal>
