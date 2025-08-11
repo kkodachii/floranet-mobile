@@ -8,13 +8,58 @@ import {
   TouchableOpacity,
   Modal,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Navbar from "../../components/Navbar";
-import Header from "../../components/Header";
+import HeaderBack from "../../components/HeaderBack";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { Ionicons } from "@expo/vector-icons";
+
+const CHIP_LABELS = ["Posts", "Business"];
+
+const Chips = ({ selectedChip, onChipPress }) => {
+  const { colors, theme } = useTheme();
+  const buttonBackground = theme === "light" ? "#e1e5ea" : "#1F2633";
+  const textColor = colors.text;
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+        justifyContent: "flex-start",
+      }}
+    >
+      {CHIP_LABELS.map((label, index) => {
+        const isSelected = label === selectedChip;
+        return (
+          <TouchableOpacity
+            key={label}
+            onPress={() => onChipPress(label)}
+            style={[
+              styles.chip,
+              {
+                backgroundColor: isSelected ? "#28942c" : buttonBackground,
+                marginRight: index < CHIP_LABELS.length - 1 ? 8 : 0,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.chipText,
+                { color: isSelected ? "#fff" : textColor },
+              ]}
+            >
+              {label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+};
 
 const MainProfile = () => {
   const insets = useSafeAreaInsets();
@@ -23,6 +68,7 @@ const MainProfile = () => {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [hideSensitiveInfo, setHideSensitiveInfo] = useState(false);
+  const [selectedChip, setSelectedChip] = useState("Posts");
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
@@ -38,12 +84,49 @@ const MainProfile = () => {
     contactNumber: "09171234567",
     businessName: "Juan's Barbershop",
     services: ["Haircut", "Shave"],
-    posts: [],
+    posts: [
+      {
+        id: 1,
+        content: "Just opened my barbershop! Come visit for a fresh cut!",
+        timestamp: "2 days ago",
+        likes: 15,
+        comments: 3,
+      },
+    ],
   };
 
   const handlePickProfilePicture = () => {
     console.log("Open camera or gallery to pick profile picture.");
   };
+
+  const PostCard = ({ post }) => (
+    <View style={[styles.postCard, { backgroundColor: cardBackground }]}>
+      <View style={styles.postHeader}>
+        <View style={styles.postAvatar}>
+          <Ionicons name="person" size={20} color="#ccc" />
+        </View>
+        <View style={styles.postHeaderText}>
+          <Text style={[styles.postAuthor, { color: textColor }]}>
+            {residentData.residentName}
+          </Text>
+          <Text style={styles.postTimestamp}>{post.timestamp}</Text>
+        </View>
+      </View>
+      <Text style={[styles.postContent, { color: textColor }]}>
+        {post.content}
+      </Text>
+      <View style={styles.postActions}>
+        <TouchableOpacity style={styles.postAction}>
+          <Ionicons name="heart-outline" size={16} color="gray" />
+          <Text style={styles.postActionText}>{post.likes}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.postAction}>
+          <Ionicons name="chatbubble-outline" size={16} color="gray" />
+          <Text style={styles.postActionText}>{post.comments}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView
@@ -57,14 +140,24 @@ const MainProfile = () => {
         barStyle={theme === "light" ? "dark-content" : "light-content"}
       />
       <View style={styles.container}>
-        <Header />
+        <HeaderBack title="Profile" onBack={() => router.back()} />
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <View
             style={[
               styles.coverPhotoWrapper,
               { backgroundColor: buttonBackground },
             ]}
-          />
+          >
+            <TouchableOpacity
+              style={[
+                styles.coverCameraButton,
+                { backgroundColor: buttonBackground },
+              ]}
+              onPress={() => console.log("Change cover photo")}
+            >
+              <Ionicons name="camera" size={18} color={textColor} />
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.profileImageContainer}>
             <View style={[styles.profileImage, { backgroundColor: "#e4e6ea" }]}>
@@ -169,6 +262,22 @@ const MainProfile = () => {
                     </Text>
                   </View>
                 </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.actionButton,
+                    {
+                      borderColor: textColor,
+                      alignSelf: "flex-start",
+                      marginTop: 10,
+                    },
+                  ]}
+                  onPress={() => router.push("/Profile/EditPublicDetails")}
+                >
+                  <Text style={[styles.buttonText, { color: textColor }]}>
+                    Edit Public Details
+                  </Text>
+                </TouchableOpacity>
               </>
             ) : (
               <Text style={{ color: "gray", marginBottom: 10 }}>
@@ -177,99 +286,177 @@ const MainProfile = () => {
             )}
           </View>
 
-          {/* Business Section */}
-          <Text style={styles.sectionTitle}>Business</Text>
-          {residentData.businessName ? (
-            <View
-              style={[
-                styles.vendorContainer,
-                { backgroundColor: cardBackground },
-              ]}
-            >
-              <View style={styles.vendorProfileImage} />
-              <View style={{ flex: 1, justifyContent: "center" }}>
-                <Text style={[styles.vendorName, { color: textColor }]}>
-                  {residentData.businessName}
+          <Chips selectedChip={selectedChip} onChipPress={setSelectedChip} />
+
+          {selectedChip === "Business" ? (
+            <View style={{ width: "100%", paddingHorizontal: 16 }}>
+              <Text style={[styles.sectionTitle, { marginLeft: 0 }]}>
+                Business
+              </Text>
+              {residentData.businessName ? (
+                <View
+                  style={[
+                    styles.vendorContainer,
+                    {
+                      backgroundColor: cardBackground,
+                      marginLeft: 0,
+                      marginRight: 0,
+                    },
+                  ]}
+                >
+                  <View style={styles.vendorProfileImage} />
+                  <View style={{ flex: 1, justifyContent: "center" }}>
+                    <Text style={[styles.vendorName, { color: textColor }]}>
+                      {residentData.businessName}
+                    </Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
+                        { borderColor: textColor, marginTop: 8 },
+                      ]}
+                      onPress={() => router.push("/Profile/MainBusiness")}
+                    >
+                      <Text style={[styles.buttonText, { color: textColor }]}>
+                        Open Profile
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
+                  <Text style={[styles.subText, { color: textColor }]}>
+                    None
+                  </Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={[
+                  styles.buttonAlt,
+                  { backgroundColor: buttonBackground },
+                ]}
+                onPress={() => router.push("/Profile/ManagePost")}
+              >
+                <Text style={[styles.buttonAltText, { color: textColor }]}>
+                  Create Another Business
                 </Text>
+              </TouchableOpacity>
+
+              {/* Services Section */}
+              <Text style={[styles.sectionTitle, { marginLeft: 0 }]}>
+                Services
+              </Text>
+              {residentData.services.length > 0 ? (
+                <View
+                  style={[
+                    styles.servicesContainer,
+                    {
+                      backgroundColor: cardBackground,
+                      alignSelf: "stretch",
+                      marginLeft: 0,
+                      marginRight: 0,
+                    },
+                  ]}
+                >
+                  {residentData.services.map((service, index) => (
+                    <Text
+                      key={index}
+                      style={[
+                        styles.infoText,
+                        { color: textColor, marginBottom: 6 },
+                      ]}
+                    >
+                      • {service}
+                    </Text>
+                  ))}
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      {
+                        borderColor: textColor,
+                        alignSelf: "flex-start",
+                        marginTop: 10,
+                      },
+                    ]}
+                    onPress={() => router.push("/Profile/EditServices")}
+                  >
+                    <Text style={[styles.buttonText, { color: textColor }]}>
+                      Edit Services
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
+                  <Text style={[styles.subText, { color: textColor }]}>
+                    None
+                  </Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <View style={{ width: "100%", paddingHorizontal: 16 }}>
+              {/* Posts Section */}
+              <Text style={[styles.sectionTitle, { marginLeft: 0 }]}>
+                Posts
+              </Text>
+              <View style={styles.avatarContainer}>
+                <View style={styles.placeholder}>
+                  <Ionicons name="person" size={24} color="#ccc" />
+                </View>
                 <TouchableOpacity
                   style={[
-                    styles.actionButton,
-                    { borderColor: textColor, marginTop: 8 },
+                    styles.inputButton,
+                    { borderColor: textColor, flex: 1 },
                   ]}
-                  onPress={() => router.push("/Profile/MainBusiness")}
+                  onPress={() => router.push("/Community/CreatePost")}
                 >
-                  <Text style={[styles.buttonText, { color: textColor }]}>
-                    Open Profile
+                  <Text style={[styles.inputButtonText, { color: textColor }]}>
+                    What's on your mind?
                   </Text>
                 </TouchableOpacity>
               </View>
-            </View>
-          ) : (
-            <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
-              <Text style={[styles.subText, { color: textColor }]}>None</Text>
-            </View>
-          )}
 
-          {/* Services Section */}
-          <Text style={styles.sectionTitle}>Services</Text>
-          {residentData.services.length > 0 ? (
-            <View
-              style={[
-                styles.infoContainer,
-                { backgroundColor: cardBackground, alignSelf: "stretch" },
-              ]}
-            >
-              {residentData.services.map((service, index) => (
-                <Text
-                  key={index}
-                  style={[
-                    styles.infoText,
-                    { color: textColor, marginBottom: 6 },
-                  ]}
-                >
-                  • {service}
-                </Text>
-              ))}
+              {/* Previous Posts Section */}
               <TouchableOpacity
                 style={[
-                  styles.actionButton,
-                  {
-                    borderColor: textColor,
-                    alignSelf: "flex-start",
-                    marginTop: 10,
-                  },
+                  styles.buttonAlt,
+                  { backgroundColor: buttonBackground },
                 ]}
-                onPress={() => router.push("/Profile/EditServices")}
+                onPress={() => router.push("/Profile/ManagePost")}
               >
-                <Text style={[styles.buttonText, { color: textColor }]}>
-                  Edit Services
+                <Text style={[styles.buttonAltText, { color: textColor }]}>
+                  Manage Posts
                 </Text>
               </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
-              <Text style={[styles.subText, { color: textColor }]}>None</Text>
+
+              {residentData.posts.length > 0 ? (
+                residentData.posts.map((post) => (
+                  <PostCard key={post.id} post={post} />
+                ))
+              ) : (
+                <View
+                  style={[
+                    styles.emptyState,
+                    { backgroundColor: buttonBackground },
+                  ]}
+                >
+                  <Ionicons
+                    name="document-text-outline"
+                    size={48}
+                    color="gray"
+                  />
+                  <Text style={[styles.emptyStateText, { color: textColor }]}>
+                    No posts yet
+                  </Text>
+                  <Text style={styles.emptyStateSubtext}>
+                    Share something with your community!
+                  </Text>
+                </View>
+              )}
             </View>
           )}
-
-          {/* Posts Section */}
-          <Text style={styles.sectionTitle}>Posts</Text>
-          <View style={styles.avatarContainer}>
-            <View style={styles.placeholder}>
-              <Ionicons name="person" size={24} color="#ccc" />
-            </View>
-            <TouchableOpacity
-              style={[styles.inputButton, { borderColor: textColor, flex: 1 }]}
-              onPress={() => router.push("/Community/CreatePost")}
-            >
-              <Text style={[styles.inputButtonText, { color: textColor }]}>
-                What's on your mind?
-              </Text>
-            </TouchableOpacity>
-          </View>
         </ScrollView>
 
-        {/* Bottom Nav */}
         <View
           style={[
             styles.navWrapper,
@@ -390,14 +577,8 @@ const styles = StyleSheet.create({
   },
   infoContainer: {
     width: "100%",
-    borderRadius: 10,
     padding: 15,
     marginBottom: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
   },
   infoTextContainer: {
     flexDirection: "column",
@@ -507,4 +688,123 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   inputButtonText: { fontSize: 14 },
+  chip: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    alignSelf: "flex-start",
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  postCard: {
+    width: "100%",
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  postHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  postAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#ddd",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  postHeaderText: {
+    flex: 1,
+  },
+  postAuthor: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  postTimestamp: {
+    fontSize: 12,
+    color: "gray",
+    marginTop: 2,
+  },
+  postContent: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  postActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 20,
+  },
+  postAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  postActionText: {
+    fontSize: 12,
+    color: "gray",
+  },
+  emptyState: {
+    width: "100%",
+    borderRadius: 10,
+    padding: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 15,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontWeight: "500",
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: "gray",
+    textAlign: "center",
+  },
+  buttonAlt: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginVertical: 10,
+    width: "100%",
+  },
+  buttonAltText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  coverCameraButton: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  servicesContainer: {
+    width: "100%",
+    padding: 15,
+    marginBottom: 15,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
 });
