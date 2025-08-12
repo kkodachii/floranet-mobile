@@ -16,7 +16,6 @@ import { Feather } from "@expo/vector-icons";
 import Navbar from "../../components/Navbar";
 import Header from "../../components/HeaderBack";
 
-// ✅ Reusable setting item
 const SettingItem = ({ icon, label, onPress, textColor }) => (
   <TouchableOpacity style={styles.settingItem} onPress={onPress}>
     {icon}
@@ -24,11 +23,10 @@ const SettingItem = ({ icon, label, onPress, textColor }) => (
   </TouchableOpacity>
 );
 
-// ✅ Main component
 const Option = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { residentName = "Juan Dela Cruz" } = useLocalSearchParams(); // dynamic name
+  const { residentName = "Juan Dela Cruz" } = useLocalSearchParams();
   const { theme, colors } = useTheme();
 
   const backgroundColor = colors.background;

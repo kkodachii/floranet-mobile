@@ -8,31 +8,73 @@ import {
   TouchableOpacity,
   Modal,
 } from "react-native";
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import Navbar from "../../components/Navbar";
-import Header from "../../components/HeaderBack";
+import HeaderBack from "../../components/HeaderBack";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { Ionicons, Feather } from "@expo/vector-icons";
-import * as NavigationBar from "expo-navigation-bar";
+
+const CHIP_LABELS = ["Posts", "Business"];
+
+const Chips = ({ selectedChip, onChipPress }) => {
+  const { colors, theme } = useTheme();
+  const buttonBackground = theme === "light" ? "#e1e5ea" : "#1F2633";
+  const textColor = colors.text;
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+        justifyContent: "flex-start",
+      }}
+    >
+      {CHIP_LABELS.map((label, index) => {
+        const isSelected = label === selectedChip;
+        return (
+          <TouchableOpacity
+            key={label}
+            onPress={() => onChipPress(label)}
+            style={[
+              styles.chip,
+              {
+                backgroundColor: isSelected ? "#28942c" : buttonBackground,
+                marginRight: index < CHIP_LABELS.length - 1 ? 8 : 0,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.chipText,
+                { color: isSelected ? "#fff" : textColor },
+              ]}
+            >
+              {label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+};
 
 const OtherProfile = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, theme } = useTheme();
+
   const [modalVisible, setModalVisible] = useState(false);
+  const [hideSensitiveInfo, setHideSensitiveInfo] = useState(false);
+  const [selectedChip, setSelectedChip] = useState("Posts");
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const cardBackground = theme === "light" ? "#ffffff" : "#14181F";
   const buttonBackground = theme === "light" ? "#e1e5ea" : "#1F2633";
   const textColor = colors.text;
-
-  useEffect(() => {
-    NavigationBar.setBackgroundColorAsync(navBarBackground);
-    NavigationBar.setButtonStyleAsync(theme === "light" ? "dark" : "light");
-  }, [theme, navBarBackground]);
 
   const residentData = {
     residentName: "Juan Dela Cruz",
@@ -42,7 +84,15 @@ const OtherProfile = () => {
     contactNumber: "09171234567",
     businessName: "Juan's Barbershop",
     services: ["Haircut", "Shave"],
-    posts: [],
+    posts: [
+      {
+        id: 1,
+        content: "Just opened my barbershop! Come visit for a fresh cut!",
+        timestamp: "2 days ago",
+        likes: 15,
+        comments: 3,
+      },
+    ],
   };
 
   const handleAction = (action) => {
@@ -63,6 +113,35 @@ const OtherProfile = () => {
     </TouchableOpacity>
   );
 
+  const PostCard = ({ post }) => (
+    <View style={[styles.postCard, { backgroundColor: cardBackground }]}>
+      <View style={styles.postHeader}>
+        <View style={styles.postAvatar}>
+          <Ionicons name="person" size={20} color="#ccc" />
+        </View>
+        <View style={styles.postHeaderText}>
+          <Text style={[styles.postAuthor, { color: textColor }]}>
+            {residentData.residentName}
+          </Text>
+          <Text style={styles.postTimestamp}>{post.timestamp}</Text>
+        </View>
+      </View>
+      <Text style={[styles.postContent, { color: textColor }]}>
+        {post.content}
+      </Text>
+      <View style={styles.postActions}>
+        <TouchableOpacity style={styles.postAction}>
+          <Ionicons name="heart-outline" size={16} color="gray" />
+          <Text style={styles.postActionText}>{post.likes}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.postAction}>
+          <Ionicons name="chatbubble-outline" size={16} color="gray" />
+          <Text style={styles.postActionText}>{post.comments}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView
       style={[
@@ -75,15 +154,20 @@ const OtherProfile = () => {
         barStyle={theme === "light" ? "dark-content" : "light-content"}
       />
       <View style={styles.container}>
-        <Header title="Settings" />
+        <HeaderBack title="Profile" onBack={() => router.back()} />
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.profileImageWrapper}>
-            <View
-              style={[
-                styles.placeholderImage,
-                { borderColor: buttonBackground },
-              ]}
-            />
+          <View
+            style={[
+              styles.coverPhotoWrapper,
+              { backgroundColor: buttonBackground },
+            ]}
+          >
+          </View>
+
+          <View style={styles.profileImageContainer}>
+            <View style={[styles.profileImage, { backgroundColor: "#e4e6ea" }]}>
+              <Ionicons name="person" size={40} color="#bcc0c4" />
+            </View>
           </View>
 
           <Text style={[styles.name, { color: textColor }]}>
@@ -96,8 +180,9 @@ const OtherProfile = () => {
           <View style={styles.profileActions}>
             <TouchableOpacity
               style={[styles.actionButton, { borderColor: textColor }]}
-              onPress={() => router.push("/Chat/ChatScreen")}
+              onPress={() => router.push("/Profile/EditProfile")}
             >
+              <Ionicons name="chatbubble-outline" size={14} color={textColor} style={{ marginRight: 6 }} />
               <Text style={[styles.buttonText, { color: textColor }]}>
                 Message
               </Text>
@@ -115,100 +200,198 @@ const OtherProfile = () => {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.sectionTitle}>Details</Text>
-
-          <View
-            style={[styles.infoContainer, { backgroundColor: cardBackground }]}
-          >
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>House Number:</Text>
-              <Text style={[styles.infoText, { color: textColor }]}>
-                {residentData.houseNumber}
-              </Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Street:</Text>
-              <Text style={[styles.infoText, { color: textColor }]}>
-                {residentData.street}
-              </Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Contact Number:</Text>
-              <Text style={[styles.infoText, { color: textColor }]}>
-                {residentData.contactNumber}
-              </Text>
-            </View>
-          </View>
-
-          <Text style={styles.sectionTitle}>Business</Text>
-
-          {residentData.businessName ? (
-            <View
-              style={[
-                styles.vendorContainer,
-                { backgroundColor: cardBackground },
-              ]}
-            >
-              <View style={styles.vendorProfileImage} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.vendorName, { color: textColor }]}>
-                  {residentData.businessName}
-                </Text>
-                <TouchableOpacity
-                  style={[
-                    styles.actionButton,
-                    { borderColor: textColor, marginTop: 8 },
-                  ]}
-                  onPress={() => router.push("/Profile/OtherBusiness")}
-                >
-                  <Text style={[styles.buttonText, { color: textColor }]}>
-                    Visit Profile
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <Text style={[styles.subText, { color: textColor }]}>None</Text>
-          )}
-
-          <Text style={styles.sectionTitle}>Services</Text>
-
-          {residentData.services.length > 0 ? (
-            <View
-              style={[
-                styles.infoContainer,
-                { backgroundColor: cardBackground, alignSelf: "stretch" },
-              ]}
-            >
-              {residentData.services.map((service, index) => (
-                <Text
-                  key={index}
-                  style={[
-                    styles.infoText,
-                    { color: textColor, marginBottom: 6 },
-                  ]}
-                >
-                  • {service}
-                </Text>
-              ))}
-            </View>
-          ) : (
-            <Text style={[styles.subText, { color: textColor }]}>None</Text>
-          )}
-
-          <Text style={styles.sectionTitle}>Previous Posts</Text>
           <View
             style={[
               styles.infoContainer,
-              { backgroundColor: cardBackground, alignSelf: "stretch" },
+              { backgroundColor: buttonBackground },
             ]}
           >
-            <Text style={[styles.subText, { color: textColor }]}>
-              Posts go here
-            </Text>
+            <View style={styles.infoHeader}>
+              <Text style={styles.sectionTitle}>Details</Text>
+            </View>
+
+            {!hideSensitiveInfo ? (
+              <>
+                <View style={styles.infoRow}>
+                  <Ionicons
+                    name="home-outline"
+                    size={28}
+                    color="gray"
+                    style={styles.infoIcon}
+                  />
+                  <View style={styles.infoTextContainer}>
+                    <Text style={styles.infoLabel}>House Number</Text>
+                    <Text style={[styles.infoText, { color: textColor }]}>
+                      {residentData.houseNumber}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.infoRow}>
+                  <Ionicons
+                    name="location-outline"
+                    size={28}
+                    color="gray"
+                    style={styles.infoIcon}
+                  />
+                  <View style={styles.infoTextContainer}>
+                    <Text style={styles.infoLabel}>Street</Text>
+                    <Text style={[styles.infoText, { color: textColor }]}>
+                      {residentData.street}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.infoRow}>
+                  <Ionicons
+                    name="call-outline"
+                    size={28}
+                    color="gray"
+                    style={styles.infoIcon}
+                  />
+                  <View style={styles.infoTextContainer}>
+                    <Text style={styles.infoLabel}>Contact Number</Text>
+                    <Text style={[styles.infoText, { color: textColor }]}>
+                      {residentData.contactNumber}
+                    </Text>
+                  </View>
+                </View>
+              </>
+            ) : (
+              <Text style={{ color: "gray", marginBottom: 10 }}>
+                This information is hidden from other users.
+              </Text>
+            )}
           </View>
+
+          <Chips selectedChip={selectedChip} onChipPress={setSelectedChip} />
+
+          {selectedChip === "Business" ? (
+            <View style={{ width: "100%", paddingHorizontal: 16 }}>
+              <Text style={[styles.sectionTitle, { marginLeft: 0 }]}>
+                Business
+              </Text>
+              {residentData.businessName ? (
+                <View
+                  style={[
+                    styles.vendorContainer,
+                    {
+                      backgroundColor: cardBackground,
+                      marginLeft: 0,
+                      marginRight: 0,
+                    },
+                  ]}
+                >
+                  <View style={styles.vendorProfileImage} />
+                  <View style={{ flex: 1, justifyContent: "center" }}>
+                    <Text style={[styles.vendorName, { color: textColor }]}>
+                      {residentData.businessName}
+                    </Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
+                        { borderColor: textColor, marginTop: 8 },
+                      ]}
+                      onPress={() => router.push("/Profile/OtherBusiness")}
+                    >
+                      <Text style={[styles.buttonText, { color: textColor }]}>
+                        View Profile
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
+                  <Text style={[styles.subText, { color: textColor }]}>
+                    None
+                  </Text>
+                </View>
+              )}
+
+              {/* Services Section */}
+              <Text style={[styles.sectionTitle, { marginLeft: 0 }]}>
+                Services
+              </Text>
+              {residentData.services.length > 0 ? (
+                <View
+                  style={[
+                    styles.servicesContainer,
+                    {
+                      backgroundColor: cardBackground,
+                      alignSelf: "stretch",
+                      marginLeft: 0,
+                      marginRight: 0,
+                    },
+                  ]}
+                >
+                  {residentData.services.map((service, index) => (
+                    <Text
+                      key={index}
+                      style={[
+                        styles.infoText,
+                        { color: textColor, marginBottom: 6 },
+                      ]}
+                    >
+                      • {service}
+                    </Text>
+                  ))}
+                </View>
+              ) : (
+                <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
+                  <Text style={[styles.subText, { color: textColor }]}>
+                    None
+                  </Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <View style={{ width: "100%", paddingHorizontal: 16 }}>
+              {/* Posts Section */}
+              <Text style={[styles.sectionTitle, { marginLeft: 0 }]}>
+                Posts
+              </Text>
+
+              {residentData.posts.length > 0 ? (
+                residentData.posts.map((post) => (
+                  <PostCard key={post.id} post={post} />
+                ))
+              ) : (
+                <View
+                  style={[
+                    styles.emptyState,
+                    { backgroundColor: buttonBackground },
+                  ]}
+                >
+                  <Ionicons
+                    name="document-text-outline"
+                    size={48}
+                    color="gray"
+                  />
+                  <Text style={[styles.emptyStateText, { color: textColor }]}>
+                    No posts yet
+                  </Text>
+                  <Text style={styles.emptyStateSubtext}>
+                    Share something with your community!
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
         </ScrollView>
 
+        <View
+          style={[
+            styles.navWrapper,
+            {
+              paddingBottom: insets.bottom || 16,
+              backgroundColor: navBarBackground,
+            },
+          ]}
+        >
+          <Navbar />
+        </View>
+
+        {/* Action Modal */}
         <Modal
           animationType="slide"
           transparent={true}
@@ -247,18 +430,6 @@ const OtherProfile = () => {
             </View>
           </TouchableOpacity>
         </Modal>
-
-        <View
-          style={[
-            styles.navWrapper,
-            {
-              paddingBottom: insets.bottom || 16,
-              backgroundColor: navBarBackground,
-            },
-          ]}
-        >
-          <Navbar />
-        </View>
       </View>
     </SafeAreaView>
   );
@@ -269,46 +440,68 @@ export default OtherProfile;
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { flex: 1, justifyContent: "space-between" },
-  scrollContainer: { alignItems: "center", padding: 25 },
-  placeholderImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "#ccc",
-    borderWidth: 2,
-  },
-  name: { fontSize: 30, fontWeight: "bold", marginBottom: 4 },
-  subText: { fontSize: 14, color: "gray", marginBottom: 6 },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-    textAlign: "left",
-    alignSelf: "flex-start",
-    color: "green",
-  },
-  infoContainer: {
+  scrollContainer: { alignItems: "center", paddingBottom: 30 },
+
+  coverPhotoWrapper: {
     width: "100%",
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
+    height: 140,
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  profileImageContainer: {
+    position: "relative",
+    marginBottom: 12,
+    marginTop: -80,
+    zIndex: 10,
+  },
+  profileImage: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: "#e4e6ea",
+    borderWidth: 6,
+    borderColor: "#ffffff",
+    justifyContent: "center",
+    alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 3,
+  },
+
+  name: { fontSize: 30, fontWeight: "bold", marginBottom: 4 },
+  subText: { fontSize: 14, color: "gray", marginBottom: 6 },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 20,
+    alignSelf: "flex-start",
+    color: "#28942c",
+  },
+  infoContainer: {
+    width: "100%",
+    padding: 15,
+    marginBottom: 15,
+  },
+  infoTextContainer: {
+    flexDirection: "column",
+    flex: 1,
   },
   infoRow: {
     flexDirection: "row",
-    justifyContent: "flex-start",
     alignItems: "center",
     marginBottom: 10,
+  },
+  infoIcon: {
+    marginRight: 10,
   },
   infoLabel: {
     fontWeight: "600",
     fontSize: 14,
-    color: "green",
-    marginRight: 6,
+    color: "gray",
   },
   infoText: {
     fontSize: 16,
@@ -345,32 +538,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginVertical: 10,
   },
-  buttonText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  profileImageWrapper: {
-    position: "relative",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-  },
-  profileActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 10,
-    marginBottom: 10,
-  },
-  iconButton: {
-    padding: 8,
-    borderWidth: 1,
-    borderRadius: 8,
-  },
+  buttonText: { fontSize: 14, fontWeight: "500" },
   overlay: {
     flex: 1,
-    justifyContent: "flex-end",
     backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
   },
   sheet: {
     borderTopLeftRadius: 12,
@@ -388,5 +560,134 @@ const styles = StyleSheet.create({
     marginLeft: 14,
     fontSize: 18,
     fontWeight: "500",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    width: "80%",
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  modalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 20 },
+  modalOption: { fontSize: 16, paddingVertical: 10 },
+  infoHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    alignSelf: "stretch",
+  },
+  profileActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  iconButton: {
+    padding: 8,
+    borderWidth: 1,
+    borderRadius: 8,
+  },
+  chip: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    alignSelf: "flex-start",
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  postCard: {
+    width: "100%",
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  postHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  postAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#ddd",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  postHeaderText: {
+    flex: 1,
+  },
+  postAuthor: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  postTimestamp: {
+    fontSize: 12,
+    color: "gray",
+    marginTop: 2,
+  },
+  postContent: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  postActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 20,
+  },
+  postAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  postActionText: {
+    fontSize: 12,
+    color: "gray",
+  },
+  emptyState: {
+    width: "100%",
+    borderRadius: 10,
+    padding: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 15,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontWeight: "500",
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: "gray",
+    textAlign: "center",
+  },
+  servicesContainer: {
+    width: "100%",
+    padding: 15,
+    marginBottom: 15,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
   },
 });
