@@ -1,4 +1,3 @@
-// MainBusiness.js
 import {
   StyleSheet,
   Text,
@@ -11,13 +10,12 @@ import {
 } from "react-native";
 import React, { useState } from "react";
 import Navbar from "../../components/Navbar";
-import Header from "../../components/Header";
+import HeaderBack from "../../components/HeaderBack";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { Ionicons } from "@expo/vector-icons";
 
-// Dummy data
 const residentData = {
   residentName: "Juan Dela Cruz",
   houseNumber: "23",
@@ -25,7 +23,7 @@ const residentData = {
   contactNumber: "09171234567",
   businessName: "Juan's Barbershop",
   services: ["Haircut", "Shave"],
-  posts: [], // simulate dynamic data later
+  posts: [],
 };
 
 const reviewsData = {
@@ -127,24 +125,39 @@ const MainBusiness = () => {
         barStyle={theme === "light" ? "dark-content" : "light-content"}
       />
       <View style={styles.container}>
-        <Header />
+        <HeaderBack title="Business Profile" onBack={() => router.back()} />
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          {/* Profile Picture */}
-          <View style={styles.profileImageWrapper}>
-            <View
-              style={[
-                styles.placeholderImage,
-                { borderColor: buttonBackground },
-              ]}
-            />
+          {/* Cover Photo Section */}
+          <View
+            style={[
+              styles.coverPhotoWrapper,
+              { backgroundColor: buttonBackground },
+            ]}
+          >
             <TouchableOpacity
               style={[
-                styles.cameraButton,
+                styles.coverCameraButton,
+                { backgroundColor: buttonBackground },
+              ]}
+              onPress={() => console.log("Change cover photo")}
+            >
+              <Ionicons name="camera" size={18} color={textColor} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Profile Picture Section */}
+          <View style={styles.profileImageContainer}>
+            <View style={[styles.profileImage, { backgroundColor: "#e4e6ea" }]}>
+              <Ionicons name="camera" size={40} color="#bcc0c4" />
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.cameraButtonLarge,
                 { backgroundColor: buttonBackground },
               ]}
               onPress={handlePickProfilePicture}
             >
-              <Ionicons name="camera" size={18} color={textColor} />
+              <Ionicons name="camera" size={16} color={textColor} />
             </TouchableOpacity>
           </View>
 
@@ -166,7 +179,7 @@ const MainBusiness = () => {
 
             <TouchableOpacity
               style={[styles.iconButton, { borderColor: textColor }]}
-               onPress={() => router.push("/Settings/MainSettings")}
+              onPress={() => router.push("/Settings/MainSettings")}
             >
               <Ionicons
                 name="ellipsis-horizontal"
@@ -176,11 +189,12 @@ const MainBusiness = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Ratings and Reviews */}
-          <Text style={styles.sectionTitle}>Ratings and Reviews</Text>
-
+          {/* Ratings and Reviews (Details Section) */}
           <View
-            style={[styles.infoContainer, { backgroundColor: cardBackground }]}
+            style={[
+              styles.infoContainer,
+              { backgroundColor: buttonBackground, marginHorizontal: 0 },
+            ]}
           >
             <View style={styles.ratingSummary}>
               <View style={styles.ratingLeft}>
@@ -204,9 +218,7 @@ const MainBusiness = () => {
               </TouchableOpacity>
             </View>
 
-            <View
-              style={[styles.divider, { backgroundColor: colors.border }]}
-            />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
             <View style={styles.reviewsContainer}>
               <Text style={[styles.recentReviewsTitle, { color: textColor }]}>
@@ -232,94 +244,105 @@ const MainBusiness = () => {
             </View>
           </View>
 
-          {/* Services */}
-          <Text style={styles.sectionTitle}>Services</Text>
-
-          <View
-            style={[
-              styles.infoContainer,
-              { backgroundColor: cardBackground, alignSelf: "stretch" },
-            ]}
-          >
-            {residentData.services.length > 0 ? (
-              <>
-                {residentData.services.map((service, index) => (
-                  <Text
-                    key={index}
-                    style={[
-                      styles.infoText,
-                      { color: textColor, marginBottom: 6 },
-                    ]}
-                  >
-                    • {service}
-                  </Text>
-                ))}
-                <TouchableOpacity
-                  style={[
-                    styles.actionButton,
-                    {
-                      borderColor: textColor,
-                      alignSelf: "flex-start",
-                      marginTop: 10,
-                    },
-                  ]}
-                  onPress={() => router.push("/Profile/EditServices")}
-                >
-                  <Text style={[styles.buttonText, { color: textColor }]}>
-                    Edit Services
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Text style={[styles.subText, { color: textColor }]}>None</Text>
-                <TouchableOpacity
-                  style={[
-                    styles.actionButton,
-                    { borderColor: textColor, marginTop: 8 },
-                  ]}
-                  onPress={() => router.push("/Profile/AddService")}
-                >
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <Ionicons name="add-outline" size={16} color={textColor} />
+          {/* Grouped Section with Padding */}
+          <View style={styles.sectionWrapper}>
+            {/* Services */}
+            <Text style={styles.sectionTitle}>Services</Text>
+            <View
+              style={[
+                styles.infoContainer,
+                styles.shadowContainer,
+                { backgroundColor: cardBackground },
+              ]}
+            >
+              {residentData.services.length > 0 ? (
+                <>
+                  {residentData.services.map((service, index) => (
                     <Text
+                      key={index}
                       style={[
-                        styles.buttonText,
-                        { color: textColor, marginLeft: 6 },
+                        styles.infoText,
+                        { color: textColor, marginBottom: 6 },
                       ]}
                     >
-                      Add Service
+                      • {service}
                     </Text>
-                  </View>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
+                  ))}
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      {
+                        borderColor: textColor,
+                        alignSelf: "flex-start",
+                        marginTop: 10,
+                      },
+                    ]}
+                    onPress={() => router.push("/Profile/EditServices")}
+                  >
+                    <Text style={[styles.buttonText, { color: textColor }]}>
+                      Edit Services
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <Text style={[styles.subText, { color: textColor }]}>
+                    None
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      { borderColor: textColor, marginTop: 8 },
+                    ]}
+                    onPress={() => router.push("/Profile/AddService")}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      <Ionicons
+                        name="add-outline"
+                        size={16}
+                        color={textColor}
+                      />
+                      <Text
+                        style={[
+                          styles.buttonText,
+                          { color: textColor, marginLeft: 6 },
+                        ]}
+                      >
+                        Add Service
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
 
-          <TouchableOpacity
-            style={[styles.buttonAlt, { backgroundColor: buttonBackground }]}
-            onPress={() => router.push("/Profile/ManagePost")}
-          >
-            <Text style={[styles.buttonAltText, { color: textColor }]}>
-              Manage Posts
-            </Text>
-          </TouchableOpacity>
-
-          {/* Previous Posts */}
-          <Text style={styles.sectionTitle}>Previous Posts</Text>
-          <View
-            style={[
-              styles.infoContainer,
-              { backgroundColor: cardBackground, alignSelf: "stretch" },
-            ]}
-          >
-            {residentData.posts.length > 0 ? (
-              <Text style={{ color: textColor }}>Posts go here</Text>
-            ) : (
-              <Text style={[styles.subText, { color: textColor }]}>
-                No posts yet.
+            {/* Manage Posts */}
+            <TouchableOpacity
+              style={[styles.buttonAlt, { backgroundColor: buttonBackground }]}
+              onPress={() => router.push("/Profile/ManagePost")}
+            >
+              <Text style={[styles.buttonAltText, { color: textColor }]}>
+                Manage Posts
               </Text>
-            )}
+            </TouchableOpacity>
+
+            {/* Previous Posts */}
+            <Text style={styles.sectionTitle}>Previous Posts</Text>
+            <View
+              style={[
+                styles.infoContainer,
+                styles.shadowContainer,
+                { backgroundColor: cardBackground },
+              ]}
+            >
+              {residentData.posts.length > 0 ? (
+                <Text style={{ color: textColor }}>Posts go here</Text>
+              ) : (
+                <Text style={[styles.subText, { color: textColor }]}>
+                  No posts yet.
+                </Text>
+              )}
+            </View>
           </View>
         </ScrollView>
 
@@ -390,14 +413,68 @@ export default MainBusiness;
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { flex: 1, justifyContent: "space-between" },
-  scrollContainer: { alignItems: "center", padding: 25 },
-  placeholderImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "#ccc",
-    borderWidth: 2,
+  scrollContainer: { alignItems: "center", paddingBottom: 30 },
+  sectionWrapper: { width: "100%", paddingHorizontal: 16 },
+
+  // Cover Photo Styles
+  coverPhotoWrapper: {
+    width: "100%",
+    height: 140,
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
   },
+  coverCameraButton: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  profileImageContainer: {
+    position: "relative",
+    marginBottom: 12,
+    marginTop: -80,
+    zIndex: 10,
+  },
+  profileImage: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: "#e4e6ea",
+    borderWidth: 6,
+    borderColor: "#ffffff",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cameraButtonLarge: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f0f2f5",
+    borderWidth: 2,
+    borderColor: "#ffffff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+
   name: { fontSize: 30, fontWeight: "bold", marginBottom: 4 },
   subText: { fontSize: 14, color: "gray", marginBottom: 6 },
   sectionTitle: {
@@ -410,30 +487,18 @@ const styles = StyleSheet.create({
   },
   infoContainer: {
     width: "100%",
-    borderRadius: 10,
     padding: 15,
     marginBottom: 15,
+    borderRadius: 8,
+  },
+  shadowContainer: {
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 4,
   },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "flex-start",
-    alignItems: "flex-start",
-    marginBottom: 10,
-    gap: 6,
-  },
-  infoLabel: {
-    fontWeight: "600",
-    fontSize: 14,
-    color: "green",
-  },
-  infoText: {
-    fontSize: 16,
-  },
+  infoText: { fontSize: 16 },
   navWrapper: { backgroundColor: "#fff" },
   actionButton: {
     flexDirection: "row",
@@ -445,10 +510,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginVertical: 10,
   },
-  buttonText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
+  buttonText: { fontSize: 14, fontWeight: "500" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -464,22 +526,6 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 20 },
   modalOption: { fontSize: 16, paddingVertical: 10 },
-  profileImageWrapper: {
-    position: "relative",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-  },
-  cameraButton: {
-    position: "absolute",
-    bottom: 5,
-    right: 5,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   profileActions: {
     flexDirection: "row",
     alignItems: "center",
@@ -492,29 +538,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
   },
-  // New styles for enhanced reviews section
   ratingSummary: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 15,
   },
-  ratingLeft: {
-    flex: 1,
-  },
-  averageRating: {
-    fontSize: 32,
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
-  starsContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  totalReviews: {
-    fontSize: 14,
-  },
+  ratingLeft: { flex: 1 },
+  averageRating: { fontSize: 32, fontWeight: "bold", marginBottom: 4 },
+  totalReviews: { fontSize: 14 },
   viewAllButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -523,34 +555,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
   },
-  viewAllText: {
-    fontSize: 14,
-    fontWeight: "500",
-    marginRight: 4,
-  },
-  divider: {
-    height: 1,
-    width: "100%",
-    marginBottom: 15,
-  },
-  reviewsContainer: {
-    width: "100%",
-  },
-  recentReviewsTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 12,
-  },
-  reviewItem: {
-    marginBottom: 16,
-  },
-  reviewHeader: {
-    marginBottom: 8,
-  },
-  reviewerInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
+  viewAllText: { fontSize: 14, fontWeight: "500", marginRight: 4 },
+  divider: { height: 1, width: "100%", marginBottom: 15 },
+  reviewsContainer: { width: "100%" },
+  recentReviewsTitle: { fontSize: 16, fontWeight: "600", marginBottom: 12 },
+  reviewItem: { marginBottom: 16 },
+  reviewHeader: { marginBottom: 8 },
+  reviewerInfo: { flexDirection: "row", alignItems: "center" },
   avatarPlaceholder: {
     width: 36,
     height: 36,
@@ -560,41 +571,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 12,
   },
-  avatarText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  reviewerDetails: {
-    flex: 1,
-  },
-  reviewerName: {
-    fontWeight: "600",
-    fontSize: 15,
-    marginBottom: 2,
-  },
-  ratingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  reviewDate: {
-    fontSize: 12,
-    marginLeft: 8,
-  },
-  reviewComment: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginLeft: 48,
-  },
-  showMoreReviews: {
-    alignItems: "center",
-    paddingVertical: 8,
-    marginTop: 8,
-  },
-  showMoreText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
+  avatarText: { color: "white", fontWeight: "bold", fontSize: 16 },
+  reviewerDetails: { flex: 1 },
+  reviewerName: { fontWeight: "600", fontSize: 15, marginBottom: 2 },
+  ratingRow: { flexDirection: "row", alignItems: "center" },
+  reviewDate: { fontSize: 12, marginLeft: 8 },
+  reviewComment: { fontSize: 14, lineHeight: 20, marginLeft: 48 },
   buttonAlt: {
     alignItems: "center",
     justifyContent: "center",
@@ -604,8 +586,5 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     width: "100%",
   },
-  buttonAltText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
+  buttonAltText: { fontSize: 14, fontWeight: "500" },
 });

@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../Theme/ThemeProvider';
 
-const CommentSection = ({ comments = [], onCommentAdd, postId }) => {
+const CommentSection = ({ comments = [], onCommentAdd, onCommentReply, postId }) => {
   const { colors, theme } = useTheme();
   const [newComment, setNewComment] = useState('');
   
@@ -26,8 +26,14 @@ const CommentSection = ({ comments = [], onCommentAdd, postId }) => {
     }
   };
 
+  const handleReply = (commentId, author) => {
+    if (onCommentReply) {
+      onCommentReply(commentId, author);
+    }
+  };
+
   const renderComment = ({ item }) => (
-    <View style={[styles.commentItem, { borderBottomColor: colors.border || '#e0e0e0' }]}>
+    <View style={styles.commentItem}>
       <View style={styles.commentAvatar}>
         {item.avatar ? (
           <Image source={{ uri: item.avatar }} style={styles.commentAvatarImage} />
@@ -44,9 +50,19 @@ const CommentSection = ({ comments = [], onCommentAdd, postId }) => {
           <Text style={[styles.commentAuthor, { color: textColor }]}>{item.author}</Text>
           <Text style={[styles.commentText, { color: textColor }]}>{item.content}</Text>
         </View>
-        <Text style={[styles.commentTime, { color: colors.textSecondary || '#666' }]}>
-          {item.time}
-        </Text>
+        <View style={styles.commentActions}>
+          <Text style={[styles.commentTime, { color: colors.textSecondary || '#666' }]}>
+            {item.time}
+          </Text>
+          <TouchableOpacity
+            style={styles.replyButton}
+            onPress={() => handleReply(item.id, item.author)}
+          >
+            <Text style={[styles.replyButtonText, { color: colors.textSecondary || '#666' }]}>
+              Reply
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -82,18 +98,13 @@ const CommentSection = ({ comments = [], onCommentAdd, postId }) => {
         borderTopColor: colors.border || '#e0e0e0' 
       }]}>
         <View style={styles.commentInputRow}>
-          <View style={styles.commentInputAvatar}>
-            <View style={[styles.commentAvatarPlaceholder, { backgroundColor: colors.border || '#e0e0e0' }]}>
-              <Text style={[styles.commentAvatarText, { color: textColor }]}>U</Text>
-            </View>
-          </View>
           <TextInput
             style={[styles.commentInput, { 
               backgroundColor: buttonBackground, 
               color: textColor,
               borderColor: colors.border || '#e0e0e0'
             }]}
-            placeholder="Write a comment..."
+            placeholder="Comment..."
             placeholderTextColor={colors.textSecondary || '#666'}
             value={newComment}
             onChangeText={setNewComment}
@@ -103,7 +114,7 @@ const CommentSection = ({ comments = [], onCommentAdd, postId }) => {
           <TouchableOpacity
             style={[styles.sendButton, { 
               backgroundColor: newComment.trim() 
-                ? (colors.primary || '#007AFF') 
+                ? '#22C55E' // Green color
                 : (colors.border || '#e0e0e0')
             }]}
             onPress={handleAddComment}
@@ -150,7 +161,7 @@ const styles = StyleSheet.create({
   commentItem: {
     flexDirection: 'row',
     paddingVertical: 12,
-    borderBottomWidth: 0.5,
+    // Removed borderBottomWidth and borderBottomColor
   },
   commentAvatar: {
     width: 32,
@@ -192,9 +203,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 18,
   },
+  commentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
   commentTime: {
     fontSize: 11,
-    marginLeft: 8,
+    marginRight: 12,
+  },
+  replyButton: {
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+  },
+  replyButtonText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   commentInputContainer: {
     borderTopWidth: 1,
@@ -204,12 +228,6 @@ const styles = StyleSheet.create({
   commentInputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-  },
-  commentInputAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 8,
   },
   commentInput: {
     flex: 1,

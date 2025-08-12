@@ -171,6 +171,31 @@ const CommunityHomepage = () => {
   const handleChatPress = () => router.push("/Chat/ChatHomepage");
   const goToCreatePost = () => router.push("/Community/CreatePost");
   const goToSearch = () => router.push("/Community/Search");
+  const goToViewPost = (postData, index) => {
+    // Navigate to ViewPost page with post data
+    router.push({
+      pathname: "/Community/ViewPost",
+      params: {
+        postId: index.toString(),
+        homeownerName: postData.homeownerName || '',
+        residentId: postData.residentId || '',
+        postTime: postData.postTime || '',
+        caption: postData.caption || '',
+        category: postData.category || '',
+        commentCount: postData.commentCount?.toString() || '0',
+        likes: postData.likes?.toString() || '0',
+        residentName: postData.residentName || '',
+        residentID: postData.residentID || '',
+        houseNumber: postData.houseNumber || '',
+        street: postData.street || '',
+        businessName: postData.businessName || '',
+        contactNumber: postData.contactNumber || '',
+        eventDateTime: postData.event?.dateTime || '',
+        eventLocation: postData.event?.location || '',
+        eventImage: postData.event?.image || '',
+      },
+    });
+  };
 
   const posts = [
     {
@@ -271,7 +296,11 @@ const CommunityHomepage = () => {
       key={`event-${index}`}
       style={[styles.eventCard, { backgroundColor: cardBackground }]}
     >
-      <View style={styles.eventImageContainer}>
+      <TouchableOpacity
+        style={styles.eventImageContainer}
+        onPress={() => goToViewPost(post, index)}
+        activeOpacity={0.8}
+      >
         <ImageBackground
           source={{
             uri:
@@ -298,12 +327,13 @@ const CommunityHomepage = () => {
                   : "rgba(255,255,255,0.9)",
               },
             ]}
-            onPress={() =>
+            onPress={(e) => {
+              e.stopPropagation();
               setInterestedStates((prev) => ({
                 ...prev,
                 [index]: !prev[index],
-              }))
-            }
+              }));
+            }}
           >
             <Text
               style={[
@@ -315,7 +345,7 @@ const CommunityHomepage = () => {
             </Text>
           </TouchableOpacity>
         </ImageBackground>
-      </View>
+      </TouchableOpacity>
 
       <View style={styles.eventDetailsContainer}>
         <Text style={[styles.eventTitleMain, { color: textColor }]}>
@@ -352,6 +382,7 @@ const CommunityHomepage = () => {
   const renderPostCard = (post, index) => {
     const lowerCat = (post.category || "").toLowerCase();
     const isVendorOrBusiness = ["vendor", "business"].includes(lowerCat);
+    const isAnnouncement = lowerCat === "announcement";
     const isLiked = !!likedPosts[index];
 
     return (
@@ -389,10 +420,20 @@ const CommunityHomepage = () => {
           {post.caption}
         </Text>
 
-        {/* Image placeholder or actual image (kept simple) */}
-        <View style={styles.imagePlaceholder}>
-          <Text style={{ color: "#888" }}>Photo goes here</Text>
-        </View>
+        {/* Image placeholder - clickable for non-announcement posts */}
+        {isAnnouncement ? (
+          <View style={styles.imagePlaceholder}>
+            <Text style={{ color: "#888" }}>Photo goes here</Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.imagePlaceholder}
+            onPress={() => goToViewPost(post, index)}
+            activeOpacity={0.8}
+          >
+            <Text style={{ color: "#888" }}>Photo goes here</Text>
+          </TouchableOpacity>
+        )}
 
         {isVendorOrBusiness && (
           <View style={{ marginTop: 4, marginBottom: 12 }}>
@@ -791,5 +832,5 @@ const styles = StyleSheet.create({
   },
   bottomSheetTitle: { fontSize: 18, fontWeight: "bold" },
 
-  navWrapper: { backgroundColor: "#fff" },
+  navWrapper: { backgroundColor: "#968585ff" },
 });
