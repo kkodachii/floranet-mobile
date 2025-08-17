@@ -1,11 +1,11 @@
-// app/_layout.jsx
+import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { View, StyleSheet, Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
 import * as NavigationBar from "expo-navigation-bar";
 import { ThemeProvider, useTheme } from "../Theme/ThemeProvider";
 import { NotificationProvider } from "../services/NotificationContext";
+import OneSignal, { LogLevel } from "react-native-onesignal";
 
 function AppLayout() {
   const { colors, theme } = useTheme();
@@ -23,18 +23,29 @@ function AppLayout() {
         style={theme === "dark" ? "light" : "dark"}
         backgroundColor={colors.background}
       />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          animation: "none",
-        }}
-      />
+      <Stack screenOptions={{ headerShown: false, animation: "none" }} />
     </View>
   );
 }
 
-// ✅ Wrap AppLayout in ThemeProvider
-export default function LayoutWrapper() {
+export default function RootLayout() {
+  useEffect(() => {
+    OneSignal.Debug.setLogLevel(LogLevel.Verbose);
+    OneSignal.initialize("4df5f254-b383-4ac7-80f4-8b3c1afacb06");
+
+    // Prompt the user for push notification permissions
+    OneSignal.Notifications.requestPermission(true);
+
+    // Optional: listen for notifications
+    const listener = OneSignal.Notifications.addEventListener("click", (event) => {
+      console.log("Notification clicked:", event);
+    });
+
+    return () => {
+      OneSignal.Notifications.removeEventListener("click", listener);
+    };
+  }, []);
+
   return (
     <ThemeProvider>
       <NotificationProvider>
@@ -45,7 +56,5 @@ export default function LayoutWrapper() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
 });
