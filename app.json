@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -19,8 +19,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff",
-        "package": "com.hyem23.floranetmobile"
+        "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.hyem23.floranetmobile"
@@ -34,7 +33,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "d56b29be-a8c4-44f3-98d9-9fd80e1da57e"
+        "projectId": "2bdab005-00f1-4a53-8e4d-8279bfc67ec7"
       }
     }
   }
