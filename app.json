@@ -31,8 +31,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "2bdab005-00f1-4a53-8e4d-8279bfc67ec7"
+        "projectId": "ce22327e-86b7-4c70-a706-6ab70155ec93"
       }
-    }
+    },
+    "owner": "floranet"
   }
 }
