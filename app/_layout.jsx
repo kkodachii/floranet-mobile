@@ -23,6 +23,7 @@ function AppLayout() {
         style={theme === "dark" ? "light" : "dark"}
       />
       <Stack
+        initialRouteName="index"
         screenOptions={{
           headerShown: false,
           animation: "none",
