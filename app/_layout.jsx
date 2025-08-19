@@ -21,7 +21,6 @@ function AppLayout() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar
         style={theme === "dark" ? "light" : "dark"}
-        backgroundColor={colors.background}
       />
       <Stack
         screenOptions={{
