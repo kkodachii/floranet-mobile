@@ -36,5 +36,15 @@
     "@babel/core": "^7.20.0",
     "@babel/plugin-syntax-flow": "^7.27.1"
   },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "@react-native-community/checkbox",
+          "react-native-modalize"
+        ]
+      }
+    }
+  },
   "private": true
 }
