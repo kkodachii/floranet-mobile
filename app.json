@@ -7,7 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -19,10 +18,8 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff",
-        "package": "com.hyem23.floranetmobile"
+        "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
       "package": "com.hyem23.floranetmobile"
     },
     "web": {
@@ -34,8 +31,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "d56b29be-a8c4-44f3-98d9-9fd80e1da57e"
+        "projectId": "ce22327e-86b7-4c70-a706-6ab70155ec93"
       }
-    }
+    },
+    "owner": "floranet"
   }
 }
