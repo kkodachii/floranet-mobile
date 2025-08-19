@@ -8,7 +8,16 @@ import { useNotifications } from "../services/NotificationContext";
 const Header = () => {
   const { theme, colors } = useTheme();
   const router = useRouter();
-  const { unreadCount } = useNotifications();
+  
+  // Make notifications optional to prevent crashes
+  let unreadCount = 0;
+  try {
+    const notifications = useNotifications();
+    unreadCount = notifications.unreadCount;
+  } catch (error) {
+    // If NotificationProvider is not available, just continue without notifications
+    console.warn("NotificationProvider not available:", error.message);
+  }
 
   const isDarkMode = theme === "dark";
 

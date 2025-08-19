@@ -297,4 +297,9 @@ export const getPaymentIntent = async (paymentIntentId) => {
   }
 };
 
-export { PAYMONGO_SECRET_KEY, PAYMONGO_PUBLIC_KEY }; 
+export { PAYMONGO_SECRET_KEY, PAYMONGO_PUBLIC_KEY };
+
+// Default export for Expo Router
+export default function PayMongoUtils() {
+  return null;
+} 
