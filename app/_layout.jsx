@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import * as NavigationBar from "expo-navigation-bar";
 import { ThemeProvider, useTheme } from "../Theme/ThemeProvider";
 import { NotificationProvider } from "../services/NotificationContext";
-import { authStorage, setAuthToken } from "../services/api";
+import { setAuthToken } from "../services/api";
 
 function AppLayout() {
   const { colors, theme } = useTheme();
@@ -23,11 +23,7 @@ function AppLayout() {
   useEffect(() => {
     (async () => {
       try {
-        const { token } = await authStorage.load();
-        if (token) {
-          setAuthToken(token);
-          router.replace("/MainHomepage");
-        }
+        // No persistent token; start at login every time
       } catch (_) {}
       setCheckingAuth(false);
     })();
@@ -45,12 +41,14 @@ function AppLayout() {
     <View style={[styles.container, { backgroundColor: colors.background }]}> 
       <StatusBar
         style={theme === "dark" ? "light" : "dark"}
+        backgroundColor={colors.background}
       />
       <Stack
         initialRouteName="index"
         screenOptions={{
           headerShown: false,
           animation: "none",
+          contentStyle: { backgroundColor: colors.background },
         }}
       />
     </View>

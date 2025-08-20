@@ -63,7 +63,7 @@ const Option = () => {
         barStyle={theme === "light" ? "dark-content" : "light-content"}
       />
 
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor }]}> 
         {/* ✅ Dynamic header title */}
         <Header title={residentName} />
 

@@ -20,7 +20,13 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.hyem23.floranetmobile"
+      "package": "com.hyem23.floranetmobile",
+      "backgroundColor": "#f6f7f9"
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#f6f7f9",
+      "barStyle": "dark-content",
+      "translucent": false
     },
     "web": {
       "favicon": "./assets/favicon.png"

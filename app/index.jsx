@@ -14,7 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import Logo from "../assets/floranet.png";
 import { useTheme } from "../Theme/ThemeProvider";
-import { authService, setAuthToken, authStorage } from "../services/api";
+import { authService, setAuthToken } from "../services/api";
 
 const Index = () => {
   const router = useRouter();
@@ -40,7 +40,7 @@ const Index = () => {
       const result = await authService.login({ email, password });
       if (result?.token) {
         setAuthToken(result.token);
-        await authStorage.save({ token: result.token, user: result.user });
+        // no persistent save; rely on in-memory token and profile cache
       }
       router.replace("/MainHomepage");
     } catch (e) {

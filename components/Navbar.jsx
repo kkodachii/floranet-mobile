@@ -48,6 +48,11 @@ const Navbar = () => {
     },
   ];
 
+  const handleNavigate = (route) => {
+    if (pathname === route) return; // Avoid redundant navigation and remount
+    router.navigate(route);
+  };
+
   return (
     <View
       style={[
@@ -67,7 +72,7 @@ const Navbar = () => {
           <TouchableOpacity
             key={tab.id}
             style={styles.tabItem}
-            onPress={() => router.replace(tab.route)}
+            onPress={() => handleNavigate(tab.route)}
             activeOpacity={0.7}
           >
             <Ionicons

@@ -1,5 +1,4 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.8.14:8000/api';
 export const API_ORIGIN = API_BASE_URL.replace(/\/?api$/, '');
@@ -31,20 +30,9 @@ export const setAuthToken = (token) => {
 };
 
 export const authStorage = {
-  save: async ({ token, user }) => {
-    if (token) await SecureStore.setItemAsync(TOKEN_KEY, token);
-    if (user) await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
-  },
-  load: async () => {
-    const token = await SecureStore.getItemAsync(TOKEN_KEY);
-    const userJson = await SecureStore.getItemAsync(USER_KEY);
-    const user = userJson ? JSON.parse(userJson) : null;
-    return { token, user };
-  },
-  clear: async () => {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
-    await SecureStore.deleteItemAsync(USER_KEY);
-  },
+  save: async () => {},
+  load: async () => ({ token: null, user: null }),
+  clear: async () => {},
 };
 
 // In-memory user cache and dedupe
@@ -52,6 +40,12 @@ let profileCache = null;
 let profileCachedAt = 0;
 let inflightProfilePromise = null;
 const PROFILE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+
+// Throttle and error backoff for profile fetching
+let lastProfileFetchMs = 0;
+let errorBackoffUntilMs = 0;
+const MIN_FETCH_GAP_MS = 5 * 1000; // do not refetch more than once every 5s
+const ERROR_BACKOFF_MS = 10 * 1000; // wait 10s after an error before trying again
 
 export const authService = {
   // User registration
@@ -87,27 +81,60 @@ export const authService = {
     setAuthToken(null);
     profileCache = null;
     profileCachedAt = 0;
+    inflightProfilePromise = null;
+    lastProfileFetchMs = 0;
+    errorBackoffUntilMs = 0;
   },
   // Get current user profile (with house)
   getProfile: async () => {
     const response = await api.get('/user/profile');
     return response.data;
   },
-  // Cached profile getter with TTL and request dedupe
+  // Cached profile getter with TTL, throttle, error backoff, and request dedupe
   getProfileCached: async ({ force = false } = {}) => {
     const now = Date.now();
+
+    // If we don't have an auth token set, avoid network and return best-known user
+    const hasAuthHeader = Boolean(api.defaults.headers.common['Authorization']);
+    if (!hasAuthHeader) {
+      if (profileCache) return profileCache;
+      return null;
+    }
+
+    // Respect error backoff period
+    if (!force && now < errorBackoffUntilMs) {
+      return profileCache;
+    }
+
+    // Return fresh-enough cache
     if (!force && profileCache && (now - profileCachedAt) < PROFILE_TTL_MS) {
       return profileCache;
     }
+
+    // Throttle frequent calls
+    if (!force && (now - lastProfileFetchMs) < MIN_FETCH_GAP_MS && profileCache) {
+      return profileCache;
+    }
+
     if (inflightProfilePromise) return inflightProfilePromise;
 
+    lastProfileFetchMs = now;
     inflightProfilePromise = (async () => {
-      const user = await authService.getProfile();
-      profileCache = user;
-      profileCachedAt = Date.now();
-      await authStorage.save({ token: await SecureStore.getItemAsync(TOKEN_KEY), user });
-      inflightProfilePromise = null;
-      return user;
+      try {
+        const user = await authService.getProfile();
+        profileCache = user;
+        profileCachedAt = Date.now();
+        errorBackoffUntilMs = 0; // clear backoff on success
+        inflightProfilePromise = null;
+        return user;
+      } catch (err) {
+        // Set a backoff window to avoid spamming on errors
+        errorBackoffUntilMs = Date.now() + ERROR_BACKOFF_MS;
+        inflightProfilePromise = null;
+        // Return cached user if available; otherwise propagate null
+        if (profileCache) return profileCache;
+        return null;
+      }
     })();
 
     return inflightProfilePromise;
@@ -117,7 +144,6 @@ export const authService = {
     const user = await authService.getProfile();
     profileCache = user;
     profileCachedAt = Date.now();
-    await authStorage.save({ token: await SecureStore.getItemAsync(TOKEN_KEY), user });
     return user;
   },
   // Update profile (name, email, contact_no, optional password with current_password)
@@ -140,14 +166,42 @@ export const authService = {
   },
 };
 
-// Initialize token from storage and seed cache on module load
-(async () => {
-  try {
-    const { token, user } = await authStorage.load();
-    if (token) setAuthToken(token);
-    if (user) {
-      profileCache = user;
-      profileCachedAt = Date.now();
+export const complaintsService = {
+  list: async ({ page = 1 } = {}) => {
+    const response = await api.get('/user/complaints', { params: { page } });
+    return response.data; // Laravel resource collection with data, links, meta
+  },
+  create: async (payload) => {
+    const response = await api.post('/user/complaints', payload);
+    return response.data; // Complaint resource object
+  },
+  addFollowup: async (complaintId, message) => {
+    const response = await api.patch(`/user/complaints/${complaintId}/followups`, { followups: message });
+    return response.data;
+  },
+  getNextId: async () => {
+    // Authorized user route preferred
+    try {
+      const response = await api.get('/user/complaints-next-id');
+      return response.data?.next_log_id;
+    } catch (_) {
+      // Fallback to public route if authorized fails
+      const response = await api.get('/complaints-next-id');
+      return response.data?.next_log_id;
     }
-  } catch (_) {}
-})(); 
+  },
+};
+
+export const alertsService = {
+  list: async ({ page = 1, type, status } = {}) => {
+    const params = { page };
+    if (type) params.type = type;
+    if (status) params.status = status;
+    const response = await api.get('/user/alerts', { params });
+    return response.data; // { success, data: ResourceCollection, pagination }
+  },
+  create: async (payload) => {
+    const response = await api.post('/user/alerts', payload);
+    return response.data; // { success, message, data: Resource }
+  },
+}; 

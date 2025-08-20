@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, ScrollView, Alert, TextInput, FlatList, Modal, Platform } from "react-native";
-import React, { useState } from "react";
+import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, ScrollView, Alert, TextInput, FlatList, Modal, Platform, RefreshControl } from "react-native";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Navbar from "../../../components/Navbar";
 import HeaderBack from "../../../components/HeaderBack";
 import { useRouter } from "expo-router";
@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../Theme/ThemeProvider";
 import { StatusBar } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
+import { complaintsService, authService } from "../../../services/api";
+import { useFocusEffect } from '@react-navigation/native';
 
 const Complaints = () => {
   const insets = useSafeAreaInsets();
@@ -20,55 +22,19 @@ const Complaints = () => {
   const [followUpMessage, setFollowUpMessage] = useState('');
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [selectedComplaintId, setSelectedComplaintId] = useState(null);
+  const [complaints, setComplaints] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [successModalText, setSuccessModalText] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const isFetchingRef = useRef(false);
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const cardBackground = theme === "light" ? "#ffffff" : "#1F2633";
   const textColor = colors.text;
-
-  // Mock data for complaints
-  const [complaints, setComplaints] = useState([
-    {
-      id: '1',
-      title: 'Noise from construction',
-      description: 'Excessive noise from construction work in Building B',
-      category: 'General',
-      priority: 'Medium',
-      date: '2024-01-15',
-      status: 'pending',
-      ticketNumber: 'COMP-2024-001',
-      followUps: []
-    },
-    {
-      id: '2',
-      title: 'Water supply issue',
-      description: 'No water supply in Building A for the past 2 days',
-      category: 'Service',
-      priority: 'High',
-      date: '2024-01-14',
-      status: 'processing',
-      ticketNumber: 'COMP-2024-002',
-      followUps: [
-        {
-          id: '1',
-          message: 'Any updates on the water supply restoration?',
-          date: '2024-01-15',
-          time: '10:30'
-        }
-      ]
-    },
-    {
-      id: '3',
-      title: 'Security concern',
-      description: 'Suspicious activity near the main gate',
-      category: 'General',
-      priority: 'High',
-      date: '2024-01-13',
-      status: 'completed',
-      ticketNumber: 'COMP-2024-003',
-      followUps: []
-    }
-  ]);
 
   const categories = [
     { id: 'general', name: 'General', icon: 'alert-circle-outline' },
@@ -81,30 +47,81 @@ const Complaints = () => {
     { id: 'high', name: 'High', color: '#E74C3C' }
   ];
 
-  const handleSubmitComplaint = () => {
-    if (!complaintTitle.trim() || !complaintDescription.trim() || !complaintCategory || !complaintPriority) {
-      return;
+  const mapStatusToUi = (status) => {
+    switch (status) {
+      case 'open': return 'pending';
+      case 'in_progress': return 'processing';
+      case 'resolved':
+      case 'closed': return 'completed';
+      default: return 'pending';
     }
-
-    const newComplaint = {
-      id: Date.now().toString(),
-      title: complaintTitle,
-      description: complaintDescription,
-      category: complaintCategory,
-      priority: complaintPriority,
-      date: new Date().toISOString().split('T')[0],
-      status: 'pending',
-      ticketNumber: `COMP-2024-${String(complaints.length + 1).padStart(3, '0')}`,
-      followUps: []
-    };
-
-    setComplaints([newComplaint, ...complaints]);
-    setComplaintTitle('');
-    setComplaintDescription('');
-    setComplaintCategory('');
-    setComplaintPriority('');
-    setActiveTab('ongoing');
   };
+
+  const parseFollowups = (followupsString, complaintId) => {
+    if (!followupsString) return [];
+    const parts = String(followupsString).split(/\n{2,}/).filter(Boolean);
+    return parts.map((raw, idx) => {
+      const match = raw.match(/^\[([^\]]+)\]\s*(.*)$/);
+      const sender = match ? match[1] : 'User';
+      const message = match ? match[2] : raw;
+      return { id: `${complaintId}-${idx}`, sender, message };
+    });
+  };
+
+  const mapComplaint = (c) => ({
+    id: String(c.id),
+    title: c.complained_title,
+    description: c.description,
+    category: c.category ? c.category.charAt(0).toUpperCase() + c.category.slice(1) : '',
+    priority: c.priority ? c.priority.charAt(0).toUpperCase() + c.priority.slice(1) : '',
+    date: c.complained_at ? String(c.complained_at).slice(0, 10) : '',
+    status: mapStatusToUi(c.status),
+    ticketNumber: c.log_id,
+    followUps: parseFollowups(c.followups, c.id),
+    remarks: c.remarks || '',
+  });
+
+  const fetchComplaints = useCallback(async () => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+    try {
+      setError(null);
+      const user = await authService.getProfileCached();
+      setCurrentUser(user);
+      const res = await complaintsService.list({ page: 1 });
+      const items = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      const mapped = items
+        .filter((c) => !user?.id || c.resident_id === user.id)
+        .map(mapComplaint);
+      setComplaints(mapped);
+    } catch (e) {
+      setError('Failed to load complaints');
+    } finally {
+      isFetchingRef.current = false;
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchComplaints();
+  }, [fetchComplaints]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (activeTab !== 'ongoing') return undefined;
+      fetchComplaints();
+      const intervalId = setInterval(() => {
+        fetchComplaints();
+      }, 2000);
+      return () => clearInterval(intervalId);
+    }, [activeTab])
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchComplaints();
+  }, [fetchComplaints]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -129,31 +146,69 @@ const Complaints = () => {
     return priorityObj ? priorityObj.color : '#999';
   };
 
-  const handleFollowUp = () => {
-    if (!followUpMessage.trim()) {
+  const computeNextLogIdAsync = async () => {
+    try {
+      const next = await complaintsService.getNextId();
+      if (next) return next;
+    } catch (_) {}
+    return 'COMP-0001';
+  };
+
+  const handleSubmitComplaint = async () => {
+    if (!complaintTitle.trim() || !complaintDescription.trim() || !complaintCategory || !complaintPriority || !currentUser?.id) {
       return;
     }
 
-    const updatedComplaints = complaints.map(complaint => {
-      if (complaint.id === selectedComplaintId) {
-        const newFollowUp = {
-          id: Date.now().toString(),
-          message: followUpMessage,
-          date: new Date().toISOString().split('T')[0],
-          time: new Date().toTimeString().split(' ')[0].substring(0, 5)
-        };
-        return {
-          ...complaint,
-          followUps: [...complaint.followUps, newFollowUp]
-        };
-      }
-      return complaint;
-    });
+    try {
+      setIsLoading(true);
+      const nextLogId = await computeNextLogIdAsync();
+      const payload = {
+        log_id: nextLogId,
+        category: complaintCategory.toLowerCase(),
+        resident_id: currentUser.id,
+        complained_at: new Date().toISOString(),
+        complained_title: complaintTitle.trim(),
+        priority: complaintPriority.toLowerCase(),
+        description: complaintDescription.trim(),
+        status: 'open',
+      };
+      const created = await complaintsService.create(payload);
+      const mapped = mapComplaint(created?.data ? created.data : created);
+      setComplaints(prev => [mapped, ...prev]);
+      setComplaintTitle('');
+      setComplaintDescription('');
+      setComplaintCategory('');
+      setComplaintPriority('');
+      setActiveTab('ongoing');
+      setSuccessModalText('Your complaint has been submitted successfully.');
+      setSuccessModalVisible(true);
+      fetchComplaints();
+    } catch (e) {
+      Alert.alert('Error', 'Failed to submit complaint.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    setComplaints(updatedComplaints);
-    setFollowUpMessage('');
-    setShowFollowUpModal(false);
-    setSelectedComplaintId(null);
+  const handleFollowUp = async () => {
+    if (!followUpMessage.trim() || !selectedComplaintId) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const updated = await complaintsService.addFollowup(selectedComplaintId, followUpMessage.trim());
+      const mapped = mapComplaint(updated?.data ? updated.data : updated);
+      setComplaints(prev => prev.map(c => (c.id === String(mapped.id) ? mapped : c)));
+      setFollowUpMessage('');
+      setShowFollowUpModal(false);
+      setSelectedComplaintId(null);
+      fetchComplaints();
+    } catch (e) {
+      Alert.alert('Error', 'Failed to send follow-up.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const openFollowUpModal = (complaintId) => {
@@ -217,6 +272,9 @@ const Complaints = () => {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#28942c"]} />
+          }
         >
           {activeTab === 'general' ? (
             <View style={styles.complaintForm}>
@@ -319,7 +377,7 @@ const Complaints = () => {
                     { opacity: complaintTitle && complaintDescription && complaintCategory && complaintPriority ? 1 : 0.5 }
                   ]}
                   onPress={handleSubmitComplaint}
-                  disabled={!complaintTitle || !complaintDescription || !complaintCategory || !complaintPriority}
+                  disabled={!complaintTitle || !complaintDescription || !complaintCategory || !complaintPriority || isLoading}
                 >
                   <Text style={styles.submitButtonText}>Submit Complaint</Text>
                 </TouchableOpacity>
@@ -328,9 +386,8 @@ const Complaints = () => {
               <View style={[styles.infoCard, { backgroundColor: cardBackground }]}>
                 <View style={styles.infoHeader}>
                   <Ionicons name="information-circle" size={24} color="#28942c" />
-                  <Text style={[styles.infoTitle, { color: textColor }]}>Complaint Guidelines</Text>
                 </View>
-                <Text style={[styles.infoText, { color: theme === "light" ? '#555' : '#ccc' }]}>
+                <Text style={[styles.infoText, { color: theme === "light" ? '#555' : '#ccc' }]}> 
                   • Provide a clear and specific title for your complaint{'\n'}
                   • Choose the appropriate category and priority level{'\n'}
                   • Include relevant details and any supporting information{'\n'}
@@ -351,48 +408,70 @@ const Complaints = () => {
                     <View key={item.id} style={[styles.complaintCard, { backgroundColor: cardBackground }]}>
                       <View style={styles.complaintHeader}>
                         <Text style={[styles.ticketNumber, { color: textColor }]}>{item.ticketNumber}</Text>
-                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}> 
                           <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
                         </View>
                       </View>
                       
                       <Text style={[styles.complaintTitle, { color: textColor }]}>{item.title}</Text>
-                      <Text style={[styles.complaintDescription, { color: theme === "light" ? '#666' : '#ccc' }]}>
+                      <Text style={[styles.complaintDescription, { color: theme === "light" ? '#666' : '#ccc' }]}> 
                         {item.description}
                       </Text>
                       
                       <View style={styles.complaintDetails}>
-                        <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}>
+                        <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}> 
                           <Text style={[styles.detailLabel, { color: theme === "light" ? '#666' : '#aaa' }]}>Category</Text>
                           <Text style={[styles.detailValue, { color: textColor }]}>{item.category}</Text>
                         </View>
-                        <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}>
+                        <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}> 
                           <Text style={[styles.detailLabel, { color: theme === "light" ? '#666' : '#aaa' }]}>Priority</Text>
                           <Text style={[styles.detailValue, { color: getPriorityColor(item.priority) }]}>{item.priority}</Text>
                         </View>
-                        <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}>
+                        <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}> 
                           <Text style={[styles.detailLabel, { color: theme === "light" ? '#666' : '#aaa' }]}>Date</Text>
                           <Text style={[styles.detailValue, { color: textColor }]}>{item.date}</Text>
                         </View>
                       </View>
+
+                      {Boolean(item.remarks) && (
+                        <View style={[
+                          styles.remarksContainer,
+                          { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441', borderColor: theme === "light" ? '#e0e0e0' : '#444' }
+                        ]}>
+                          <View style={styles.remarksHeader}>
+                            <Ionicons name="chatbox-ellipses-outline" size={18} color="#28942c" />
+                            <Text style={[styles.remarksTitle, { color: textColor }]}>Remarks</Text>
+                          </View>
+                          <Text style={[styles.remarksText, { color: theme === "light" ? '#444' : '#ddd' }]}>
+                            {item.remarks}
+                          </Text>
+                        </View>
+                      )}
 
                       {item.followUps.length > 0 && (
                         <View style={[
                           styles.followUpsContainer, 
                           { borderTopColor: theme === "light" ? '#eee' : '#444' }
                         ]}>
-                          <Text style={[styles.followUpsTitle, { color: textColor }]}>Follow-ups:</Text>
-                          {item.followUps.map((followUp) => (
-                            <View key={followUp.id} style={[
-                              styles.followUpItem, 
-                              { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }
-                            ]}>
-                              <Text style={[styles.followUpMessage, { color: textColor }]}>{followUp.message}</Text>
-                              <Text style={[styles.followUpDate, { color: theme === "light" ? '#888' : '#aaa' }]}>
-                                {followUp.date} at {followUp.time}
-                              </Text>
-                            </View>
-                          ))}
+                          <Text style={[styles.followUpsTitle, { color: textColor }]}>Follow-ups</Text>
+                          {item.followUps.map((followUp) => {
+                            const isAdmin = String(followUp.sender || '').trim().toLowerCase() === 'administrator';
+                            return (
+                              <View
+                                key={followUp.id}
+                                style={[
+                                  styles.followUpItem,
+                                  isAdmin ? styles.followUpItemAdmin : styles.followUpItemResident,
+                                ]}
+                              >
+                                <View style={styles.followUpHeader}>
+                                  <Ionicons name="person-circle-outline" size={18} color={isAdmin ? '#4A90E2' : '#28942c'} />
+                                  <Text style={[styles.followUpSender, { color: textColor }]}>{followUp.sender}</Text>
+                                </View>
+                                <Text style={[styles.followUpMessage, { color: theme === "light" ? '#444' : '#ddd' }]}>{followUp.message}</Text>
+                              </View>
+                            );
+                          })}
                         </View>
                       )}
 
@@ -400,7 +479,7 @@ const Complaints = () => {
                         style={styles.followUpButton}
                         onPress={() => openFollowUpModal(item.id)}
                       >
-                        <Text style={[styles.followUpButtonText, { color: '#28942c' }]}>
+                        <Text style={[styles.followUpButtonText, { color: '#28942c' }]}> 
                           Follow-up
                         </Text>
                       </TouchableOpacity>
@@ -410,10 +489,10 @@ const Complaints = () => {
               ) : (
                 <View style={[styles.emptyState, { backgroundColor: cardBackground }]}>
                   <Ionicons name="document-text-outline" size={48} color="#ccc" />
-                  <Text style={[styles.emptyStateText, { color: textColor }]}>
+                  <Text style={[styles.emptyStateText, { color: textColor }]}> 
                     No complaints yet
                   </Text>
-                  <Text style={[styles.emptyStateSubtext, { color: theme === "light" ? '#888' : '#aaa' }]}>
+                  <Text style={[styles.emptyStateSubtext, { color: theme === "light" ? '#888' : '#aaa' }]}> 
                     File your first complaint
                   </Text>
                 </View>
@@ -465,7 +544,7 @@ const Complaints = () => {
               </TouchableOpacity>
             </View>
             
-            <Text style={[styles.modalSubtitle, { color: theme === "light" ? '#666' : '#aaa' }]}>
+            <Text style={[styles.modalSubtitle, { color: theme === "light" ? '#666' : '#aaa' }]}> 
               Add additional information or ask for updates about your complaint
             </Text>
             
@@ -504,9 +583,35 @@ const Complaints = () => {
                   { opacity: followUpMessage.trim() ? 1 : 0.5 }
                 ]}
                 onPress={handleFollowUp}
-                disabled={!followUpMessage.trim()}
+                disabled={!followUpMessage.trim() || isLoading}
               >
                 <Text style={styles.modalSendButtonText}>Send Message</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal
+        visible={successModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSuccessModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: cardBackground }]}> 
+            <View style={{ alignItems: 'center', gap: 12 }}>
+              <Ionicons name="checkmark-circle" size={48} color="#28942c" />
+              <Text style={[styles.modalTitle, { color: textColor }]}>Success</Text>
+              <Text style={[styles.modalSubtitle, { color: theme === "light" ? '#666' : '#aaa', textAlign: 'center' }]}> 
+                {successModalText}
+              </Text>
+              <TouchableOpacity
+                style={styles.successButton}
+                onPress={() => setSuccessModalVisible(false)}
+              >
+                <Text style={styles.successButtonText}>OK</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -698,6 +803,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  remarksContainer: {
+    marginBottom: 12,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  remarksHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  remarksTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  remarksText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
   followUpsContainer: {
     marginTop: 12,
     paddingTop: 12,
@@ -709,13 +834,33 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   followUpItem: {
-    marginBottom: 8,
-    padding: 8,
-    borderRadius: 8,
+    marginBottom: 10,
+    padding: 10,
+    borderRadius: 10,
+  },
+  followUpItemResident: {
+    backgroundColor: 'rgba(40, 148, 44, 0.08)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#28942c',
+  },
+  followUpItemAdmin: {
+    backgroundColor: 'rgba(74, 144, 226, 0.12)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#4A90E2',
+  },
+  followUpHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  followUpSender: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   followUpMessage: {
     fontSize: 14,
-    marginBottom: 4,
+    lineHeight: 20,
   },
   followUpDate: {
     fontSize: 12,
@@ -865,5 +1010,18 @@ const styles = StyleSheet.create({
   priorityButtonText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  successButton: {
+    width: '100%',
+    backgroundColor: '#28942c',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  successButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 }); 

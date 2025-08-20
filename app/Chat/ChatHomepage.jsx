@@ -244,7 +244,7 @@ const ChatHomepage = () => {
         backgroundColor={statusBarBackground}
         barStyle={theme === "light" ? "dark-content" : "light-content"}
       />
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Header />
         <View style={styles.content}>
           <View style={[styles.searchContainer, { backgroundColor: cardBg, borderColor: borderColor }] }>
@@ -348,11 +348,12 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    justifyContent: "space-between",
   },
   content: {
     flex: 1,
-    paddingHorizontal: 0,
-    paddingTop: 0,
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
   searchContainer: {
     flexDirection: "row",

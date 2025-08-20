@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, ScrollView, Alert, TextInput, Modal } from "react-native";
-import React, { useState, useEffect } from "react";
+import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, ScrollView, Alert as RNAlert, TextInput, Modal, RefreshControl } from "react-native";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Navbar from "../../../components/Navbar";
 import HeaderBack from "../../../components/HeaderBack";
 import { useRouter } from "expo-router";
@@ -8,6 +8,8 @@ import { useTheme } from "../../../Theme/ThemeProvider";
 import { StatusBar } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import Call from "./Call";
+import { alertsService, authService } from "../../../services/api";
+import { useFocusEffect } from '@react-navigation/native';
 
 const EmergencyAlert = () => {
   const insets = useSafeAreaInsets();
@@ -23,29 +25,70 @@ const EmergencyAlert = () => {
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [confirmationType, setConfirmationType] = useState('');
   const [showCallModal, setShowCallModal] = useState(false);
+  const [alerts, setAlerts] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const isFetchingRef = useRef(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const cardBackground = theme === "light" ? "#ffffff" : "#1F2633";
   const textColor = colors.text;
 
-  const incidentTypes = [
-    { id: 'fire', name: 'Fire', icon: 'flame-outline', color: '#E74C3C' },
-    { id: 'medical', name: 'Medical', icon: 'medical-outline', color: '#E74C3C' },
-    { id: 'security', name: 'Security', icon: 'shield-outline', color: '#FFA500' },
-    { id: 'accident', name: 'Accident', icon: 'car-outline', color: '#FFA500' },
-    { id: 'other', name: 'Other', icon: 'warning-outline', color: '#E74C3C' }
-  ];
+  const getAlertStatusColor = (status) => {
+    const isDark = theme === 'dark';
+    switch (status) {
+      case 'Resolved':
+        return isDark ? '#145317' : '#388e3c';
+      case 'Ongoing':
+        return isDark ? '#c66900' : '#ef6c00';
+      case 'Pending':
+        return isDark ? '#08306b' : '#0d47a1';
+      case 'Called':
+        return isDark ? '#7f1313' : '#b71c1c';
+      case 'Cancelled':
+        return isDark ? '#424242' : '#757575';
+      default:
+        return isDark ? '#424242' : '#757575';
+    }
+  };
 
-  const urgentHelpTypes = [
-    { id: 'police', name: 'Police', icon: 'shield-outline', color: '#4A90E2' },
-    { id: 'ambulance', name: 'Ambulance', icon: 'medical-outline', color: '#E74C3C' },
-    { id: 'fire', name: 'Fire Dept', icon: 'flame-outline', color: '#E74C3C' },
-    { id: 'security', name: 'Security', icon: 'people-outline', color: '#FFA500' }
-  ];
+  const fetchAlerts = useCallback(async () => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+    try {
+      const user = await authService.getProfileCached();
+      setCurrentUser(user);
+      const res = await alertsService.list({ page: 1 });
+      const items = Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res?.data) ? res.data : []);
+      setAlerts(items);
+    } catch (_) {
+    } finally {
+      isFetchingRef.current = false;
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAlerts();
+  }, [fetchAlerts]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchAlerts();
+      const id = setInterval(() => fetchAlerts(), 4000);
+      return () => clearInterval(id);
+    }, [])
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchAlerts();
+  }, [fetchAlerts]);
 
   const handleIncidentReport = () => {
-    if (!incidentType || !incidentDescription.trim() || !incidentLocation.trim()) {
+    if (!incidentDescription.trim() || !incidentLocation.trim()) {
       return;
     }
 
@@ -62,23 +105,47 @@ const EmergencyAlert = () => {
     setShowConfirmationModal(true);
   };
 
-  const handleConfirmAlert = () => {
+  const createAlert = async (type) => {
+    if (!currentUser?.id) return;
+    try {
+      const payload = {
+        resident_id: currentUser.id,
+        type,
+        description: type === 'incident' ? incidentDescription : null,
+        location: type === 'incident' ? incidentLocation : null,
+        reported_at: new Date().toISOString(),
+        status: type === 'incident' ? 'Pending' : 'Called',
+      };
+      await alertsService.create(payload);
+      await fetchAlerts();
+      return true;
+    } catch (e) {
+      RNAlert.alert('Error', 'Failed to send alert.');
+      return false;
+    }
+  };
+
+  const handleConfirmAlert = async () => {
     setShowConfirmationModal(false);
-    
     if (confirmationType === 'incident') {
-      // Reset incident form
-      setIncidentType('');
-      setIncidentDescription('');
-      setIncidentLocation('');
+      const ok = await createAlert('incident');
+      if (ok) {
+        setIncidentType('');
+        setIncidentDescription('');
+        setIncidentLocation('');
+        setSuccessModalVisible(true);
+        setTimeout(() => setSuccessModalVisible(false), 1200);
+      }
     } else {
-      // Show calling interface directly
-      setShowCallModal(true);
+      const ok = await createAlert('urgent');
+      if (ok) {
+        setShowCallModal(true);
+      }
     }
   };
 
   const handleEndCall = () => {
     setShowCallModal(false);
-    // Reset urgent help form
     setUrgentHelpType('');
   };
 
@@ -159,25 +226,12 @@ const EmergencyAlert = () => {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#E74C3C"]} />}
         >
           {activeTab === 'incident' ? (
             <View style={styles.incidentForm}>
               <View style={[styles.formCard, { backgroundColor: cardBackground }]}>
                 <Text style={[styles.formTitle, { color: textColor }]}>Report Incident</Text>
-                
-                <View style={styles.inputContainer}>
-                  <Text style={[styles.inputLabel, { color: textColor }]}>Type</Text>
-                  <View style={styles.emergencyButtonsContainer}>
-                    {incidentTypes.map((type) => (
-                      <EmergencyButton
-                        key={type.id}
-                        type={type}
-                        isSelected={incidentType === type.name}
-                        onPress={() => setIncidentType(type.name)}
-                      />
-                    ))}
-                  </View>
-                </View>
 
                 <View style={styles.inputContainer}>
                   <Text style={[styles.inputLabel, { color: textColor }]}>Location</Text>
@@ -215,33 +269,45 @@ const EmergencyAlert = () => {
                 <TouchableOpacity
                   style={[
                     styles.submitButton,
-                    { opacity: incidentType && incidentDescription && incidentLocation ? 1 : 0.5 }
+                    { opacity: incidentDescription && incidentLocation ? 1 : 0.5 }
                   ]}
                   onPress={handleIncidentReport}
-                  disabled={!incidentType || !incidentDescription || !incidentLocation}
+                  disabled={!incidentDescription || !incidentLocation}
                 >
                   <Text style={styles.submitButtonText}>Send Incident Report</Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Recent Alerts */}
+              {alerts.length > 0 && (
+                <View style={[styles.formCard, { backgroundColor: cardBackground }]}> 
+                  <Text style={[styles.formTitle, { color: textColor }]}>My Recent Alerts</Text>
+                  {alerts.map((a) => (
+                    <View key={a.id} style={styles.alertItem}> 
+                      <View style={styles.alertRow}> 
+                        <Text style={[styles.alertType, { color: a.type === 'urgent' ? '#E74C3C' : '#28942c' }]}>
+                          {a.type === 'urgent' ? 'Urgent' : 'Incident'}
+                        </Text>
+                        <View style={[styles.alertStatusBadge, { backgroundColor: getAlertStatusColor(a.status) }]}> 
+                          <Text style={styles.alertStatusText}>{a.status}</Text>
+                        </View>
+                      </View>
+                      {a.location ? (
+                        <Text style={[styles.alertField, { color: theme === 'light' ? '#555' : '#ccc' }]}>Location: <Text style={{ color: textColor }}>{a.location}</Text></Text>
+                      ) : null}
+                      {a.description ? (
+                        <Text style={[styles.alertField, { color: theme === 'light' ? '#555' : '#ccc' }]}>Description: <Text style={{ color: textColor }}>{a.description}</Text></Text>
+                      ) : null}
+                      <Text style={[styles.alertField, { color: theme === 'light' ? '#555' : '#ccc' }]}>Reported: <Text style={{ color: textColor }}>{String(a.reported_at).slice(0, 16).replace('T', ' ')}</Text></Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
           ) : (
             <View style={styles.urgentForm}>
               <View style={[styles.formCard, { backgroundColor: cardBackground }]}>
                 <Text style={[styles.formTitle, { color: textColor }]}>Call for Help</Text>
-                
-                <View style={styles.inputContainer}>
-                  <Text style={[styles.inputLabel, { color: textColor }]}>Help Type</Text>
-                  <View style={styles.emergencyButtonsContainer}>
-                    {urgentHelpTypes.map((type) => (
-                      <EmergencyButton
-                        key={type.id}
-                        type={type}
-                        isSelected={urgentHelpType === type.name}
-                        onPress={() => setUrgentHelpType(type.name)}
-                      />
-                    ))}
-                  </View>
-                </View>
 
                 <TouchableOpacity
                   style={[
@@ -254,15 +320,41 @@ const EmergencyAlert = () => {
                   <Text style={styles.submitButtonText}>Call for Help</Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Recent Alerts */}
+              {alerts.length > 0 && (
+                <View style={[styles.formCard, { backgroundColor: cardBackground }]}> 
+                  <Text style={[styles.formTitle, { color: textColor }]}>My Recent Alerts</Text>
+                  {alerts.map((a) => (
+                    <View key={a.id} style={styles.alertItem}> 
+                      <View style={styles.alertRow}> 
+                        <Text style={[styles.alertType, { color: a.type === 'urgent' ? '#E74C3C' : '#28942c' }]}>
+                          {a.type === 'urgent' ? 'Urgent' : 'Incident'}
+                        </Text>
+                        <View style={[styles.alertStatusBadge, { backgroundColor: getAlertStatusColor(a.status) }]}> 
+                          <Text style={styles.alertStatusText}>{a.status}</Text>
+                        </View>
+                      </View>
+                      {a.location ? (
+                        <Text style={[styles.alertField, { color: theme === 'light' ? '#555' : '#ccc' }]}>Location: <Text style={{ color: textColor }}>{a.location}</Text></Text>
+                      ) : null}
+                      {a.description ? (
+                        <Text style={[styles.alertField, { color: theme === 'light' ? '#555' : '#ccc' }]}>Description: <Text style={{ color: textColor }}>{a.description}</Text></Text>
+                      ) : null}
+                      <Text style={[styles.alertField, { color: theme === 'light' ? '#555' : '#ccc' }]}>Reported: <Text style={{ color: textColor }}>{String(a.reported_at).slice(0, 16).replace('T', ' ')}</Text></Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
           )}
 
-          <View style={[styles.agreementCard, { backgroundColor: cardBackground }]}>
+          <View style={[styles.agreementCard, { backgroundColor: cardBackground }]}> 
             <View style={styles.agreementHeader}>
               <Ionicons name="warning" size={24} color="#E74C3C" />
               <Text style={[styles.agreementTitle, { color: textColor }]}>Important Notice</Text>
             </View>
-            <Text style={[styles.agreementText, { color: theme === "light" ? '#555' : '#ccc' }]}>
+            <Text style={[styles.agreementText, { color: theme === "light" ? '#555' : '#ccc' }]}> 
               Misuse of emergency alerts may delay assistance for others in genuine need. 
               Only use this feature for real emergencies. False reports are subject to legal action.
             </Text>
@@ -270,7 +362,7 @@ const EmergencyAlert = () => {
               style={styles.agreementButton}
               onPress={() => setShowAgreementModal(true)}
             >
-              <Text style={[styles.agreementButtonText, { color: '#E74C3C' }]}>
+              <Text style={[styles.agreementButtonText, { color: '#E74C3C' }]}> 
                 Read Full Agreement
               </Text>
             </TouchableOpacity>
@@ -298,7 +390,7 @@ const EmergencyAlert = () => {
         onRequestClose={() => setShowAgreementModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.agreementModalContent, { backgroundColor: cardBackground }]}>
+          <View style={[styles.agreementModalContent, { backgroundColor: cardBackground }]}> 
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleContainer}>
                 <Ionicons name="warning" size={24} color="#E74C3C" />
@@ -313,7 +405,7 @@ const EmergencyAlert = () => {
             </View>
             
             <View style={styles.agreementContent}>
-              <Text style={[styles.agreementModalText, { color: textColor }]}>
+              <Text style={[styles.agreementModalText, { color: textColor }]}> 
                 By using this emergency alert system, you agree to the following terms:{'\n\n'}
                 • Only use for genuine emergencies{'\n'}
                 • Provide accurate and truthful information{'\n'}
@@ -357,7 +449,7 @@ const EmergencyAlert = () => {
         onRequestClose={() => setShowConfirmationModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: cardBackground }]}>
+          <View style={[styles.modalContent, { backgroundColor: cardBackground }]}> 
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleContainer}>
                 <Ionicons name="alert-circle" size={20} color="#E74C3C" />
@@ -371,7 +463,7 @@ const EmergencyAlert = () => {
               </TouchableOpacity>
             </View>
             
-            <Text style={[styles.confirmationText, { color: textColor }]}>
+            <Text style={[styles.confirmationText, { color: textColor }]}> 
               Are you sure you want to send this emergency alert?{'\n\n'}
               This will immediately contact emergency services.
             </Text>
@@ -392,6 +484,23 @@ const EmergencyAlert = () => {
               >
                 <Text style={styles.modalConfirmButtonText}>Send Alert</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Incident Success Modal (brief) */}
+      <Modal
+        visible={successModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSuccessModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: cardBackground }]}> 
+            <View style={{ alignItems: 'center', gap: 8 }}>
+              <Ionicons name="checkmark-circle" size={48} color="#28942c" />
+              <Text style={[styles.modalTitle, { color: textColor }]}>Incident Sent</Text>
             </View>
           </View>
         </View>
@@ -514,7 +623,7 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: '#fff',
     fontSize: 15,
-    fontWeight: '600',
+   fontWeight: '600',
   },
   agreementCard: {
     borderRadius: 12,
@@ -654,5 +763,30 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
+  },
+  alertItem: {
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.06)'
+  },
+  alertRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  alertType: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  alertStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  alertStatusText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
 }); 

@@ -521,147 +521,149 @@ const CommunityHomepage = () => {
         backgroundColor={statusBarBackground}
         barStyle={theme === "light" ? "dark-content" : "light-content"}
       />
-      <Header />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Header />
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 90 }}>
-        <View style={styles.container}>
-          {/* Topbar */}
-          <View style={styles.topBar}>
-            <Text style={[styles.title, { color: textColor }]}>
-              Community Hub
-            </Text>
-            <View style={styles.iconGroup}>
-              <TouchableOpacity onPress={goToSearch}>
-                <Ionicons
-                  name="search-outline"
-                  size={24}
-                  color={textColor}
-                  style={{ marginRight: 16 }}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleChatPress}>
-                <Ionicons
-                  name="chatbubble-outline"
-                  size={24}
-                  color={textColor}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Chips */}
-          <View style={styles.chipContainer}>{renderChips()}</View>
-
-          {/* Create post input */}
-          <View
-            style={[
-              styles.postInputRow,
-              { marginHorizontal: 20, marginTop: 20 },
-            ]}
-          >
-            <View style={styles.avatarContainer}>
-              <View style={styles.placeholder}>
-                <Ionicons name="person" size={24} color="#ccc" />
-              </View>
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.inputButton,
-                { borderColor: textColor, backgroundColor: buttonBackground },
-              ]}
-              onPress={goToCreatePost}
-            >
-              <Text style={[styles.inputButtonText, { color: textColor }]}>
-                What's on your mind?
+        <ScrollView contentContainerStyle={{ paddingBottom: 90 }}>
+          <View style={styles.container}>
+            {/* Topbar */}
+            <View style={styles.topBar}>
+              <Text style={[styles.title, { color: textColor }]}>
+                Community Hub
               </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Main content (filtered posts) */}
-          <View style={styles.content}>
-            {posts
-              .filter((post) =>
-                selectedChip === "All"
-                  ? true
-                  : (post.category || "").toLowerCase() ===
-                    CATEGORY_MAP[selectedChip].toLowerCase()
-              )
-              .map((post, index) => {
-                const isEvent = (post.category || "").toLowerCase() === "event";
-                if (isEvent && post.event) {
-                  return renderEventCard(
-                    post,
-                    index,
-                    !!interestedStates[index]
-                  );
-                }
-                return renderPostCard(post, index);
-              })}
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* Comments Bottom Sheet Modal */}
-      <Modal
-        animationType="slide"
-        transparent
-        visible={isCommentSheetVisible}
-        onRequestClose={closeCommentSheet}
-      >
-        <KeyboardAvoidingView
-          style={styles.bottomSheetOverlay}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
-          <TouchableOpacity
-            style={styles.bottomSheetOverlay}
-            activeOpacity={1}
-            onPress={closeCommentSheet}
-          >
-            <TouchableOpacity
-              style={[
-                styles.commentBottomSheet,
-                { backgroundColor: cardBackground },
-              ]}
-              activeOpacity={1}
-            >
-              <View style={styles.bottomSheetHeader}>
-                <Text style={[styles.bottomSheetTitle, { color: textColor }]}>
-                  Comments (
-                  {selectedPostIndex !== null
-                    ? (comments[selectedPostIndex] || []).length
-                    : 0}
-                  )
-                </Text>
-                <TouchableOpacity onPress={closeCommentSheet}>
-                  <Ionicons name="close" size={28} color={textColor} />
+              <View style={styles.iconGroup}>
+                <TouchableOpacity onPress={goToSearch}>
+                  <Ionicons
+                    name="search-outline"
+                    size={24}
+                    color={textColor}
+                    style={{ marginRight: 16 }}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleChatPress}>
+                  <Ionicons
+                    name="chatbubble-outline"
+                    size={24}
+                    color={textColor}
+                  />
                 </TouchableOpacity>
               </View>
+            </View>
 
-              <CommentSection
-                comments={
-                  selectedPostIndex !== null
-                    ? comments[selectedPostIndex] || []
-                    : []
-                }
-                onCommentAdd={handleCommentAdded}
-                postId={selectedPostIndex}
-              />
+            {/* Chips */}
+            <View style={styles.chipContainer}>{renderChips()}</View>
+
+            {/* Create post input */}
+            <View
+              style={[
+                styles.postInputRow,
+                { marginHorizontal: 20, marginTop: 20 },
+              ]}
+            >
+              <View style={styles.avatarContainer}>
+                <View style={styles.placeholder}>
+                  <Ionicons name="person" size={24} color="#ccc" />
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.inputButton,
+                  { borderColor: textColor, backgroundColor: buttonBackground },
+                ]}
+                onPress={goToCreatePost}
+              >
+                <Text style={[styles.inputButtonText, { color: textColor }]}>
+                  What's on your mind?
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Main content (filtered posts) */}
+            <View style={styles.content}>
+              {posts
+                .filter((post) =>
+                  selectedChip === "All"
+                    ? true
+                    : (post.category || "").toLowerCase() ===
+                      CATEGORY_MAP[selectedChip].toLowerCase()
+                )
+                .map((post, index) => {
+                  const isEvent = (post.category || "").toLowerCase() === "event";
+                  if (isEvent && post.event) {
+                    return renderEventCard(
+                      post,
+                      index,
+                      !!interestedStates[index]
+                    );
+                  }
+                  return renderPostCard(post, index);
+                })}
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Comments Bottom Sheet Modal */}
+        <Modal
+          animationType="slide"
+          transparent
+          visible={isCommentSheetVisible}
+          onRequestClose={closeCommentSheet}
+        >
+          <KeyboardAvoidingView
+            style={styles.bottomSheetOverlay}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+          >
+            <TouchableOpacity
+              style={styles.bottomSheetOverlay}
+              activeOpacity={1}
+              onPress={closeCommentSheet}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.commentBottomSheet,
+                  { backgroundColor: cardBackground },
+                ]}
+                activeOpacity={1}
+              >
+                <View style={styles.bottomSheetHeader}>
+                  <Text style={[styles.bottomSheetTitle, { color: textColor }]}>
+                    Comments (
+                    {selectedPostIndex !== null
+                      ? (comments[selectedPostIndex] || []).length
+                      : 0}
+                    )
+                  </Text>
+                  <TouchableOpacity onPress={closeCommentSheet}>
+                    <Ionicons name="close" size={28} color={textColor} />
+                  </TouchableOpacity>
+                </View>
+
+                <CommentSection
+                  comments={
+                    selectedPostIndex !== null
+                      ? comments[selectedPostIndex] || []
+                      : []
+                  }
+                  onCommentAdd={handleCommentAdded}
+                  postId={selectedPostIndex}
+                />
+              </TouchableOpacity>
             </TouchableOpacity>
-          </TouchableOpacity>
-        </KeyboardAvoidingView>
-      </Modal>
+          </KeyboardAvoidingView>
+        </Modal>
 
-      {/* Navbar */}
-      <View
-        style={[
-          styles.navWrapper,
-          {
-            paddingBottom: insets.bottom || 16,
-            backgroundColor: navBarBackground,
-          },
-        ]}
-      >
-        <Navbar />
+        {/* Navbar */}
+        <View
+          style={[
+            styles.navWrapper,
+            {
+              paddingBottom: insets.bottom || 16,
+              backgroundColor: navBarBackground,
+            },
+          ]}
+        >
+          <Navbar />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -670,8 +672,13 @@ const CommunityHomepage = () => {
 export default CommunityHomepage;
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  container: { flex: 1 },
+  safeArea: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
   topBar: {
     flexDirection: "row",
     justifyContent: "space-between",

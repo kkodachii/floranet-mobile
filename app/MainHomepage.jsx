@@ -58,7 +58,7 @@ const MainHomepage = () => {
         backgroundColor={statusBarBackground}
         barStyle={theme === "light" ? "dark-content" : "light-content"}
       />
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Header />
 
         <View style={styles.content}>

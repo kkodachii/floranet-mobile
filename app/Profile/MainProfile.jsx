@@ -174,7 +174,7 @@ const MainProfile = () => {
         backgroundColor={statusBarBackground}
         barStyle={theme === "light" ? "dark-content" : "light-content"}
       />
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <HeaderBack title="Profile" onBack={() => router.back()} />
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <View
@@ -545,8 +545,13 @@ const MainProfile = () => {
 export default MainProfile;
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  container: { flex: 1, justifyContent: "space-between" },
+  safeArea: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
   scrollContainer: { alignItems: "center", paddingBottom: 30 },
 
   coverPhotoWrapper: {
