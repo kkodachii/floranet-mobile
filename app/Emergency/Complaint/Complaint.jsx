@@ -193,16 +193,16 @@ const Complaints = () => {
   const handleFollowUp = async () => {
     if (!followUpMessage.trim() || !selectedComplaintId) {
       return;
-    }
+      }
 
     try {
       setIsLoading(true);
       const updated = await complaintsService.addFollowup(selectedComplaintId, followUpMessage.trim());
       const mapped = mapComplaint(updated?.data ? updated.data : updated);
       setComplaints(prev => prev.map(c => (c.id === String(mapped.id) ? mapped : c)));
-      setFollowUpMessage('');
-      setShowFollowUpModal(false);
-      setSelectedComplaintId(null);
+    setFollowUpMessage('');
+    setShowFollowUpModal(false);
+    setSelectedComplaintId(null);
       fetchComplaints();
     } catch (e) {
       Alert.alert('Error', 'Failed to send follow-up.');
@@ -387,7 +387,7 @@ const Complaints = () => {
                 <View style={styles.infoHeader}>
                   <Ionicons name="information-circle" size={24} color="#28942c" />
                 </View>
-                <Text style={[styles.infoText, { color: theme === "light" ? '#555' : '#ccc' }]}> 
+                <Text style={[styles.infoText, { color: theme === "light" ? '#555' : '#ccc' }]}>
                   • Provide a clear and specific title for your complaint{'\n'}
                   • Choose the appropriate category and priority level{'\n'}
                   • Include relevant details and any supporting information{'\n'}
@@ -408,26 +408,26 @@ const Complaints = () => {
                     <View key={item.id} style={[styles.complaintCard, { backgroundColor: cardBackground }]}>
                       <View style={styles.complaintHeader}>
                         <Text style={[styles.ticketNumber, { color: textColor }]}>{item.ticketNumber}</Text>
-                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}> 
+                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
                           <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
                         </View>
                       </View>
                       
                       <Text style={[styles.complaintTitle, { color: textColor }]}>{item.title}</Text>
-                      <Text style={[styles.complaintDescription, { color: theme === "light" ? '#666' : '#ccc' }]}> 
+                      <Text style={[styles.complaintDescription, { color: theme === "light" ? '#666' : '#ccc' }]}>
                         {item.description}
                       </Text>
                       
                       <View style={styles.complaintDetails}>
-                        <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}> 
+                        <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}>
                           <Text style={[styles.detailLabel, { color: theme === "light" ? '#666' : '#aaa' }]}>Category</Text>
                           <Text style={[styles.detailValue, { color: textColor }]}>{item.category}</Text>
                         </View>
-                        <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}> 
+                        <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}>
                           <Text style={[styles.detailLabel, { color: theme === "light" ? '#666' : '#aaa' }]}>Priority</Text>
                           <Text style={[styles.detailValue, { color: getPriorityColor(item.priority) }]}>{item.priority}</Text>
                         </View>
-                        <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}> 
+                        <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}>
                           <Text style={[styles.detailLabel, { color: theme === "light" ? '#666' : '#aaa' }]}>Date</Text>
                           <Text style={[styles.detailValue, { color: textColor }]}>{item.date}</Text>
                         </View>
@@ -460,14 +460,14 @@ const Complaints = () => {
                               <View
                                 key={followUp.id}
                                 style={[
-                                  styles.followUpItem,
+                              styles.followUpItem, 
                                   isAdmin ? styles.followUpItemAdmin : styles.followUpItemResident,
                                 ]}
                               >
                                 <View style={styles.followUpHeader}>
                                   <Ionicons name="person-circle-outline" size={18} color={isAdmin ? '#4A90E2' : '#28942c'} />
                                   <Text style={[styles.followUpSender, { color: textColor }]}>{followUp.sender}</Text>
-                                </View>
+                            </View>
                                 <Text style={[styles.followUpMessage, { color: theme === "light" ? '#444' : '#ddd' }]}>{followUp.message}</Text>
                               </View>
                             );
@@ -479,7 +479,7 @@ const Complaints = () => {
                         style={styles.followUpButton}
                         onPress={() => openFollowUpModal(item.id)}
                       >
-                        <Text style={[styles.followUpButtonText, { color: '#28942c' }]}> 
+                        <Text style={[styles.followUpButtonText, { color: '#28942c' }]}>
                           Follow-up
                         </Text>
                       </TouchableOpacity>
@@ -489,10 +489,10 @@ const Complaints = () => {
               ) : (
                 <View style={[styles.emptyState, { backgroundColor: cardBackground }]}>
                   <Ionicons name="document-text-outline" size={48} color="#ccc" />
-                  <Text style={[styles.emptyStateText, { color: textColor }]}> 
+                  <Text style={[styles.emptyStateText, { color: textColor }]}>
                     No complaints yet
                   </Text>
-                  <Text style={[styles.emptyStateSubtext, { color: theme === "light" ? '#888' : '#aaa' }]}> 
+                  <Text style={[styles.emptyStateSubtext, { color: theme === "light" ? '#888' : '#aaa' }]}>
                     File your first complaint
                   </Text>
                 </View>
@@ -544,7 +544,7 @@ const Complaints = () => {
               </TouchableOpacity>
             </View>
             
-            <Text style={[styles.modalSubtitle, { color: theme === "light" ? '#666' : '#aaa' }]}> 
+            <Text style={[styles.modalSubtitle, { color: theme === "light" ? '#666' : '#aaa' }]}>
               Add additional information or ask for updates about your complaint
             </Text>
             

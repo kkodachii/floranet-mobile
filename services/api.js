@@ -121,12 +121,12 @@ export const authService = {
     lastProfileFetchMs = now;
     inflightProfilePromise = (async () => {
       try {
-        const user = await authService.getProfile();
-        profileCache = user;
-        profileCachedAt = Date.now();
+      const user = await authService.getProfile();
+      profileCache = user;
+      profileCachedAt = Date.now();
         errorBackoffUntilMs = 0; // clear backoff on success
-        inflightProfilePromise = null;
-        return user;
+      inflightProfilePromise = null;
+      return user;
       } catch (err) {
         // Set a backoff window to avoid spamming on errors
         errorBackoffUntilMs = Date.now() + ERROR_BACKOFF_MS;
@@ -204,4 +204,20 @@ export const alertsService = {
     const response = await api.post('/user/alerts', payload);
     return response.data; // { success, message, data: Resource }
   },
+}; 
+
+export const adminService = {
+  getAdminContact: async () => {
+    try {
+      const resp = await api.get('/user/admin-contact');
+      return resp.data?.phone || null;
+    } catch (_) {
+      try {
+        const resp = await api.get('/admin-contact');
+        return resp.data?.phone || null;
+      } catch (_) {
+        return null;
+      }
+    }
+  }
 }; 

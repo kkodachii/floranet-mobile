@@ -9,7 +9,15 @@ import { StatusBar } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import Call from "./Call";
 import { alertsService, authService } from "../../../services/api";
+import { adminService } from "../../../services/api";
 import { useFocusEffect } from '@react-navigation/native';
+
+const HOTLINES = [
+  { id: 'admin', name: 'Admin', number: '09605643884' },
+  { id: 'police', name: 'Police', number: '911' },
+  { id: 'fire', name: 'Fire Dept', number: '911' },
+  { id: 'ambulance', name: 'Ambulance', number: '911' },
+];
 
 const EmergencyAlert = () => {
   const insets = useSafeAreaInsets();
@@ -25,6 +33,8 @@ const EmergencyAlert = () => {
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [confirmationType, setConfirmationType] = useState('');
   const [showCallModal, setShowCallModal] = useState(false);
+  const [selectedHotline, setSelectedHotline] = useState(HOTLINES[0]);
+  const [adminPhone, setAdminPhone] = useState(HOTLINES[0].number);
   const [alerts, setAlerts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const isFetchingRef = useRef(false);
@@ -72,6 +82,10 @@ const EmergencyAlert = () => {
 
   useEffect(() => {
     fetchAlerts();
+    (async () => {
+      const phone = await adminService.getAdminContact();
+      if (phone) setAdminPhone(phone);
+    })();
   }, [fetchAlerts]);
 
   useFocusEffect(
@@ -97,10 +111,6 @@ const EmergencyAlert = () => {
   };
 
   const handleUrgentHelp = () => {
-    if (!urgentHelpType) {
-      return;
-    }
-
     setConfirmationType('urgent');
     setShowConfirmationModal(true);
   };
@@ -306,16 +316,36 @@ const EmergencyAlert = () => {
             </View>
           ) : (
             <View style={styles.urgentForm}>
-              <View style={[styles.formCard, { backgroundColor: cardBackground }]}>
+              <View style={[styles.formCard, { backgroundColor: cardBackground }]}> 
                 <Text style={[styles.formTitle, { color: textColor }]}>Call for Help</Text>
-
+                <View style={styles.hotlineContainer}>
+                  {HOTLINES.map(h => {
+                    const isActive = selectedHotline?.id === h.id;
+                    return (
+                      <TouchableOpacity
+                        key={h.id}
+                        onPress={async () => {
+                          setSelectedHotline(h);
+                          if (h.id === 'admin') {
+                            const phone = await adminService.getAdminContact();
+                            if (phone) setAdminPhone(phone);
+                          }
+                        }}
+                        style={[styles.hotlineChip, isActive && styles.hotlineChipActive]}
+                      >
+                        <Text style={[styles.hotlineChipText, isActive && styles.hotlineChipTextActive]}>{h.name}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+ 
                 <TouchableOpacity
                   style={[
                     styles.submitButton,
-                    { opacity: urgentHelpType ? 1 : 0.5 }
+                    { opacity: 1 }
                   ]}
                   onPress={handleUrgentHelp}
-                  disabled={!urgentHelpType}
+                  disabled={false}
                 >
                   <Text style={styles.submitButtonText}>Call for Help</Text>
                 </TouchableOpacity>
@@ -510,7 +540,7 @@ const EmergencyAlert = () => {
       <Call 
         visible={showCallModal}
         onClose={handleEndCall}
-        helpType={urgentHelpType}
+        phoneNumber={selectedHotline?.id === 'admin' ? adminPhone : selectedHotline?.number}
       />
     </SafeAreaView>
   );
@@ -788,5 +818,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '700',
+  },
+  hotlineContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    rowGap: 8,
+  },
+  hotlineChip: {
+    width: '48%',
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E74C3C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  hotlineChipActive: {
+    backgroundColor: '#E74C3C',
+  },
+  hotlineChipText: {
+    color: '#E74C3C',
+    fontWeight: '600',
+  },
+  hotlineChipTextActive: {
+    color: '#fff',
   },
 }); 
