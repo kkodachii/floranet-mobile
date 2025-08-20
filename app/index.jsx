@@ -14,7 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import Logo from "../assets/floranet.png";
 import { useTheme } from "../Theme/ThemeProvider";
-import { authService, setAuthToken } from "../services/api";
+import { authService, setAuthToken, authStorage } from "../services/api";
 
 const Index = () => {
   const router = useRouter();
@@ -40,9 +40,9 @@ const Index = () => {
       const result = await authService.login({ email, password });
       if (result?.token) {
         setAuthToken(result.token);
+        await authStorage.save({ token: result.token, user: result.user });
       }
-      // TODO: persist token/user to storage if needed
-      router.push("/MainHomepage");
+      router.replace("/MainHomepage");
     } catch (e) {
       const message = e?.response?.data?.message
         || (e?.response?.data?.errors && Object.values(e.response.data.errors).flat().join("\n"))
@@ -62,7 +62,7 @@ const Index = () => {
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}> 
       <StatusBar
         backgroundColor={statusBarBackground}
         barStyle={theme === "light" ? "dark-content" : "light-content"}
@@ -82,14 +82,14 @@ const Index = () => {
         >
           {/* Logo Section */}
           <View style={styles.logoSection}>
-            <View style={[styles.logoWrapper, { backgroundColor: theme === "light" ? "#f8f9fa" : "#1F2633" }]}>
+            <View style={[styles.logoWrapper, { backgroundColor: theme === "light" ? "#f8f9fa" : "#1F2633" }]}> 
               <Image source={Logo} style={styles.logo} />
             </View>
             <Text style={styles.brand}>
               <Text style={{ color: colors.text }}>Flora</Text>
               <Text style={{ color: "#28942c" }}>Net</Text>
             </Text>
-            <Text style={[styles.tagline, { color: colors.text }]}>
+            <Text style={[styles.tagline, { color: colors.text }]}> 
               Join our community of homeowners and make managing your home simpler,
               smarter, and safer
             </Text>
@@ -169,7 +169,7 @@ const Index = () => {
               style={styles.forgotPassword}
               onPress={() => router.push("/Authentication/ForgotPassword")}
             >
-              <Text style={[styles.forgotPasswordText, { color: "#28942c" }]}>
+              <Text style={[styles.forgotPasswordText, { color: "#28942c" }]}> 
                 Forgot Password?
               </Text>
             </TouchableOpacity>
@@ -195,7 +195,7 @@ const Index = () => {
 
             {/* Register Link */}
             <View style={styles.registerContainer}>
-              <Text style={[styles.registerText, { color: colors.text }]}>
+              <Text style={[styles.registerText, { color: colors.text }]}> 
                 Don't have an account?{" "}
               </Text>
               <TouchableOpacity onPress={() => router.push("/Authentication/RegisterScreen")}>
@@ -214,7 +214,7 @@ const Index = () => {
           <View style={[styles.modalContainer, { 
             backgroundColor: theme === "light" ? "#ffffff" : "#1F2633",
             borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
-          }]}>
+          }]}> 
             <View style={styles.modalContent}>
               <View style={styles.pendingIconContainer}>
                 <LinearGradient
@@ -225,11 +225,11 @@ const Index = () => {
                 </LinearGradient>
               </View>
               
-              <Text style={[styles.modalTitle, { color: colors.text }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}> 
                 Account Pending Approval
               </Text>
               
-              <Text style={[styles.modalMessage, { color: colors.text }]}>
+              <Text style={[styles.modalMessage, { color: colors.text }]}> 
                 Your account is currently pending admin approval. You will be able to log in once your account has been approved. Please contact an administrator if you have any questions.
               </Text>
               

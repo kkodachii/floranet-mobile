@@ -1,14 +1,17 @@
 // app/_layout.jsx
-import { Stack } from "expo-router";
-import { View, StyleSheet, Platform } from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { View, StyleSheet, Platform, ActivityIndicator } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import * as NavigationBar from "expo-navigation-bar";
 import { ThemeProvider, useTheme } from "../Theme/ThemeProvider";
 import { NotificationProvider } from "../services/NotificationContext";
+import { authStorage, setAuthToken } from "../services/api";
 
 function AppLayout() {
   const { colors, theme } = useTheme();
+  const router = useRouter();
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
     if (Platform.OS === "android") {
@@ -17,8 +20,29 @@ function AppLayout() {
     }
   }, [theme]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const { token } = await authStorage.load();
+        if (token) {
+          setAuthToken(token);
+          router.replace("/MainHomepage");
+        }
+      } catch (_) {}
+      setCheckingAuth(false);
+    })();
+  }, []);
+
+  if (checkingAuth) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color="#28942c" />
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}> 
       <StatusBar
         style={theme === "dark" ? "light" : "dark"}
       />

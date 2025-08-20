@@ -9,6 +9,7 @@ import {
   StatusBar,
   TextInput,
   Dimensions,
+  Modal,
 } from "react-native";
 import React, { useState } from "react";
 import Navbar from "../../components/Navbar";
@@ -17,6 +18,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { Feather } from "@expo/vector-icons";
+import { authService } from "../../services/api";
 
 const screenHeight = Dimensions.get("window").height;
 
@@ -47,12 +49,23 @@ const Settings = () => {
   const [showSecurity, setShowSecurity] = useState(false);
   const [showLinked, setShowLinked] = useState(false);
   const [scrollEnabled, setScrollEnabled] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const filterMatch = (label) =>
     label.toLowerCase().includes(searchTerm.toLowerCase());
 
   const handleThemeToggle = () => toggleTheme();
-  const handleLogout = () => Alert.alert("Logout", "You have been logged out.");
+  const performLogout = async () => {
+    if (isLoggingOut) return;
+    try {
+      setIsLoggingOut(true);
+      await authService.logout();
+    } catch (_) {}
+    setShowLogoutModal(false);
+    router.replace("/");
+    setIsLoggingOut(false);
+  };
 
   return (
     <SafeAreaView
@@ -122,40 +135,7 @@ const Settings = () => {
                     textColor={textColor}
                   />
                 )}
-                {filterMatch("Activity Logs") && (
-                  <SettingItem
-                    icon={<Feather name="activity" size={24} color={textColor} />}
-                    label="Activity Logs"
-                    onPress={() => router.push("Profile/ActivityLogs")}
-                    textColor={textColor}
-                  />
-                )}
-                {filterMatch("Share Profile") && (
-                  <SettingItem
-                    icon={<Feather name="share-2" size={24} color={textColor} />}
-                    label="Share Profile"
-                    onPress={() => Alert.alert("Share", "Profile link copied!")}
-                    textColor={textColor}
-                  />
-                )}
-                {filterMatch("Delete / Deactivate Account") && (
-                  <SettingItem
-                    icon={<Feather name="trash" size={24} color={textColor} />}
-                    label="Delete / Deactivate Account"
-                    onPress={() =>
-                      Alert.alert(
-                        "Account Action",
-                        "Do you want to delete or deactivate your account?",
-                        [
-                          { text: "Cancel", style: "cancel" },
-                          { text: "Deactivate", onPress: () => console.log("Deactivated") },
-                          { text: "Delete", onPress: () => console.log("Deleted") },
-                        ]
-                      )
-                    }
-                    textColor={textColor}
-                  />
-                )}
+
               </View>
             )}
 
@@ -210,57 +190,14 @@ const Settings = () => {
                   <SettingItem
                     icon={<Feather name="key" size={24} color={textColor} />}
                     label="Change Password"
-                    onPress={() => Alert.alert("Security", "Change password clicked")}
-                    textColor={textColor}
-                  />
-                )}
-                {filterMatch("Two-Factor Authentication") && (
-                  <SettingItem
-                    icon={<Feather name="shield" size={24} color={textColor} />}
-                    label="Two-Factor Authentication"
-                    onPress={() => Alert.alert("Security", "2FA toggled")}
-                    textColor={textColor}
-                  />
-                )}
-                {filterMatch("Blocked Users") && (
-                  <SettingItem
-                    icon={<Feather name="slash" size={24} color={textColor} />}
-                    label="Blocked Users"
-                    onPress={() => Alert.alert("Security", "No blocked users yet")}
+                    onPress={() => router.push("/Profile/ChangePassword")}
                     textColor={textColor}
                   />
                 )}
               </View>
             )}
 
-            {/* Linked Accounts */}
-            <TouchableOpacity
-              style={styles.dropdownHeaderRow}
-              onPress={() => setShowLinked(!showLinked)}
-              activeOpacity={0.6}
-            >
-              <View style={styles.dropdownHeader}>
-                <Feather name="link" size={26} color={textColor} />
-                <Text style={[styles.settingText, { color: textColor }]}>Linked Accounts</Text>
-              </View>
-              <Feather
-                name={showLinked ? "chevron-up" : "chevron-down"}
-                size={26}
-                color={textColor}
-              />
-            </TouchableOpacity>
-            {showLinked && (
-              <View style={styles.dropdownGroup}>
-                {filterMatch("GCash") && (
-                  <SettingItem
-                    icon={<Feather name="credit-card" size={24} color={textColor} />}
-                    label="GCash: Linked"
-                    onPress={() => Alert.alert("GCash", "Your GCash account is linked.")}
-                    textColor={textColor}
-                  />
-                )}
-              </View>
-            )}
+
 
             {/* Other Options */}
             {filterMatch("Notifications") && (
@@ -292,11 +229,11 @@ const Settings = () => {
             {filterMatch("Logout") && (
               <TouchableOpacity
                 style={styles.settingItem}
-                onPress={handleLogout}
+                onPress={() => setShowLogoutModal(true)}
                 activeOpacity={0.6}
               >
                 <Feather name="log-out" size={24} color={textColor} />
-                <Text style={[styles.settingText, { color: textColor }]}>Logout</Text>
+                <Text style={[styles.settingText, { color: textColor }]}>{isLoggingOut ? 'Logging out...' : 'Logout'}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -315,6 +252,37 @@ const Settings = () => {
           <Navbar />
         </View>
       </View>
+
+      {/* Logout Confirmation Modal */}
+      <Modal
+        transparent
+        visible={showLogoutModal}
+        animationType="fade"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}> 
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Logout</Text>
+            <Text style={[styles.modalMessage, { color: colors.text }]}>Are you sure you want to logout?</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancel]}
+                onPress={() => setShowLogoutModal(false)}
+                disabled={isLoggingOut}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.text }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalDestructive]}
+                onPress={performLogout}
+                disabled={isLoggingOut}
+              >
+                <Text style={styles.modalDestructiveText}>{isLoggingOut ? 'Logging out...' : 'Logout'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -374,5 +342,60 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
     fontSize: 18,
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '85%',
+    maxWidth: 360,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#00000022',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 14,
+    opacity: 0.8,
+    marginBottom: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  modalButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  modalCancel: {
+    borderColor: '#cccccc',
+  },
+  modalDestructive: {
+    backgroundColor: '#d9534f',
+    borderColor: '#d9534f',
+  },
+  modalButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalDestructiveText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
   },
 });
