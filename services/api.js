@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.8.14:8000/api';
+const DEFAULT_PROD_API = 'https://floranet-laravel.onrender.com/api';
+const DEFAULT_DEV_API = 'http://192.168.8.14:8000/api';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || (__DEV__ ? DEFAULT_DEV_API : DEFAULT_PROD_API);
 export const API_ORIGIN = API_BASE_URL.replace(/\/?api$/, '');
 export const buildStorageUrl = (path) => {
   if (!path) return null;
@@ -121,12 +123,12 @@ export const authService = {
     lastProfileFetchMs = now;
     inflightProfilePromise = (async () => {
       try {
-      const user = await authService.getProfile();
-      profileCache = user;
-      profileCachedAt = Date.now();
+        const user = await authService.getProfile();
+        profileCache = user;
+        profileCachedAt = Date.now();
         errorBackoffUntilMs = 0; // clear backoff on success
-      inflightProfilePromise = null;
-      return user;
+        inflightProfilePromise = null;
+        return user;
       } catch (err) {
         // Set a backoff window to avoid spamming on errors
         errorBackoffUntilMs = Date.now() + ERROR_BACKOFF_MS;
@@ -205,6 +207,34 @@ export const alertsService = {
     return response.data; // { success, message, data: Resource }
   },
 }; 
+
+export const cctvService = {
+  list: async ({ page = 1 } = {}) => {
+    const response = await api.get('/user/cctv-requests', { params: { page } });
+    return response.data; // Laravel resource collection
+  },
+  create: async ({ resident_id, reason, date_of_incident, time_of_incident, location, status }) => {
+    const payload = { resident_id, reason, date_of_incident, time_of_incident, location };
+    if (status) payload.status = status;
+    const response = await api.post('/user/cctv-requests', payload);
+    return response.data; // CctvRequest resource
+  },
+  show: async (id) => {
+    const response = await api.get(`/user/cctv-requests/${id}`);
+    return response.data; // CctvRequest resource
+  },
+  updateFollowups: async (id, followups) => {
+    const response = await api.patch(`/user/cctv-requests/${id}/followups`, { followups });
+    return response.data; // CctvRequest resource
+  },
+  // Convenience: extract footage list from show()
+  listFootage: async (id) => {
+    const data = await cctvService.show(id);
+    const req = data?.data || data;
+    return Array.isArray(req?.footage) ? req.footage : [];
+  },
+  downloadFootageUrl: (requestId, footageId) => `${API_BASE_URL.replace(/\/$/, '')}/user/cctv-requests/${requestId}/footage/${footageId}/download`,
+};
 
 export const adminService = {
   getAdminContact: async () => {
