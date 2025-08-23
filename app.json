@@ -13,6 +13,18 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "bundleIdentifier": "com.hyem23.floranetmobile",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      },
+      "entitlements": {
+        "aps-environment": "development",
+        "com.apple.security.application-groups": [
+          "group.${ios.bundleIdentifier}.onesignal"
+        ]
+      },
       "supportsTablet": true
     },
     "android": {
@@ -26,6 +38,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "onesignal-expo-plugin",
+        {
+          "mode": "development"
+        }
+      ],
       "expo-router"
     ],
     "extra": {
