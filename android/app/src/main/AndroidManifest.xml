@@ -26,7 +26,6 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="floranetmobile"/>
-        <data android:scheme="exp+floranet-mobile"/>
       </intent-filter>
     </activity>
   </application>
