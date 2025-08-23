@@ -1,13 +1,15 @@
-import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, ScrollView, Alert, TextInput, FlatList, Modal, Platform } from "react-native";
-import React, { useState } from "react";
+import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, ScrollView, Alert, TextInput, Platform, Modal } from "react-native";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Navbar from "../../../components/Navbar";
 import HeaderBack from "../../../components/HeaderBack";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../Theme/ThemeProvider";
 import { StatusBar } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { cctvService, authService } from '../../../services/api';
 
 const CCTV = () => {
   const insets = useSafeAreaInsets();
@@ -18,133 +20,128 @@ const CCTV = () => {
   const [requestDate, setRequestDate] = useState('');
   const [requestLocation, setRequestLocation] = useState('');
   const [requestTime, setRequestTime] = useState('');
-  const [followUpMessage, setFollowUpMessage] = useState('');
-  const [showFollowUpModal, setShowFollowUpModal] = useState(false);
-  const [selectedRequestId, setSelectedRequestId] = useState(null);
+
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState(new Date());
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [successModalText, setSuccessModalText] = useState('');
+
+  const [showFollowUpModal, setShowFollowUpModal] = useState(false);
+  const [followUpMessage, setFollowUpMessage] = useState('');
+  const [selectedRequest, setSelectedRequest] = useState(null);
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const cardBackground = theme === "light" ? "#ffffff" : "#1F2633";
   const textColor = colors.text;
 
-  // Mock data for ongoing requests
-  const [ongoingRequests, setOngoingRequests] = useState([
-    {
-      id: '1',
-      reason: 'Theft investigation',
-      date: '2024-01-15',
-      location: 'Building A - Parking Lot',
-      time: '14:30',
-      status: 'pending',
-      ticketNumber: 'CCTV-2024-001',
-      followUps: []
-    },
-    {
-      id: '2',
-      reason: 'Vehicle accident',
-      date: '2024-01-14',
-      location: 'Main Entrance',
-      time: '09:15',
-      status: 'processing',
-      ticketNumber: 'CCTV-2024-002',
-      followUps: [
-        {
-          id: '1',
-          message: 'Any updates on this request?',
-          date: '2024-01-15',
-          time: '10:30'
-        }
-      ]
-    },
-    {
-      id: '3',
-      reason: 'Suspicious activity',
-      date: '2024-01-13',
-      location: 'Building B - Lobby',
-      time: '16:45',
-      status: 'completed',
-      ticketNumber: 'CCTV-2024-003',
-      followUps: []
-    }
-  ]);
+  // CCTV API-backed state
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [residentId, setResidentId] = useState(null);
+  const [residentName, setResidentName] = useState('');
 
-  const handleSendRequest = () => {
+  const isFetchingRef = useRef(false);
+
+  const fetchRequests = useCallback(async () => {
+    setLoading(true);
+    try {
+      const raw = await cctvService.list({ page: 1 });
+      const items = Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : []);
+      setRequests(prev => {
+        if (!residentId) return items;
+        return items.filter(r => String(r.resident_id) === String(residentId));
+      });
+    } catch (e) {
+      // noop
+    } finally {
+      setLoading(false);
+    }
+  }, [residentId]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const user = await authService.getProfileCached({ force: true });
+        const uid = user?.id ?? user?.data?.id ?? null;
+        setResidentId(uid);
+        const name = user?.name ?? user?.data?.name ?? '';
+        setResidentName(name);
+      } catch (_) {
+        setResidentId(null);
+      }
+      await fetchRequests();
+    })();
+  }, [fetchRequests]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (activeTab !== 'ongoing') return undefined;
+      if (isFetchingRef.current) return undefined;
+      fetchRequests();
+      const intervalId = setInterval(() => {
+        fetchRequests();
+      }, 2000);
+      return () => clearInterval(intervalId);
+    }, [activeTab, residentId])
+  );
+
+  const handleSendRequest = async () => {
     if (!requestReason.trim() || !requestDate.trim() || !requestLocation.trim() || !requestTime.trim()) {
       return;
     }
-
-    const newRequest = {
-      id: Date.now().toString(),
-      reason: requestReason,
-      date: requestDate,
-      location: requestLocation,
-      time: requestTime,
-      status: 'pending',
-      ticketNumber: `CCTV-2024-${String(ongoingRequests.length + 1).padStart(3, '0')}`,
-      followUps: []
-    };
-
-    setOngoingRequests([newRequest, ...ongoingRequests]);
-    setRequestReason('');
-    setRequestDate('');
-    setRequestLocation('');
-    setRequestTime('');
-    setActiveTab('ongoing');
+    if (!residentId) {
+      Alert.alert('Not logged in', 'Please log in again to submit a request.');
+      return;
+    }
+    try {
+      const payload = {
+        resident_id: residentId,
+        reason: requestReason.trim(),
+        date_of_incident: requestDate,
+        time_of_incident: requestTime.length === 5 ? `${requestTime}:00` : requestTime,
+        location: requestLocation.trim(),
+      };
+      await cctvService.create(payload);
+      await fetchRequests();
+      setRequestReason('');
+      setRequestDate('');
+      setRequestLocation('');
+      setRequestTime('');
+      setActiveTab('ongoing');
+      setSuccessModalText('Your CCTV request has been submitted successfully.');
+      setSuccessModalVisible(true);
+    } catch (e) {
+      Alert.alert('Failed to send', 'There was a problem submitting your request.');
+    }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
       case 'pending': return '#FFA500';
-      case 'processing': return '#4A90E2';
+      case 'in_progress': return '#4A90E2';
       case 'completed': return '#28942c';
+      case 'cancelled': return '#999';
       default: return '#999';
     }
   };
 
+
   const getStatusText = (status) => {
     switch (status) {
       case 'pending': return 'Pending';
-      case 'processing': return 'Processing';
+      case 'in_progress': return 'Processing';
       case 'completed': return 'Completed';
+      case 'cancelled': return 'Cancelled';
       default: return 'Unknown';
     }
   };
 
-  const handleFollowUp = () => {
-    if (!followUpMessage.trim()) {
-      return;
-    }
 
-    const updatedRequests = ongoingRequests.map(request => {
-      if (request.id === selectedRequestId) {
-        const newFollowUp = {
-          id: Date.now().toString(),
-          message: followUpMessage,
-          date: new Date().toISOString().split('T')[0],
-          time: new Date().toTimeString().split(' ')[0].substring(0, 5)
-        };
-        return {
-          ...request,
-          followUps: [...request.followUps, newFollowUp]
-        };
-      }
-      return request;
-    });
 
-    setOngoingRequests(updatedRequests);
-    setFollowUpMessage('');
-    setShowFollowUpModal(false);
-    setSelectedRequestId(null);
-  };
 
-  const openFollowUpModal = (requestId) => {
-    setSelectedRequestId(requestId);
-    setShowFollowUpModal(true);
-  };
 
   const handleDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
@@ -190,6 +187,30 @@ const CCTV = () => {
       </Text>
     </TouchableOpacity>
   );
+
+  const openFollowUpModal = (req) => {
+    setSelectedRequest(req);
+    setFollowUpMessage('');
+    setShowFollowUpModal(true);
+  };
+
+  const sendFollowUp = async () => {
+    if (!selectedRequest || !followUpMessage.trim()) return;
+    try {
+      const current = Array.isArray(selectedRequest.followups) ? selectedRequest.followups : [];
+      const next = [...current, { content: followUpMessage.trim(), created_at: new Date().toISOString() }];
+      await cctvService.updateFollowups(selectedRequest.id, next);
+      setShowFollowUpModal(false);
+      setFollowUpMessage('');
+      // Refresh only this request to keep its position
+      const updated = await cctvService.show(selectedRequest.id);
+      const updatedReq = updated?.data ? updated.data : updated;
+      setRequests((prev) => prev.map((r) => (r.id === updatedReq.id ? updatedReq : r)));
+      setSelectedRequest(null);
+    } catch (e) {
+      Alert.alert('Failed', 'Unable to send follow-up.');
+    }
+  };
 
   return (
     <SafeAreaView
@@ -294,8 +315,9 @@ const CCTV = () => {
                 </View>
 
                 <TouchableOpacity
-                  style={styles.submitButton}
+                  style={[styles.submitButton, { opacity: requestReason && requestDate && requestLocation && requestTime ? 1 : 0.5 }]}
                   onPress={handleSendRequest}
+                  disabled={!requestReason || !requestDate || !requestLocation || !requestTime}
                 >
                   <Text style={styles.submitButtonText}>Send Request</Text>
                 </TouchableOpacity>
@@ -318,58 +340,71 @@ const CCTV = () => {
           ) : (
             <View style={styles.ongoingRequests}>
               <Text style={[styles.sectionTitle, { color: '#28942c' }]}>
-                Your Requests ({ongoingRequests.length})
+                Your Requests ({requests.length})
               </Text>
               
-              {ongoingRequests.length > 0 ? (
+              {requests.length > 0 ? (
                 <View style={styles.requestsList}>
-                  {ongoingRequests.map((item) => (
-                    <View key={item.id} style={[styles.requestCard, { backgroundColor: cardBackground }]}>
-                      <View style={styles.requestHeader}>
-                        <Text style={[styles.ticketNumber, { color: textColor }]}>{item.ticketNumber}</Text>
+                                    {requests.map((item) => ( 
+                    <View key={`req-${String(item.id)}`} style={[styles.requestCard, { backgroundColor: cardBackground }]}>
+                                            <View style={styles.requestHeader}>
+                        <Text style={[styles.ticketNumber, { color: textColor }]}>{item.cctv_id || `CCTV-${String(item.id).padStart(3, '0')}`}</Text>
                         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
                           <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
                         </View>
                       </View>
                       <Text style={[styles.requestReason, { color: textColor }]}>{item.reason}</Text>
                       <View style={styles.requestDetails}>
+                        <Text style={[styles.requestDetail, { color: theme === "light" ? '#888' : '#aaa' }]}>Location: {item.location}</Text>
                         <Text style={[styles.requestDetail, { color: theme === "light" ? '#888' : '#aaa' }]}>
-                          Location: {item.location}
-                        </Text>
-                        <Text style={[styles.requestDetail, { color: theme === "light" ? '#888' : '#aaa' }]}>
-                          Date: {item.date} at {item.time}
+                          {(() => {
+                            const d = (item.date_of_incident || '').slice(0,10);
+                            const tRaw = item.time_of_incident || '';
+                            const t = /^\d{2}:\d{2}/.test(tRaw) ? tRaw.slice(0,5) : (tRaw.includes('T') ? tRaw.slice(11,16) : tRaw);
+                            return `Date: ${d}${t ? ` at ${t}` : ''}`;
+                          })()}
                         </Text>
                       </View>
 
-                      {item.followUps.length > 0 && (
-                        <View style={[
-                          styles.followUpsContainer, 
-                          { borderTopColor: theme === "light" ? '#eee' : '#444' }
-                        ]}>
-                          <Text style={[styles.followUpsTitle, { color: textColor }]}>Follow-ups:</Text>
-                                                    {item.followUps.map((followUp) => (
-                            <View key={followUp.id} style={[
-                              styles.followUpItem, 
-                              { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }
-                            ]}>
-                              <Text style={[styles.followUpMessage, { color: textColor }]}>{followUp.message}</Text>
-                              <Text style={[styles.followUpDate, { color: theme === "light" ? '#888' : '#aaa' }]}>
-                                {followUp.date} at {followUp.time}
-                              </Text>
-                            </View>
-                          ))}
+                      {/* Follow-ups */}
+                      {!!(item.followups && item.followups.length) && (
+                        <View style={[styles.followUpsContainer, { borderTopColor: theme === 'light' ? '#eee' : '#444' }]}>
+                          <Text style={[styles.followUpsTitle, { color: textColor }]}>Follow-ups</Text>
+                          {item.followups.map((f, idx) => {
+                            const sender = f.admin_name ? 'Administrator' : (residentName || 'Resident');
+                            const isAdmin = sender.toLowerCase() === 'administrator';
+                            const message = typeof f === 'string' ? f : (f.content || f.message || JSON.stringify(f));
+                            return (
+                              <View
+                                key={`fu-${String(f.id ?? '')}-${idx}`}
+                                style={[
+                                  styles.followUpItem,
+                                  isAdmin ? styles.followUpItemAdmin : styles.followUpItemResident,
+                                ]}
+                              >
+                                <View style={styles.followUpHeader}>
+                                  <Ionicons name="person-circle-outline" size={18} color={isAdmin ? '#4A90E2' : '#28942c'} />
+                                  <Text style={[styles.followUpSender, { color: textColor }]}>{sender}</Text>
+                                </View>
+                                <Text style={[styles.followUpMessage, { color: theme === 'light' ? '#444' : '#ddd' }]}>{message}</Text>
+                              </View>
+                            );
+                          })}
                         </View>
                       )}
 
-                      <TouchableOpacity
-                        style={styles.followUpButton}
-                        onPress={() => openFollowUpModal(item.id)}
-                      >
-                        <Text style={[styles.followUpButtonText, { color: '#28942c' }]}>
-                          Follow-up
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
+                      <View style={{ flexDirection: 'row', gap: 12, marginTop: 12, justifyContent: 'center' }}>
+                        <TouchableOpacity style={styles.followUpButton} onPress={() => openFollowUpModal(item)}>
+                          <Text style={[styles.followUpButtonText, { color: '#28942c' }]}>Follow-up</Text>
+                        </TouchableOpacity>
+                        {Array.isArray(item.footage) && item.footage.length > 0 && (
+                          <TouchableOpacity style={styles.followUpButton} onPress={() => router.push({ pathname: '/Emergency/CCTV/FootageList', params: { id: String(item.id) } })}>
+                            <Text style={[styles.followUpButtonText, { color: '#28942c' }]}>View Footage</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+
+                      </View>
                   ))}
                 </View>
               ) : (
@@ -400,17 +435,9 @@ const CCTV = () => {
         </View>
       </View>
 
+
       {/* Follow-up Modal */}
-      <Modal
-        visible={showFollowUpModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => {
-          setShowFollowUpModal(false);
-          setSelectedRequestId(null);
-          setFollowUpMessage('');
-        }}
-      >
+      <Modal visible={showFollowUpModal} transparent animationType="fade" onRequestClose={() => { setShowFollowUpModal(false); setSelectedRequest(null); setFollowUpMessage(''); }}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: cardBackground }]}>
             <View style={styles.modalHeader}>
@@ -420,58 +447,55 @@ const CCTV = () => {
               </View>
               <TouchableOpacity
                 style={styles.closeButton}
-                onPress={() => {
-                  setShowFollowUpModal(false);
-                  setSelectedRequestId(null);
-                  setFollowUpMessage('');
-                }}
+                onPress={() => { setShowFollowUpModal(false); setSelectedRequest(null); setFollowUpMessage(''); }}
               >
                 <Ionicons name="close" size={20} color={textColor} />
               </TouchableOpacity>
             </View>
-            
-            <Text style={[styles.modalSubtitle, { color: theme === "light" ? '#666' : '#aaa' }]}>
-              Add additional information or ask for updates about your request
-            </Text>
-            
+            <Text style={[styles.modalSubtitle, { color: theme === 'light' ? '#666' : '#aaa' }]}>Add a message to update your request</Text>
             <TextInput
-              style={[styles.modalInput, { 
-                backgroundColor: theme === "light" ? "#f8f9fa" : "#2A3441",
-                color: textColor,
-                borderColor: theme === "light" ? '#e0e0e0' : '#444'
-              }]}
+              style={[styles.modalInput, { backgroundColor: theme === 'light' ? '#f8f9fa' : '#2A3441', color: textColor, borderColor: theme === 'light' ? '#e0e0e0' : '#444' }]}
               placeholder="Type your message here..."
-              placeholderTextColor={theme === "light" ? "#999" : "#888"}
+              placeholderTextColor={theme === 'light' ? '#999' : '#888'}
               value={followUpMessage}
               onChangeText={setFollowUpMessage}
               multiline
               numberOfLines={5}
               textAlignVertical="top"
             />
-            
             <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalCancelButton, { 
-                  borderColor: theme === "light" ? '#e0e0e0' : '#444' 
-                }]}
-                onPress={() => {
-                  setShowFollowUpModal(false);
-                  setSelectedRequestId(null);
-                  setFollowUpMessage('');
-                }}
-              >
+              <TouchableOpacity style={[styles.modalCancelButton, { borderColor: theme === 'light' ? '#e0e0e0' : '#444' }]} onPress={() => { setShowFollowUpModal(false); setSelectedRequest(null); setFollowUpMessage(''); }}>
                 <Text style={[styles.modalCancelButtonText, { color: textColor }]}>Cancel</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[
-                  styles.modalSendButton,
-                  { opacity: followUpMessage.trim() ? 1 : 0.5 }
-                ]}
-                onPress={handleFollowUp}
-                disabled={!followUpMessage.trim()}
-              >
+              <TouchableOpacity style={[styles.modalSendButton, { opacity: followUpMessage.trim() ? 1 : 0.5 }]} onPress={sendFollowUp} disabled={!followUpMessage.trim()}>
                 <Text style={styles.modalSendButtonText}>Send Message</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+
+      {/* Success Modal */}
+      <Modal
+        visible={successModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSuccessModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: cardBackground }]}> 
+            <View style={{ alignItems: 'center', gap: 12 }}>
+              <Ionicons name="checkmark-circle" size={48} color="#28942c" />
+              <Text style={[styles.modalTitle, { color: textColor }]}>Success</Text>
+              <Text style={[styles.modalSubtitle, { color: theme === "light" ? '#666' : '#aaa', textAlign: 'center' }]}> 
+                {successModalText}
+              </Text>
+              <TouchableOpacity
+                style={styles.successButton}
+                onPress={() => setSuccessModalVisible(false)}
+              >
+                <Text style={styles.successButtonText}>OK</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -670,8 +694,28 @@ const styles = StyleSheet.create({
   },
   followUpItem: {
     marginBottom: 8,
-    padding: 8,
-    borderRadius: 8,
+    padding: 10,
+    borderRadius: 10,
+  },
+  followUpItemResident: {
+    backgroundColor: 'rgba(40, 148, 44, 0.08)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#28942c',
+  },
+  followUpItemAdmin: {
+    backgroundColor: 'rgba(74, 144, 226, 0.12)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#4A90E2',
+  },
+  followUpHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  followUpSender: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   followUpMessage: {
     fontSize: 14,
@@ -803,5 +847,16 @@ const styles = StyleSheet.create({
   pickerButtonText: {
     fontSize: 16,
     flex: 1,
+  },
+  successButton: {
+    backgroundColor: '#28942c',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  successButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 }); 

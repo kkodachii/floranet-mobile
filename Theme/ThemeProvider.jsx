@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { Appearance } from "react-native";
+import * as SecureStore from "expo-secure-store";
 
 const ThemeContext = createContext();
+const THEME_KEY = "floranet_theme";
 
 const lightColors = {
   background: "#f6f7f9",
@@ -25,8 +27,23 @@ export const ThemeProvider = ({ children }) => {
   const systemTheme = Appearance.getColorScheme();
   const [theme, setTheme] = useState(systemTheme || "light");
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const saved = await SecureStore.getItemAsync(THEME_KEY);
+        if (saved === "light" || saved === "dark") {
+          setTheme(saved);
+        }
+      } catch (_) {}
+    })();
+  }, []);
+
   const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+    setTheme((prev) => {
+      const next = prev === "light" ? "dark" : "light";
+      SecureStore.setItemAsync(THEME_KEY, next).catch(() => {});
+      return next;
+    });
   };
 
   const colors = theme === "light" ? lightColors : darkColors;

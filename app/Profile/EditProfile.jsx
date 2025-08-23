@@ -9,13 +9,17 @@ import {
   StatusBar,
   Image,
   Alert,
+  Modal,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import Navbar from "../../components/Navbar";
 import Header from "../../components/HeaderBack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
+import { authStorage, authService, buildStorageUrl } from "../../services/api";
+import { Picker } from "@react-native-picker/picker";
+import { Ionicons } from "@expo/vector-icons";
 
 const EditProfile = () => {
   const insets = useSafeAreaInsets();
@@ -24,38 +28,150 @@ const EditProfile = () => {
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
 
-  const [profilePic, setProfilePic] = useState(null);
-  const [name, setName] = useState("Juan Dela Cruz");
-  const [residentID, setResidentID] = useState("B3A - L23");
-  const [houseNumber, setHouseNumber] = useState("23");
-  const [street, setStreet] = useState("Blk B3A");
-  const [contactNumber, setContactNumber] = useState("09171234567");
+  const [profilePic, setProfilePic] = useState(null); // local picked uri (file:)
+  const [user, setUser] = useState(null);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
+  const [houseNumber, setHouseNumber] = useState("");
+  const [street, setStreet] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
+  const openModal = (title, message) => {
+    setModalTitle(title);
+    setModalMessage(message);
+    setModalVisible(true);
+  };
+
+  const [initial, setInitial] = useState({
+    name: "",
+    email: "",
+    contact_no: "",
+    house_number: "",
+    street: "",
+  });
+
+  const streetOptions = [
+    "Adelfa",
+    "Bougainvillea",
+    "Champaca",
+    "Dahlia",
+    "Gumamela",
+    "Ilang-ilang",
+    "Jasmin",
+    "Kalachuchi",
+    "Lilac",
+    "Rosal",
+    "Sampaguita",
+    "Santan",
+    "Waling-waling",
+  ];
+
+  useEffect(() => {
+    (async () => {
+      const { user: cached } = await authStorage.load();
+      if (cached) {
+        setUser(cached);
+        const start = {
+          name: cached.name || "",
+          email: cached.email || "",
+          contact_no: cached.contact_no || "",
+          house_number: cached.house?.house_number || "",
+          street: cached.house?.street || "",
+        };
+        setInitial(start);
+        setName(start.name);
+        setEmail(start.email);
+        setContactNumber(start.contact_no);
+        setHouseNumber(start.house_number);
+        setStreet(start.street);
+      }
+    })();
+  }, []);
 
   const pickProfilePic = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission denied", "You need to allow gallery access.");
+      openModal("Permission denied", "You need to allow gallery access.");
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
+      quality: 0.8,
     });
 
     if (!result.canceled && result.assets.length > 0) {
-      setProfilePic(result.assets[0].uri);
+      const uri = result.assets[0].uri;
+      setProfilePic(uri);
     }
   };
 
-  const handleSubmit = () => {
-    if (!name || !residentID || !houseNumber || !street || !contactNumber) {
-      Alert.alert("Missing Fields", "Please complete all fields.");
+  const hasFieldChanges = useMemo(() => {
+    return (
+      name !== initial.name ||
+      email !== initial.email ||
+      contactNumber !== initial.contact_no ||
+      houseNumber !== initial.house_number ||
+      street !== initial.street
+    );
+  }, [name, email, contactNumber, houseNumber, street, initial]);
+
+  const hasPicChange = !!profilePic;
+  const disableSave = !hasFieldChanges && !hasPicChange;
+
+  const handleSubmit = async () => {
+    if (disableSave) return;
+    if (!name || !email) {
+      openModal("Validation", "Please enter name and email.");
       return;
     }
+    try {
+      setSaving(true);
+      const payload = {};
+      if (name !== initial.name) payload.name = name;
+      if (email !== initial.email) payload.email = email;
+      if (contactNumber !== initial.contact_no) payload.contact_no = contactNumber;
+      if (houseNumber !== initial.house_number) payload.house_number = houseNumber;
+      if (street !== initial.street) payload.street = street;
 
-    Alert.alert("Success", "Profile updated successfully.");
+      if (Object.keys(payload).length > 0) {
+        await authService.updateProfile(payload);
+      }
+
+      if (hasPicChange && profilePic.startsWith("file:")) {
+        await authService.uploadProfilePicture(profilePic);
+        setProfilePic(null);
+      }
+
+      const fresh = await authService.getProfileCached({ force: true });
+      setUser(fresh);
+      await authStorage.save({ token: null, user: fresh });
+
+      const updatedInit = {
+        name,
+        email,
+        contact_no: contactNumber,
+        house_number: houseNumber,
+        street,
+      };
+      setInitial(updatedInit);
+
+      openModal("Success", "Profile updated successfully.");
+    } catch (e) {
+      const message = e?.response?.data?.message
+        || (e?.response?.data?.errors && Object.values(e.response.data.errors).flat().join("\n"))
+        || "Failed to update profile.";
+      openModal("Error", message);
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const displayPicUri = profilePic || (user?.profile_picture ? buildStorageUrl(user.profile_picture) : null);
 
   return (
     <SafeAreaView
@@ -77,8 +193,8 @@ const EditProfile = () => {
             style={styles.profilePicWrapper}
             onPress={pickProfilePic}
           >
-            {profilePic ? (
-              <Image source={{ uri: profilePic }} style={styles.profilePic} />
+            {displayPicUri ? (
+              <Image source={{ uri: displayPicUri }} style={styles.profilePic} />
             ) : (
               <View style={styles.profilePlaceholder} />
             )}
@@ -88,71 +204,84 @@ const EditProfile = () => {
           </TouchableOpacity>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              Full Name
-            </Text>
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Enter full name"
-              placeholderTextColor="#888"
-              value={name}
-              onChangeText={setName}
-            />
+            <Text style={[styles.label, { color: colors.text }]}>Full Name</Text>
+            <View style={[styles.inputWrapper, inputWrapperStyle(theme, colors)]}>
+              <Ionicons name="person-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="Enter full name"
+                placeholderTextColor={colors.text + "60"}
+                value={name}
+                onChangeText={setName}
+              />
+            </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              Resident ID
-            </Text>
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="e.g., B3A - L23"
-              placeholderTextColor="#888"
-              value={residentID}
-              onChangeText={setResidentID}
-            />
+            <Text style={[styles.label, { color: colors.text }]}>Email</Text>
+            <View style={[styles.inputWrapper, inputWrapperStyle(theme, colors)]}>
+              <Ionicons name="mail-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="Enter email"
+                placeholderTextColor={colors.text + "60"}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
+              />
+            </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              House Number
-            </Text>
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Enter house number"
-              placeholderTextColor="#888"
-              value={houseNumber}
-              onChangeText={setHouseNumber}
-            />
+            <Text style={[styles.label, { color: colors.text }]}>Contact Number</Text>
+            <View style={[styles.inputWrapper, inputWrapperStyle(theme, colors)]}>
+              <Ionicons name="call-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="Enter contact number"
+                placeholderTextColor={colors.text + "60"}
+                value={contactNumber}
+                onChangeText={setContactNumber}
+                keyboardType="phone-pad"
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>House Number</Text>
+            <View style={[styles.inputWrapper, inputWrapperStyle(theme, colors)]}>
+              <Ionicons name="home-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="Enter house number (e.g., B3A - L23)"
+                placeholderTextColor={colors.text + "60"}
+                value={houseNumber}
+                onChangeText={setHouseNumber}
+              />
+            </View>
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.text }]}>Street</Text>
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Enter street"
-              placeholderTextColor="#888"
-              value={street}
-              onChangeText={setStreet}
-            />
+            <View style={[styles.pickerWrapper, inputWrapperStyle(theme, colors)]}>
+              <Ionicons name="location-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
+              <Picker
+                style={[styles.picker, { color: colors.text }]}
+                selectedValue={street}
+                onValueChange={(itemValue) => setStreet(itemValue)}
+                dropdownIconColor={colors.text}
+              >
+                <Picker.Item label="Select Street" value="" />
+                {streetOptions.map((option, index) => (
+                  <Picker.Item key={index} label={option} value={option} />
+                ))}
+              </Picker>
+            </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              Contact Number
-            </Text>
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Enter contact number"
-              placeholderTextColor="#888"
-              value={contactNumber}
-              onChangeText={setContactNumber}
-              keyboardType="phone-pad"
-            />
-          </View>
-
-          <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-            <Text style={styles.buttonText}>Save Changes</Text>
+          <TouchableOpacity style={[styles.button, disableSave ? { opacity: 0.5 } : null]} onPress={handleSubmit} disabled={saving || disableSave}>
+            <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Save Changes'}</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -168,9 +297,34 @@ const EditProfile = () => {
           <Navbar />
         </View>
       </View>
+
+      {/* Validation Modal */}
+      <Modal transparent visible={modalVisible} animationType="fade" onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}> 
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{modalTitle}</Text>
+            <Text style={[styles.modalMessage, { color: colors.text }]}>{modalMessage}</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.modalButton, styles.modalPrimary]} onPress={() => setModalVisible(false)}>
+                <Text style={styles.modalPrimaryText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
+
+const inputWrapperStyle = (theme, colors) => ({
+  backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
+  borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+  shadowColor: theme === "light" ? "#000" : "transparent",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: theme === "light" ? 0.1 : 0,
+  shadowRadius: theme === "light" ? 4 : 0,
+  elevation: theme === "light" ? 2 : 0,
+});
 
 export default EditProfile;
 
@@ -184,29 +338,28 @@ const styles = StyleSheet.create({
   },
   inputGroup: { marginBottom: 16 },
   label: { fontSize: 16, fontWeight: "500", marginBottom: 8 },
-  input: {
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "#28942c",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-  },
-  profilePicWrapper: {
+  inputWrapper: {
+    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
   },
-  profilePic: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+  inputIcon: { marginRight: 12 },
+  input: { flex: 1, fontSize: 16, paddingVertical: 16 },
+  pickerWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
   },
-  profilePlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#ccc",
-  },
+  picker: { flex: 1, height: 56 },
+  profilePicWrapper: { alignItems: "center", marginBottom: 20 },
+  profilePic: { width: 100, height: 100, borderRadius: 50 },
+  profilePlaceholder: { width: 100, height: 100, borderRadius: 50, backgroundColor: "#ccc" },
   button: {
     backgroundColor: "#28942c",
     padding: 14,
@@ -214,12 +367,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 10,
   },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  navWrapper: {
-    backgroundColor: "#fff",
-  },
+  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  navWrapper: { backgroundColor: "#fff" },
+  modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { width: '85%', maxWidth: 360, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#00000022' },
+  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
+  modalMessage: { fontSize: 14, opacity: 0.8, marginBottom: 16 },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end' },
+  modalButton: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10 },
+  modalPrimary: { backgroundColor: '#28942c' },
+  modalPrimaryText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });

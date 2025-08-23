@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,12 +10,14 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../Theme/ThemeProvider";
+import { authService } from "../../services/api";
 
 const RegisterScreen = () => {
   const router = useRouter();
@@ -24,45 +26,163 @@ const RegisterScreen = () => {
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const [homeownerName, setHomeownerName] = useState("");
   const [residentName, setResidentName] = useState("");
-  const [houseNumber, setHouseNumber] = useState("");
+  const [block, setBlock] = useState("");
+  const [lot, setLot] = useState("");
   const [street, setStreet] = useState("");
-  const [relationship, setRelationship] = useState("Family/Relative");
+
   const [contactNumber, setContactNumber] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [residentId, setResidentId] = useState("");
 
-  const nextStep = () => setStep((prev) => prev + 1);
+  // Street options
+  const streetOptions = [
+    "Adelfa",
+    "Bougainvillea",
+    "Champaca",
+    "Dahlia",
+    "Gumamela",
+    "Ilang-ilang",
+    "Jasmin",
+    "Kalachuchi",
+    "Lilac",
+    "Rosal",
+    "Sampaguita",
+    "Santan",
+    "Waling-waling"
+  ];
+
+  // Get next resident ID when component mounts
+  useEffect(() => {
+    const getNextResidentId = async () => {
+      try {
+        const response = await authService.getNextResidentId();
+        setResidentId(response.next_resident_id);
+      } catch (error) {
+        console.error("Error getting next resident ID:", error);
+        // Fallback to a default ID if API fails
+        setResidentId("MHH0001");
+      }
+    };
+    
+    getNextResidentId();
+  }, []);
+
+  const nextStep = () => {
+    if (step === 1) {
+      if (!homeownerName || !residentName || !residentId) {
+        Alert.alert("Error", "Please wait for Resident ID to load and fill in all fields before proceeding.");
+        return;
+      }
+    } else if (step === 2) {
+      if (!block || !lot || !street || !contactNumber) {
+        Alert.alert("Error", "Please fill in all fields before proceeding.");
+        return;
+      }
+    }
+    setStep((prev) => prev + 1);
+  };
+  
   const prevStep = () => setStep((prev) => prev - 1);
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (
       !homeownerName ||
       !residentName ||
-      !houseNumber ||
+      !residentId ||
+      !block ||
+      !lot ||
       !street ||
       !contactNumber ||
       !email ||
       !password ||
       !confirmPassword
     ) {
-      Alert.alert("Please fill in all fields.");
+      Alert.alert("Error", "Please fill in all fields.");
       return;
     }
+    
+    if (street === "") {
+      Alert.alert("Error", "Please select a street.");
+      return;
+    }
+    
+    // Validate block and lot format
+    if (!block.trim()) {
+      Alert.alert("Error", "Please enter a valid block.");
+      return;
+    }
+    
+    if (!lot.trim()) {
+      Alert.alert("Error", "Please enter a valid lot.");
+      return;
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert("Error", "Please enter a valid email address.");
+      return;
+    }
+    
+    // Password length validation
+    if (password.length < 8) {
+      Alert.alert("Error", "Password must be at least 8 characters long.");
+      return;
+    }
+    
     if (password !== confirmPassword) {
-      Alert.alert("Passwords do not match.");
+      Alert.alert("Error", "Passwords do not match.");
       return;
     }
     if (!acceptedTerms) {
-      Alert.alert("Please accept the Terms and Conditions.");
+      Alert.alert("Error", "Please accept the Terms and Conditions.");
       return;
     }
-    Alert.alert("Registered successfully!");
-    router.replace("/MainHomepage");
+
+    setIsLoading(true);
+
+    try {
+      const userData = {
+        name: residentName,
+        email: email,
+        password: password,
+        password_confirmation: confirmPassword,
+        contact_no: contactNumber,
+        house_owner_name: homeownerName,
+        resident_id: residentId,
+        block: block,
+        lot: lot,
+        street: street,
+        // Note: house_id will be null initially, admin will need to assign it
+      };
+
+      const response = await authService.register(userData);
+      
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error("Registration error:", error);
+      let errorMessage = "Registration failed. Please try again.";
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        const firstError = Object.values(errors)[0];
+        errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
+      }
+      
+      Alert.alert("Registration Error", errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderProgressBar = () => {
@@ -139,27 +259,21 @@ const RegisterScreen = () => {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Relationship</Text>
-        <View style={[styles.pickerWrapper, { 
-          backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
+        <Text style={[styles.label, { color: colors.text }]}>Resident ID</Text>
+        <View style={[styles.residentIdContainer, { 
+          backgroundColor: theme === "light" ? "#f8f9fa" : "rgba(255, 255, 255, 0.05)",
           borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
-          shadowColor: theme === "light" ? "#000" : "transparent",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: theme === "light" ? 0.1 : 0,
-          shadowRadius: theme === "light" ? 4 : 0,
-          elevation: theme === "light" ? 2 : 0,
         }]}>
-          <Picker
-            selectedValue={relationship}
-            onValueChange={setRelationship}
-            style={[styles.picker, { color: colors.text }]}
-          >
-            <Picker.Item label="Family/Relative" value="Family/Relative" />
-            <Picker.Item label="Tenant" value="Tenant" />
-            <Picker.Item label="Owner" value="Owner" />
-          </Picker>
+          <Ionicons name="card-outline" size={20} color="#28942c" style={styles.inputIcon} />
+          <Text style={[styles.residentIdText, { color: "#28942c" }]}>
+            {residentId || "Loading..."}
+          </Text>
         </View>
+        <Text style={[styles.helperText, { color: colors.text + "80" }]}>
+          This ID will be automatically assigned to your account
+        </Text>
       </View>
+
 
       {/* Navigation Button */}
       <TouchableOpacity style={styles.nextButton} onPress={nextStep} activeOpacity={1.0}>
@@ -185,7 +299,29 @@ const RegisterScreen = () => {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>House Number</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Block</Text>
+        <View style={[styles.inputWrapper, { 
+          backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
+          borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+          shadowColor: theme === "light" ? "#000" : "transparent",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: theme === "light" ? 0.1 : 0,
+          shadowRadius: theme === "light" ? 4 : 0,
+          elevation: theme === "light" ? 2 : 0,
+        }]}>
+          <Ionicons name="business-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
+          <TextInput
+            placeholder="e.g. A3B"
+            placeholderTextColor={colors.text + "60"}
+            style={[styles.input, { color: colors.text }]}
+            value={block}
+            onChangeText={setBlock}
+          />
+        </View>
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={[styles.label, { color: colors.text }]}>Lot</Text>
         <View style={[styles.inputWrapper, { 
           backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
           borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
@@ -197,18 +333,18 @@ const RegisterScreen = () => {
         }]}>
           <Ionicons name="home-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
           <TextInput
-            placeholder="Enter House Number"
+            placeholder="e.g. L32"
             placeholderTextColor={colors.text + "60"}
             style={[styles.input, { color: colors.text }]}
-            value={houseNumber}
-            onChangeText={setHouseNumber}
+            value={lot}
+            onChangeText={setLot}
           />
         </View>
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>Street</Text>
-        <View style={[styles.inputWrapper, { 
+        <View style={[styles.pickerWrapper, { 
           backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
           borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
           shadowColor: theme === "light" ? "#000" : "transparent",
@@ -218,13 +354,17 @@ const RegisterScreen = () => {
           elevation: theme === "light" ? 2 : 0,
         }]}>
           <Ionicons name="location-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
-          <TextInput
-            placeholder="Enter Street Name"
-            placeholderTextColor={colors.text + "60"}
-            style={[styles.input, { color: colors.text }]}
-            value={street}
-            onChangeText={setStreet}
-          />
+          <Picker
+            style={[styles.picker, { color: colors.text }]}
+            selectedValue={street}
+            onValueChange={(itemValue) => setStreet(itemValue)}
+            dropdownIconColor={colors.text}
+          >
+            <Picker.Item label="Select Street" value="" />
+            {streetOptions.map((option, index) => (
+              <Picker.Item key={index} label={option} value={option} />
+            ))}
+          </Picker>
         </View>
       </View>
 
@@ -382,13 +522,24 @@ const RegisterScreen = () => {
           <Text style={[styles.navButtonText, { color: colors.text }]}>Previous</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.registerButton} onPress={handleRegister} activeOpacity={1.0}>
+        <TouchableOpacity 
+          style={styles.registerButton} 
+          onPress={handleRegister} 
+          activeOpacity={1.0}
+          disabled={isLoading}
+        >
           <LinearGradient
             colors={["#28942c", "#2d9d31", "#32a636"]}
             style={styles.gradientButton}
           >
-            <Text style={styles.registerButtonText}>Create Account</Text>
-            <Ionicons name="checkmark-circle" size={20} color="#fff" />
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Text style={styles.registerButtonText}>Create Account</Text>
+                <Ionicons name="checkmark-circle" size={20} color="#fff" />
+              </>
+            )}
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -431,6 +582,51 @@ const RegisterScreen = () => {
           </ScrollView>
         </KeyboardAvoidingView>
       </LinearGradient>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { 
+            backgroundColor: theme === "light" ? "#ffffff" : "#1F2633",
+            borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+          }]}>
+            <View style={styles.modalContent}>
+              <View style={styles.successIconContainer}>
+                <LinearGradient
+                  colors={["#28942c", "#2d9d31", "#32a636"]}
+                  style={styles.successIconGradient}
+                >
+                  <Ionicons name="checkmark" size={40} color="#fff" />
+                </LinearGradient>
+              </View>
+              
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                Registration Successful!
+              </Text>
+              
+              <Text style={[styles.modalMessage, { color: colors.text }]}>
+                Your account has been created successfully. Please wait for admin approval before you can log in.
+              </Text>
+              
+              <TouchableOpacity 
+                style={styles.modalButton} 
+                onPress={() => {
+                  setShowSuccessModal(false);
+                  router.replace("/");
+                }}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={["#28942c", "#2d9d31", "#32a636"]}
+                  style={styles.modalButtonGradient}
+                >
+                  <Text style={styles.modalButtonText}>Continue</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -520,12 +716,34 @@ const styles = StyleSheet.create({
   eyeIcon: {
     padding: 8,
   },
-  pickerWrapper: {
+  residentIdContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     borderRadius: 12,
     borderWidth: 1,
-    overflow: "hidden",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  residentIdText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#28942c",
+  },
+  helperText: {
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  pickerWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
   },
   picker: {
+    flex: 1,
     height: 56,
   },
   termsContainer: {
@@ -609,5 +827,87 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     marginRight: 8,
+  },
+  // Modal Styles
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalContainer: {
+    width: '85%',
+    maxWidth: 350,
+    borderRadius: 20,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalContent: {
+    padding: 30,
+    alignItems: 'center',
+  },
+  successIconContainer: {
+    marginBottom: 20,
+  },
+  successIconGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#28942c',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  modalMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 25,
+    opacity: 0.8,
+  },
+  modalButton: {
+    width: '100%',
+  },
+  modalButtonGradient: {
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#28942c',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

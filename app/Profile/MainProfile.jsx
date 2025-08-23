@@ -7,14 +7,18 @@ import {
   StatusBar,
   TouchableOpacity,
   Modal,
+  Image,
+  Alert,
 } from "react-native";
-import React, { useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Navbar from "../../components/Navbar";
 import HeaderBack from "../../components/HeaderBack";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { Ionicons } from "@expo/vector-icons";
+import { authStorage, authService, buildStorageUrl } from "../../services/api";
+import * as ImagePicker from "expo-image-picker";
 
 const CHIP_LABELS = ["Posts", "Business"];
 
@@ -70,6 +74,45 @@ const MainProfile = () => {
   const [hideSensitiveInfo, setHideSensitiveInfo] = useState(false);
   const [selectedChip, setSelectedChip] = useState("Posts");
 
+  const [user, setUser] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { user: cachedUser } = await authStorage.load();
+      if (cachedUser) setUser(cachedUser);
+      try {
+        const fresh = await authService.getProfileCached();
+        setUser(fresh);
+        await authStorage.save({ token: null, user: fresh });
+      } catch (_) {}
+    })();
+  }, []);
+
+  const pickAndUploadProfilePicture = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission denied", "You need to allow gallery access.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      try {
+        setIsUploading(true);
+        await authService.uploadProfilePicture(result.assets[0].uri);
+        const fresh = await authService.getProfileCached({ force: true });
+        setUser(fresh);
+      } catch (e) {
+        Alert.alert("Error", "Failed to upload profile picture.");
+      } finally {
+        setIsUploading(false);
+      }
+    }
+  };
+
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const cardBackground = theme === "light" ? "#ffffff" : "#14181F";
@@ -77,22 +120,14 @@ const MainProfile = () => {
   const textColor = colors.text;
 
   const residentData = {
-    residentName: "Juan Dela Cruz",
-    residentID: "B3A - L23",
-    houseNumber: "23",
-    street: "Blk B3A",
-    contactNumber: "09171234567",
-    businessName: "Juan's Barbershop",
-    services: ["Haircut", "Shave"],
-    posts: [
-      {
-        id: 1,
-        content: "Just opened my barbershop! Come visit for a fresh cut!",
-        timestamp: "2 days ago",
-        likes: 15,
-        comments: 3,
-      },
-    ],
+    residentName: user?.name || "",
+    residentID: user?.resident_id || "",
+    houseNumber: user?.house?.house_number || "",
+    street: user?.house?.street || "",
+    contactNumber: user?.contact_no || "",
+    businessName: user?.vendor?.business_name || "",
+    services: Array.isArray(user?.vendor?.services) ? user.vendor.services : [],
+    posts: [],
   };
 
   const handlePickProfilePicture = () => {
@@ -139,7 +174,7 @@ const MainProfile = () => {
         backgroundColor={statusBarBackground}
         barStyle={theme === "light" ? "dark-content" : "light-content"}
       />
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <HeaderBack title="Profile" onBack={() => router.back()} />
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <View
@@ -161,24 +196,32 @@ const MainProfile = () => {
 
           <View style={styles.profileImageContainer}>
             <View style={[styles.profileImage, { backgroundColor: "#e4e6ea" }]}>
-              <Ionicons name="camera" size={40} color="#bcc0c4" />
+              {user?.profile_picture ? (
+                <Image
+                  source={{ uri: buildStorageUrl(user.profile_picture) }}
+                  style={{ width: 160, height: 160, borderRadius: 80 }}
+                />
+              ) : (
+                <Ionicons name="camera" size={40} color="#bcc0c4" />
+              )}
             </View>
             <TouchableOpacity
               style={[
                 styles.cameraButtonLarge,
                 { backgroundColor: buttonBackground },
               ]}
-              onPress={handlePickProfilePicture}
+              onPress={pickAndUploadProfilePicture}
+              disabled={isUploading}
             >
               <Ionicons name="camera" size={16} color={textColor} />
             </TouchableOpacity>
           </View>
 
           <Text style={[styles.name, { color: textColor }]}>
-            {residentData.residentName}
+            {residentData.residentName || '—'}
           </Text>
           <Text style={[styles.subText, { color: textColor }]}>
-            Resident ID: {residentData.residentID}
+            Resident ID: {residentData.residentID || '—'}
           </Text>
 
           <View style={styles.profileActions}>
@@ -228,7 +271,7 @@ const MainProfile = () => {
                   <View style={styles.infoTextContainer}>
                     <Text style={styles.infoLabel}>House Number</Text>
                     <Text style={[styles.infoText, { color: textColor }]}>
-                      {residentData.houseNumber}
+                      {residentData.houseNumber || '—'}
                     </Text>
                   </View>
                 </View>
@@ -243,7 +286,7 @@ const MainProfile = () => {
                   <View style={styles.infoTextContainer}>
                     <Text style={styles.infoLabel}>Street</Text>
                     <Text style={[styles.infoText, { color: textColor }]}>
-                      {residentData.street}
+                      {residentData.street || '—'}
                     </Text>
                   </View>
                 </View>
@@ -258,7 +301,7 @@ const MainProfile = () => {
                   <View style={styles.infoTextContainer}>
                     <Text style={styles.infoLabel}>Contact Number</Text>
                     <Text style={[styles.infoText, { color: textColor }]}>
-                      {residentData.contactNumber}
+                      {residentData.contactNumber || '—'}
                     </Text>
                   </View>
                 </View>
@@ -329,18 +372,6 @@ const MainProfile = () => {
                   </Text>
                 </View>
               )}
-
-              <TouchableOpacity
-                style={[
-                  styles.buttonAlt,
-                  { backgroundColor: buttonBackground },
-                ]}
-                onPress={() => router.push("/Profile/ManagePost")}
-              >
-                <Text style={[styles.buttonAltText, { color: textColor }]}>
-                  Create Another Business
-                </Text>
-              </TouchableOpacity>
 
               {/* Services Section */}
               <Text style={[styles.sectionTitle, { marginLeft: 0 }]}>
@@ -514,8 +545,13 @@ const MainProfile = () => {
 export default MainProfile;
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  container: { flex: 1, justifyContent: "space-between" },
+  safeArea: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
   scrollContainer: { alignItems: "center", paddingBottom: 30 },
 
   coverPhotoWrapper: {

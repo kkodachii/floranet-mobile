@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -14,6 +14,7 @@ import Header from "../components/Header";
 import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "../Theme/ThemeProvider";
 import { StatusBar } from "react-native";
+import { authStorage, authService, buildStorageUrl } from "../services/api";
 
 const MainHomepage = () => {
   const insets = useSafeAreaInsets();
@@ -26,6 +27,26 @@ const MainHomepage = () => {
   const buttonBackground = theme === "light" ? "#e1e5ea" : "#1F2633";
   const textColor = colors.text;
 
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      // Load cached user immediately for fast UI
+      const { user: cachedUser } = await authStorage.load();
+      if (cachedUser) setUser(cachedUser);
+      // Then refresh from API for latest data
+      try {
+        const fresh = await authService.getProfileCached();
+        setUser(fresh);
+        await authStorage.save({ token: null, user: fresh });
+      } catch (_) {}
+    })();
+  }, []);
+
+  const displayName = user?.name || "Resident";
+  const houseNumber = user?.house?.house_number || "-";
+  const avatarUri = user?.profile_picture ? buildStorageUrl(user.profile_picture) : null;
+
   return (
     <SafeAreaView
       style={[
@@ -37,16 +58,17 @@ const MainHomepage = () => {
         backgroundColor={statusBarBackground}
         barStyle={theme === "light" ? "dark-content" : "light-content"}
       />
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Header />
 
         <View style={styles.content}>
           <AccountDetails
-            homeownerName="Juan Dela Cruz"
-            residentId="B3A - L23"
-            avatarUri={null}
+            residentName={displayName}
+            HouseNumber={houseNumber}
+            avatarUri={avatarUri}
             cardBackground={cardBackground}
             textColor={textColor}
+            onMoreDetails={() => router.push("/Profile/MainProfile")}
           />
           <View style={styles.buttonGrid}>
             <MenuButton
@@ -93,11 +115,12 @@ const MainHomepage = () => {
 };
 
 const AccountDetails = ({
-  residentId,
-  homeownerName,
+  HouseNumber,
+  residentName,
   avatarUri,
   cardBackground,
   textColor,
+  onMoreDetails,
 }) => (
   <View style={[styles.paymentCard, { backgroundColor: cardBackground }]}>
     <View style={styles.cardHeader}>
@@ -111,18 +134,19 @@ const AccountDetails = ({
         )}
       </View>
       <View style={styles.badge}>
-        <Text style={styles.badgeText}>Homeowner</Text>
+        <Text style={styles.badgeText}>Resident</Text>
       </View>
     </View>
 
     <View style={styles.cardContent}>
-      <Text style={[styles.homeownerName, { color: textColor }]}>
-        {homeownerName}
+      <Text style={[styles.residentName, { color: textColor }]}>
+        {residentName}
       </Text>
-      <Text style={styles.residentId}>Resident ID: {residentId}</Text>
+      <Text style={styles.residentId}>House Number: {HouseNumber}</Text>
 
       <TouchableOpacity
         style={[styles.detailsButton, { borderColor: textColor }]}
+        onPress={onMoreDetails}
       >
         <Text style={[styles.detailsButtonText, { color: textColor }]}>
           More Details
@@ -212,7 +236,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 15,
   },
-  homeownerName: {
+  residentName: {
     fontSize: 32,
     fontWeight: "bold",
     marginBottom: 3,

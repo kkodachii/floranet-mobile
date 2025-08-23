@@ -1,20 +1,21 @@
 // app/_layout.jsx
-import { Stack } from "expo-router";
-import { View, StyleSheet, Platform } from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { View, StyleSheet, Platform, ActivityIndicator } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import * as NavigationBar from "expo-navigation-bar";
 import { ThemeProvider, useTheme } from "../Theme/ThemeProvider";
 import { NotificationProvider } from "../services/NotificationContext";
+import { setAuthToken } from "../services/api";
 
-// ✅ OneSignal import
 import { OneSignal, LogLevel } from "react-native-onesignal";
 
 function AppLayout() {
   const { colors, theme } = useTheme();
+  const router = useRouter();
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    // ✅ Setup Android navigation bar
     if (Platform.OS === "android") {
       NavigationBar.setBackgroundColorAsync(colors.background);
       NavigationBar.setButtonStyleAsync(theme === "dark" ? "light" : "dark");
@@ -41,21 +42,41 @@ function AppLayout() {
     };
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        // No persistent token; start at login every time
+      } catch (_) {}
+      setCheckingAuth(false);
+    })();
+  }, []);
+
+  if (checkingAuth) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color="#28942c" />
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={theme === "dark" ? "light" : "dark"} />
+    <View style={[styles.container, { backgroundColor: colors.background }]}> 
+      <StatusBar
+        style={theme === "dark" ? "light" : "dark"}
+        backgroundColor={colors.background}
+      />
       <Stack
         initialRouteName="index"
         screenOptions={{
           headerShown: false,
           animation: "none",
+          contentStyle: { backgroundColor: colors.background },
         }}
       />
     </View>
   );
 }
 
-// ✅ Wrap AppLayout in Theme + Notification providers
 export default function LayoutWrapper() {
   return (
     <ThemeProvider>
