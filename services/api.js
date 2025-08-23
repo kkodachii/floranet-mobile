@@ -1,7 +1,10 @@
 import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
 
 const DEFAULT_PROD_API = 'https://floranet-laravel.onrender.com/api';
+
 const DEFAULT_DEV_API = 'http://192.168.254.105:8000/api';
+
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || (__DEV__ ? DEFAULT_DEV_API : DEFAULT_PROD_API);
 export const API_ORIGIN = API_BASE_URL.replace(/\/?api$/, '');
 export const buildStorageUrl = (path) => {
@@ -32,9 +35,48 @@ export const setAuthToken = (token) => {
 };
 
 export const authStorage = {
-  save: async () => {},
-  load: async () => ({ token: null, user: null }),
-  clear: async () => {},
+  save: async ({ token, user }) => {
+    try {
+      if (token) {
+        await SecureStore.setItemAsync(TOKEN_KEY, token);
+        setAuthToken(token);
+      }
+      if (user) {
+        await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+      }
+    } catch (error) {
+      console.error('Error saving auth data:', error);
+    }
+  },
+  load: async () => {
+    try {
+      const [token, userStr] = await Promise.all([
+        SecureStore.getItemAsync(TOKEN_KEY),
+        SecureStore.getItemAsync(USER_KEY),
+      ]);
+      
+      const user = userStr ? JSON.parse(userStr) : null;
+      if (token) {
+        setAuthToken(token);
+      }
+      
+      return { token, user };
+    } catch (error) {
+      console.error('Error loading auth data:', error);
+      return { token: null, user: null };
+    }
+  },
+  clear: async () => {
+    try {
+      await Promise.all([
+        SecureStore.deleteItemAsync(TOKEN_KEY),
+        SecureStore.deleteItemAsync(USER_KEY),
+      ]);
+      setAuthToken(null);
+    } catch (error) {
+      console.error('Error clearing auth data:', error);
+    }
+  },
 };
 
 // In-memory user cache and dedupe
@@ -65,7 +107,14 @@ export const authService = {
   // User login (non-admin)
   login: async ({ email, password }) => {
     const response = await api.post('/user/login', { email, password });
-    return response.data; // { user, token, type: 'user' }
+    const result = { ...response.data, type: 'user' }; // { user, token, type: 'user' }
+    
+    // Save auth data to secure storage
+    if (result.token && result.user) {
+      await authStorage.save({ token: result.token, user: result.user });
+    }
+    
+    return result;
   },
   // Optional admin login if needed later
   adminLogin: async ({ email, password }) => {

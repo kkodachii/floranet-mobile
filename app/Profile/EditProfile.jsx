@@ -72,22 +72,39 @@ const EditProfile = () => {
 
   useEffect(() => {
     (async () => {
-      const { user: cached } = await authStorage.load();
-      if (cached) {
-        setUser(cached);
-        const start = {
-          name: cached.name || "",
-          email: cached.email || "",
-          contact_no: cached.contact_no || "",
-          house_number: cached.house?.house_number || "",
-          street: cached.house?.street || "",
-        };
-        setInitial(start);
-        setName(start.name);
-        setEmail(start.email);
-        setContactNumber(start.contact_no);
-        setHouseNumber(start.house_number);
-        setStreet(start.street);
+      try {
+        // First try to load from cache
+        const { user: cached } = await authStorage.load();
+        let userData = cached;
+        
+        // If no cached data, try to fetch fresh data
+        if (!userData) {
+          try {
+            userData = await authService.getProfileCached({ force: true });
+          } catch (error) {
+            console.error('Failed to fetch user profile:', error);
+            return;
+          }
+        }
+        
+        if (userData) {
+          setUser(userData);
+          const start = {
+            name: userData.name || "",
+            email: userData.email || "",
+            contact_no: userData.contact_no || "",
+            house_number: userData.house?.house_number || "",
+            street: userData.house?.street || "",
+          };
+          setInitial(start);
+          setName(start.name);
+          setEmail(start.email);
+          setContactNumber(start.contact_no);
+          setHouseNumber(start.house_number);
+          setStreet(start.street);
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
       }
     })();
   }, []);
