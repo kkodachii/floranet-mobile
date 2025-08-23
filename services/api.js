@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const DEFAULT_PROD_API = 'https://floranet-laravel.onrender.com/api';
-const DEFAULT_DEV_API = 'http://192.168.8.14:8000/api';
+const DEFAULT_DEV_API = 'http://192.168.254.105:8000/api';
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || (__DEV__ ? DEFAULT_DEV_API : DEFAULT_PROD_API);
 export const API_ORIGIN = API_BASE_URL.replace(/\/?api$/, '');
 export const buildStorageUrl = (path) => {
@@ -70,7 +70,7 @@ export const authService = {
   // Optional admin login if needed later
   adminLogin: async ({ email, password }) => {
     const response = await api.post('/admin/login', { email, password });
-    return response.data; // { user, token, type: 'admin' }
+    return {...response.data, type:'user'}; // { user, token, type: 'admin' }
   },
   // Logout using API and clear storage
   logout: async () => {
