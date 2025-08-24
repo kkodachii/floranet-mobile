@@ -145,9 +145,9 @@ const FootageList = () => {
 			<StatusBar backgroundColor={statusBarBackground} barStyle={theme === 'light' ? 'dark-content' : 'light-content'} />
 			<View style={styles.content}>
 				<HeaderBack title="CCTV Footage" />
-
-				<ScrollView
-					contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 80 }]}
+				
+				<ScrollView 
+					contentContainerStyle={styles.scrollContent}
 					showsVerticalScrollIndicator={false}
 				>
 					<View style={styles.headerSection}>
@@ -166,9 +166,12 @@ const FootageList = () => {
 					) : null}
 
 					{items.map(renderFootageCard)}
+					
+					{/* Add bottom padding to prevent content from being hidden behind navbar */}
+					<View style={{ height: 100 }} />
 				</ScrollView>
 
-				<View style={[styles.navbarContainer, { paddingBottom: insets.bottom }]}>
+				<View style={styles.navbarContainer}>
 					<Navbar />
 				</View>
 			</View>
@@ -182,6 +185,7 @@ const styles = StyleSheet.create({
 	},
 	content: {
 		flex: 1,
+		position: 'relative',
 	},
 	scrollContent: {
 		paddingHorizontal: 20,
@@ -288,6 +292,7 @@ const styles = StyleSheet.create({
 		left: 0,
 		right: 0,
 		backgroundColor: 'transparent',
+		zIndex: 1000,
 	},
 });
 
