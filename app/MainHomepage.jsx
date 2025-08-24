@@ -25,16 +25,16 @@ const MainHomepage = () => {
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const cardBackground = theme === "light" ? "#ffffff" : "#14181F";
   const buttonBackground = theme === "light" ? "#e1e5ea" : "#1F2633";
+  const iconCircleBackground = theme === "light" ? "#f0f4f8" : "#2A3441";
+  const subtextColor = theme === "light" ? "#6B7280" : "#9CA3AF";
   const textColor = colors.text;
 
   const [user, setUser] = useState(null);
 
   useEffect(() => {
     (async () => {
-      // Load cached user immediately for fast UI
       const { user: cachedUser } = await authStorage.load();
       if (cachedUser) setUser(cachedUser);
-      // Then refresh from API for latest data
       try {
         const fresh = await authService.getProfileCached();
         setUser(fresh);
@@ -45,7 +45,9 @@ const MainHomepage = () => {
 
   const displayName = user?.name || "Resident";
   const houseNumber = user?.house?.house_number || "-";
-  const avatarUri = user?.profile_picture ? buildStorageUrl(user.profile_picture) : null;
+  const avatarUri = user?.profile_picture
+    ? buildStorageUrl(user.profile_picture)
+    : null;
 
   return (
     <SafeAreaView
@@ -60,7 +62,6 @@ const MainHomepage = () => {
       />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Header />
-
         <View style={styles.content}>
           <AccountDetails
             residentName={displayName}
@@ -68,31 +69,39 @@ const MainHomepage = () => {
             avatarUri={avatarUri}
             cardBackground={cardBackground}
             textColor={textColor}
-            onMoreDetails={() => router.push("/Profile/MainProfile")}
           />
           <View style={styles.buttonGrid}>
             <MenuButton
-              icon={<Ionicons name="wallet" size={30} color={textColor} />}
-              label="FINANCE"
+              icon={<Ionicons name="wallet" size={24} color={textColor} />}
+              label="Finance"
+              subtitle="Manage payments, dues, and billing"
               onPress={() => router.push("/Finance/FinanceHomepage/")}
               buttonBackground={buttonBackground}
               textColor={textColor}
+              subtextColor={subtextColor}
+              iconCircleBackground={iconCircleBackground}
             />
             <MenuButton
-              icon={<FontAwesome5 name="users" size={30} color={textColor} />}
-              label="COMMUNITY"
+              icon={<FontAwesome5 name="users" size={24} color={textColor} />}
+              label="Community"
+              subtitle="Connect with neighbors and events"
               onPress={() => router.push("/Community/CommunityHomepage")}
               buttonBackground={buttonBackground}
               textColor={textColor}
+              subtextColor={subtextColor}
+              iconCircleBackground={iconCircleBackground}
             />
             <MenuButton
               icon={
-                <MaterialIcons name="emergency" size={30} color={textColor} />
+                <MaterialIcons name="emergency" size={24} color={textColor} />
               }
-              label="SECURITY AND EMERGENCY"
+              label="Security & Emergency"
+              subtitle="Report incidents and access emergency contacts"
               onPress={() => router.push("/Emergency/EmergencyHomepage")}
               buttonBackground={buttonBackground}
               textColor={textColor}
+              subtextColor={subtextColor}
+              iconCircleBackground={iconCircleBackground}
               fullWidth
             />
           </View>
@@ -143,26 +152,38 @@ const AccountDetails = ({
         {residentName}
       </Text>
       <Text style={styles.residentId}>House Number: {HouseNumber}</Text>
-
-      <TouchableOpacity
-        style={[styles.detailsButton, { borderColor: textColor }]}
-        onPress={onMoreDetails}
-      >
-        <Text style={[styles.detailsButtonText, { color: textColor }]}>
-          More Details
-        </Text>
-      </TouchableOpacity>
     </View>
   </View>
 );
 
-const MenuButton = ({ icon, label, onPress, buttonBackground, textColor, fullWidth }) => (
+const MenuButton = ({
+  icon,
+  label,
+  subtitle,
+  onPress,
+  buttonBackground,
+  textColor,
+  subtextColor,
+  iconCircleBackground,
+  fullWidth,
+}) => (
   <TouchableOpacity
-    style={[styles.button, fullWidth && styles.buttonWide, { backgroundColor: buttonBackground }]}
+    style={[
+      styles.button,
+      fullWidth && styles.buttonWide,
+      { backgroundColor: buttonBackground },
+    ]}
     onPress={onPress}
   >
-    <View style={styles.iconWrapper}>{icon}</View>
-    <Text style={[styles.buttonText, { color: textColor }]}>{label}</Text>
+    <View style={[styles.iconCircle, { backgroundColor: iconCircleBackground }]}>
+      {icon}
+    </View>
+    <View style={styles.buttonTextContainer}>
+      <Text style={[styles.buttonText, { color: textColor }]}>{label}</Text>
+      <Text style={[styles.buttonSubtext, { color: subtextColor }]}>
+        {subtitle}
+      </Text>
+    </View>
   </TouchableOpacity>
 );
 
@@ -237,7 +258,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   residentName: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: "bold",
     marginBottom: 3,
   },
@@ -255,26 +276,49 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   buttonGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 12,
-  },
-  button: {
     flexDirection: "column",
     alignItems: "center",
+    gap: 12,
+    width: "100%",
+    paddingHorizontal: 20,
+  },
+  button: {
+    flexDirection: "row",
+    alignItems: "center",
     borderRadius: 16,
-    paddingVertical: 20,
-    paddingHorizontal: 24,
-    width: 150,
-    height: 90,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    width: 310,
+    minHeight: 80,
   },
   buttonWide: {
     width: 310,
   },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  buttonTextContainer: {
+    flex: 1,
+    alignItems: "flex-start",
+  },
   buttonText: {
-    marginTop: 3,
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  buttonSubtext: {
+    fontSize: 13,
+    lineHeight: 18,
     flexShrink: 1,
+  },
+  topBar: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
 });
