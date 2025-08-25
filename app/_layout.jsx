@@ -19,7 +19,10 @@ import * as Device from "expo-device";
 
 import { OneSignal, LogLevel } from "react-native-onesignal";
 
-// ✅ Handle how Expo Notifications behave
+//
+// ---------------------------
+// EXPO NOTIFICATIONS SETUP
+// ---------------------------
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -28,35 +31,81 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// Hook: listen for OneSignal notification clicks
-function useNotificationObserver() {
-  const router = useRouter();
+function useExpoNotifications() {
+  const notificationListener = useRef();
+  const responseListener = useRef();
 
   useEffect(() => {
-    const openedListener = OneSignal.Notifications.addEventListener(
-      "click",
-      (event) => {
-        console.log("📩 Notification clicked:", event);
+  const notificationListener = Notifications.addNotificationReceivedListener(
+    (notification) => {
+      console.log("📲 Expo Foreground notification:", notification);
+      Vibration.vibrate(1000);
+      Alert.alert("New Expo Alert", notification.request.content.body || "Message!");
+    }
+  );
 
-        const url = event.notification.additionalData?.url;
-        if (url) {
-          router.push(url);
-        }
-      }
-    );
+  const responseListener = Notifications.addNotificationResponseReceivedListener(
+    (response) => {
+      console.log("📲 Expo Notification tapped:", response);
+      Vibration.vibrate(1000);
+      Alert.alert(
+        "Opened Expo Notification",
+        response.notification.request.content.body || "You tapped a message!"
+      );
+    }
+  );
 
-    return () => {
-      OneSignal.Notifications.removeEventListener("click");
-    };
-  }, [router]);
+  return () => {
+    // ✅ New cleanup method
+    notificationListener.remove();
+    responseListener.remove();
+  };
+}, []);
+
 }
 
+//
+// ---------------------------
+// ONESIGNAL SETUP
+// ---------------------------
+function useOneSignalNotifications() {
+  const router = useRouter();
+
+ useEffect(() => {
+  OneSignal.Debug.setLogLevel(LogLevel.Verbose); // remove in prod
+  OneSignal.initialize("4df5f254-b383-4ac7-80f4-8b3c1afacb06");
+
+  OneSignal.Notifications.requestPermission(true);
+  OneSignal.User.pushSubscription.optIn();
+
+  const openedListener = OneSignal.Notifications.addEventListener("click", (event) => {
+    console.log("📩 OneSignal notification clicked:", event);
+    Vibration.vibrate(1000);
+    const url = event.notification.additionalData?.url;
+    if (url) {
+      router.push(url);
+    } else {
+      Alert.alert("OneSignal Alert", event.notification.body || "You got a message!");
+    }
+  });
+
+  return () => {
+    openedListener.remove();
+  };
+}, []);
+
+}
+
+//
+// ---------------------------
+// MAIN APP LAYOUT
+// ---------------------------
 function AppLayout() {
   const { colors, theme } = useTheme();
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const notificationListener = useRef();
 
-  useNotificationObserver();
+  useExpoNotifications(); // Expo push
+  useOneSignalNotifications(); // OneSignal push
 
   useEffect(() => {
     if (Platform.OS === "android") {
@@ -65,39 +114,11 @@ function AppLayout() {
     }
   }, [theme, colors]);
 
-  // ✅ OneSignal setup
-  useEffect(() => {
-    OneSignal.Debug.setLogLevel(LogLevel.Verbose); // remove in production
-    OneSignal.initialize("4df5f254-b383-4ac7-80f4-8b3c1afacb06");
-    OneSignal.Notifications.requestPermission(true);
-
-    // ✅ Listen for foreground notifications (vibrate + alert)
-    notificationListener.current =
-      Notifications.addNotificationReceivedListener((notification) => {
-        console.log("📲 Notification received:", notification);
-
-        // Vibrate for 1 second
-        Vibration.vibrate(10000);
-
-        // Show in-app alert
-        Alert.alert(
-          "New Alert",
-          notification.request.content.body || "You got a message!"
-        );
-      });
-
-    return () => {
-      if (notificationListener.current) {
-        notificationListener.current.remove();
-      }
-    };
-  }, []);
-
   // Fake auth check loader
   useEffect(() => {
     (async () => {
       try {
-        // No persistent token; start at login every time
+        // placeholder
       } catch (_) {}
       setCheckingAuth(false);
     })();
