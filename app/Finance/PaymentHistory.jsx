@@ -1,109 +1,136 @@
-import { StyleSheet, Text, View, SafeAreaView, ScrollView } from "react-native";
-import React from "react";
+import { StyleSheet, Text, View, SafeAreaView, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity } from "react-native";
+import React, { useState, useEffect } from "react";
 import Navbar from "../../components/Navbar";
 import Header from "../../components/HeaderBack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { Ionicons } from "@expo/vector-icons";
+import { financeService } from "../../services/api";
 
 const PaymentHistory = () => {
   const insets = useSafeAreaInsets();
   const { colors, theme } = useTheme();
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+  const [stats, setStats] = useState({ totalPayments: 0, totalAmount: 0 });
 
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
 
-  const historyData = [
-    {
-      month: "July 2025",
-      name: "Juan Dela Cruz",
-      id: "RZ1023",
-      time: "10:32 AM",
-      amount: "₱300.00",
-      status: "completed",
-    },
-    {
-      month: "June 2025",
-      name: "Maria Santos",
-      id: "RZ1009",
-      time: "2:45 PM",
-      amount: "₱500.00",
-      status: "completed",
-    },
-    {
-      month: "May 2025",
-      name: "Pedro Herrera",
-      id: "RZ1007",
-      time: "8:15 AM",
-      amount: "₱250.00",
-      status: "completed",
-    },
-    {
-      month: "April 2025",
-      name: "Ana Lopez",
-      id: "RZ1011",
-      time: "11:50 AM",
-      amount: "₱400.00",
-      status: "completed",
-    },
-    {
-      month: "March 2025",
-      name: "Carlo Reyes",
-      id: "RZ1032",
-      time: "4:10 PM",
-      amount: "₱350.00",
-      status: "completed",
-    },
-    {
-      month: "February 2025",
-      name: "Ellen Cruz",
-      id: "RZ1014",
-      time: "6:05 PM",
-      amount: "₱320.00",
-      status: "completed",
-    },
-    {
-      month: "January 2025",
-      name: "Roberto Lim",
-      id: "RZ1028",
-      time: "9:40 AM",
-      amount: "₱280.00",
-      status: "completed",
-    },
-    {
-      month: "December 2024",
-      name: "Marites Gomez",
-      id: "RZ1010",
-      time: "12:00 PM",
-      amount: "₱310.00",
-      status: "completed",
-    },
-    {
-      month: "November 2024",
-      name: "Allan Tan",
-      id: "RZ1002",
-      time: "7:25 AM",
-      amount: "₱295.00",
-      status: "completed",
-    },
-    {
-      month: "October 2024",
-      name: "Kristine Ramos",
-      id: "RZ1005",
-      time: "3:30 PM",
-      amount: "₱330.00",
-      status: "completed",
-    },
-  ];
+  useEffect(() => {
+    loadPaymentHistory();
+  }, []);
+
+  const loadPaymentHistory = async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      console.log('Loading payment history...');
+
+      const response = await financeService.getPaymentHistory({ page: 1 });
+      
+      console.log('Payment history response:', response);
+      
+      if (response?.data && Array.isArray(response.data)) {
+        console.log('Setting payments:', response.data);
+        setPayments(response.data);
+        
+        // Calculate stats
+        const totalAmount = response.data.reduce((sum, payment) => {
+          const amount = parseFloat(payment.amount) || 0;
+          return sum + amount;
+        }, 0);
+        
+        console.log('Calculated stats:', { totalPayments: response.data.length, totalAmount });
+        
+        setStats({
+          totalPayments: response.data.length,
+          totalAmount: totalAmount
+        });
+      } else {
+        console.log('No valid payments data, setting empty arrays');
+        setPayments([]);
+        setStats({ totalPayments: 0, totalAmount: 0 });
+      }
+    } catch (err) {
+      console.error('Error loading payment history:', err);
+      setError('Failed to load payment history');
+      setPayments([]);
+      setStats({ totalPayments: 0, totalAmount: 0 });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    loadPaymentHistory(true);
+  };
+
+  const formatMonth = (month, year) => {
+    if (!month || !year) return 'Monthly Due';
+    
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    const monthIndex = parseInt(month) - 1;
+    if (monthIndex >= 0 && monthIndex < monthNames.length) {
+      return `${monthNames[monthIndex]} ${year}`;
+    }
+    return 'Monthly Due';
+  };
+
+  const formatTime = (dateString) => {
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      
+      return date.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    } catch (error) {
+      return 'N/A';
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      });
+    } catch (error) {
+      return 'N/A';
+    }
+  };
 
   const PaymentCard = ({ item, index }) => (
                 <View style={[styles.paymentCard, { backgroundColor: theme === "light" ? "#ffffff" : colors.card }]}>
       <View style={styles.paymentHeader}>
         <View style={styles.paymentInfo}>
           <Text style={[styles.paymentMonth, { color: colors.text }]}>
-            {item.month}
+            {item?.monthly_due ? formatMonth(item.monthly_due.month, item.monthly_due.year) : 'Monthly Due'}
           </Text>
           <Text style={[styles.paymentTime, { color: colors.text, opacity: 0.6 }]}>
-            {item.time}
+            {formatTime(item?.paid_at)}
           </Text>
         </View>
         <View style={styles.statusContainer}>
@@ -116,24 +143,70 @@ const PaymentHistory = () => {
         <View style={styles.detailRow}>
           <Ionicons name="person" size={16} color="#4A90E2" />
           <Text style={[styles.detailText, { color: colors.text }]}>
-            {item.name}
+            {item?.resident?.name || 'Resident'}
           </Text>
         </View>
         <View style={styles.detailRow}>
           <Ionicons name="id-card" size={16} color="#FF6B35" />
           <Text style={[styles.detailText, { color: colors.text }]}>
-            {item.id}
+            {item?.resident?.resident_id || 'N/A'}
           </Text>
         </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="card" size={16} color="#9B59B6" />
+          <Text style={[styles.detailText, { color: colors.text }]}>
+            {item?.method_of_payment || 'Payment Method'}
+          </Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="calendar" size={16} color="#E67E22" />
+          <Text style={[styles.detailText, { color: colors.text }]}>
+            {formatDate(item?.paid_at)}
+          </Text>
+        </View>
+        
+        {/* Collection Reason */}
+        {item?.monthly_due?.street && (
+          <View style={styles.detailRow}>
+            <Ionicons name="location" size={16} color="#4A90E2" />
+            <Text style={[styles.detailText, { color: colors.text }]}>
+              {item.monthly_due.street}
+            </Text>
+          </View>
+        )}
+        
+        {/* Collection Reason - if available */}
+        {item?.monthly_due?.collection_reason && (
+          <View style={styles.detailRow}>
+            <Ionicons name="information-circle" size={16} color="#FF6B35" />
+            <Text style={[styles.detailText, { color: colors.text }]}>
+              {item.monthly_due.collection_reason}
+            </Text>
+          </View>
+        )}
       </View>
       
       <View style={styles.amountContainer}>
         <Text style={[styles.amount, { color: colors.text }]}>
-          {item.amount}
+          ₱{item?.amount ? parseFloat(item.amount).toFixed(2) : '0.00'}
         </Text>
       </View>
     </View>
   );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        <View style={styles.container}>
+          <Header title="Payment History" />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4A90E2" />
+            <Text style={[styles.loadingText, { color: colors.text }]}>Loading payment history...</Text>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -149,6 +222,9 @@ const PaymentHistory = () => {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         >
           <View style={styles.headerSection}>
             <Text style={[styles.pageTitle, { color: colors.text }]}>Payment Records</Text>
@@ -160,21 +236,51 @@ const PaymentHistory = () => {
           <View style={styles.statsCard}>
             <View style={styles.statItem}>
               <Ionicons name="calendar" size={24} color="#4A90E2" />
-              <Text style={[styles.statNumber, { color: colors.text }]}>10</Text>
+              <Text style={[styles.statNumber, { color: colors.text }]}>{stats.totalPayments}</Text>
               <Text style={[styles.statLabel, { color: colors.text, opacity: 0.7 }]}>Total Payments</Text>
             </View>
             <View style={styles.statItem}>
               <Ionicons name="cash" size={24} color="#50C878" />
-              <Text style={[styles.statNumber, { color: colors.text }]}>₱3,285</Text>
+              <Text style={[styles.statNumber, { color: colors.text }]}>₱{stats.totalAmount.toFixed(2)}</Text>
               <Text style={[styles.statLabel, { color: colors.text, opacity: 0.7 }]}>Total Amount</Text>
             </View>
           </View>
 
+          {error ? (
+            <View style={[styles.errorCard, { 
+              backgroundColor: theme === "light" ? "#FFEBE6" : "rgba(255, 107, 53, 0.15)",
+              borderColor: theme === "light" ? "rgba(255, 107, 53, 0.3)" : "rgba(255, 107, 53, 0.4)",
+              borderWidth: 1
+            }]}>
+              <Ionicons name="alert-circle" size={48} color="#FF6B35" />
+              <Text style={[styles.errorText, { color: colors.text }]}>{error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={() => loadPaymentHistory()}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : payments.length > 0 ? (
           <View style={styles.historyContainer}>
-            {historyData.map((item, index) => (
-              <PaymentCard key={index} item={item} index={index} />
+              {payments.map((item, index) => (
+                <PaymentCard key={item.id} item={item} index={index} />
             ))}
           </View>
+          ) : (
+            <View style={[styles.noPaymentsCard, { 
+              backgroundColor: theme === "light" ? "#f8f9fa" : "#2a3441",
+              borderColor: theme === "light" ? "#e9ecef" : "#3a4451",
+              borderWidth: 1
+            }]}>
+              <View style={[styles.noPaymentsIconContainer, { 
+                backgroundColor: theme === "light" ? "#e9ecef" : "#3a4451" 
+              }]}>
+                <Ionicons name="receipt-outline" size={64} color={theme === "light" ? "#6c757d" : "#9ca3af"} />
+              </View>
+              <Text style={[styles.noPaymentsText, { color: colors.text }]}>No payments yet</Text>
+              <Text style={[styles.noPaymentsSubtext, { color: colors.text, opacity: 0.7 }]}>
+                Your payment history will appear here once you make payments
+              </Text>
+            </View>
+          )}
         </ScrollView>
 
         <View
@@ -308,5 +414,62 @@ const styles = StyleSheet.create({
   },
   navWrapper: {
     backgroundColor: "#fff",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+  },
+  errorCard: {
+    borderRadius: 16,
+    padding: 20,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: "#4A90E2",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+  retryButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  noPaymentsCard: {
+    borderRadius: 16,
+    padding: 30,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  noPaymentsText: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginTop: 15,
+  },
+  noPaymentsSubtext: {
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 5,
+  },
+  noPaymentsIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 15,
   },
 });
