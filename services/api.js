@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 
 const DEFAULT_PROD_API = 'https://floranet-laravel.onrender.com/api';
 
-const DEFAULT_DEV_API = 'http://192.168.254.105:8000/api';
+const DEFAULT_DEV_API = 'http://192.168.254.107:8000/api';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || (__DEV__ ? DEFAULT_DEV_API : DEFAULT_PROD_API);
 export const API_ORIGIN = API_BASE_URL.replace(/\/?api$/, '');
@@ -297,6 +297,66 @@ export const adminService = {
       } catch (_) {
         return null;
       }
+    }
+  }
+}; 
+
+export const financeService = {
+  // Get current month's due for authenticated user
+  getCurrentMonthDue: async () => {
+    const response = await api.get('/user/monthly-dues/current');
+    return response.data; // { success, data: MonthlyDueResource or null, message }
+  },
+
+  // Get all months with payment status and collection reasons
+  getAllMonthsStatus: async ({ year } = {}) => {
+    const params = {};
+    if (year) params.year = year;
+    const response = await api.get('/user/monthly-dues/all-months', { params });
+    return response.data; // { success, data: { months: [], summary: {} } }
+  },
+
+  // Get all monthly dues for authenticated user
+  getMonthlyDues: async ({ page = 1, year } = {}) => {
+    const params = { page };
+    if (year) params.year = year;
+    const response = await api.get('/user/monthly-dues', { params });
+    return response.data; // Laravel resource collection
+  },
+
+  // Get payment history for authenticated user
+  getPaymentHistory: async ({ page = 1 } = {}) => {
+    const response = await api.get('/user/payments', { params: { page } });
+    return response.data; // Laravel resource collection
+  },
+
+  // Get available years for monthly dues
+  getAvailableYears: async () => {
+    try {
+      const user = await authService.getProfileCached();
+      if (!user?.resident_id) return [];
+      
+      const response = await api.get(`/admin/residents/${user.resident_id}/monthly-dues/years`);
+      return response.data?.data || [];
+    } catch (error) {
+      console.error('Error fetching available years:', error);
+      return [];
+    }
+  },
+
+  // Get monthly dues for a specific year
+  getYearHistory: async (year) => {
+    try {
+      const user = await authService.getProfileCached();
+      if (!user?.resident_id) return [];
+      
+      const response = await api.get(`/admin/residents/${user.resident_id}/monthly-dues/history`, {
+        params: { year }
+      });
+      return response.data?.data || [];
+    } catch (error) {
+      console.error('Error fetching year history:', error);
+      return [];
     }
   }
 }; 
