@@ -10,8 +10,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../Theme/ThemeProvider';
+import { buildStorageUrl } from '../../services/api';
 
-const CommentSection = ({ comments = [], onCommentAdd, onCommentReply, postId }) => {
+const CommentSection = ({ comments = [], onCommentAdd, postId }) => {
   const { colors, theme } = useTheme();
   const [newComment, setNewComment] = useState('');
   
@@ -26,42 +27,32 @@ const CommentSection = ({ comments = [], onCommentAdd, onCommentReply, postId })
     }
   };
 
-  const handleReply = (commentId, author) => {
-    if (onCommentReply) {
-      onCommentReply(commentId, author);
-    }
-  };
 
   const renderComment = ({ item }) => (
     <View style={styles.commentItem}>
       <View style={styles.commentAvatar}>
-        {item.avatar ? (
-          <Image source={{ uri: item.avatar }} style={styles.commentAvatarImage} />
+        {item.user?.profile_picture ? (
+          <Image 
+            source={{ uri: buildStorageUrl(item.user.profile_picture) }} 
+            style={styles.commentAvatarImage} 
+          />
         ) : (
           <View style={[styles.commentAvatarPlaceholder, { backgroundColor: colors.border || '#e0e0e0' }]}>
             <Text style={[styles.commentAvatarText, { color: textColor }]}>
-              {item.author.charAt(0).toUpperCase()}
+              {(item.user?.name || item.author || '?').charAt(0).toUpperCase()}
             </Text>
           </View>
         )}
       </View>
       <View style={styles.commentContent}>
         <View style={[styles.commentBubble, { backgroundColor: buttonBackground }]}>
-          <Text style={[styles.commentAuthor, { color: textColor }]}>{item.author}</Text>
+          <Text style={[styles.commentAuthor, { color: textColor }]}>{item.user?.name || item.author || 'Unknown User'}</Text>
           <Text style={[styles.commentText, { color: textColor }]}>{item.content}</Text>
         </View>
         <View style={styles.commentActions}>
           <Text style={[styles.commentTime, { color: colors.textSecondary || '#666' }]}>
-            {item.time}
+            {item.time_ago || item.time || 'now'}
           </Text>
-          <TouchableOpacity
-            style={styles.replyButton}
-            onPress={() => handleReply(item.id, item.author)}
-          >
-            <Text style={[styles.replyButtonText, { color: colors.textSecondary || '#666' }]}>
-              Reply
-            </Text>
-          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -211,14 +202,6 @@ const styles = StyleSheet.create({
   commentTime: {
     fontSize: 11,
     marginRight: 12,
-  },
-  replyButton: {
-    paddingVertical: 2,
-    paddingHorizontal: 4,
-  },
-  replyButtonText: {
-    fontSize: 11,
-    fontWeight: '600',
   },
   commentInputContainer: {
     borderTopWidth: 1,

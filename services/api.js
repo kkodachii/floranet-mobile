@@ -197,6 +197,14 @@ export const authService = {
     profileCachedAt = Date.now();
     return user;
   },
+  // Clear profile cache completely
+  clearProfileCache: async () => {
+    profileCache = null;
+    profileCachedAt = 0;
+    inflightProfilePromise = null;
+    lastProfileFetchMs = 0;
+    errorBackoffUntilMs = 0;
+  },
   // Update profile (name, email, contact_no, optional password with current_password)
   updateProfile: async (payload) => {
     const response = await api.put('/user/profile', payload);
@@ -358,5 +366,151 @@ export const financeService = {
       console.error('Error fetching year history:', error);
       return [];
     }
+  }
+};
+
+export const communityService = {
+  // Get all community posts with filters
+  getPosts: async ({ page = 1, category, visibility, admin_only, resident_only, search, user_id } = {}) => {
+    const params = { page };
+    if (category) params.category = category;
+    if (visibility) params.visibility = visibility;
+    if (admin_only) params.admin_only = admin_only;
+    if (resident_only) params.resident_only = resident_only;
+    if (search) params.search = search;
+    if (user_id) params.user_id = user_id;
+    
+    const response = await api.get('/user/community-posts', { params });
+    return response.data; // { success, data: paginated posts, message }
+  },
+
+  // Get a specific post by ID
+  getPost: async (id) => {
+    const response = await api.get(`/user/community-posts/${id}`);
+    return response.data; // { success, data: post, message }
+  },
+
+  // Create a new post
+  createPost: async (postData) => {
+    const formData = new FormData();
+    
+    // Add basic fields
+    formData.append('type', postData.type || 'text');
+    formData.append('category', postData.category);
+    formData.append('visibility', postData.visibility || 'public');
+    
+    if (postData.content) {
+      formData.append('content', postData.content);
+    }
+    
+    // Add images if provided
+    if (postData.images && postData.images.length > 0) {
+      postData.images.forEach((image, index) => {
+        formData.append('images[]', {
+          uri: image.uri,
+          name: image.name || `image_${index}.jpg`,
+          type: image.type || 'image/jpeg'
+        });
+      });
+    }
+    
+    const response = await api.post('/user/community-posts', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data; // { success, data: post, message }
+  },
+
+  // Update a post
+  updatePost: async (id, postData) => {
+    const formData = new FormData();
+    
+    // Add basic fields
+    if (postData.type) formData.append('type', postData.type);
+    if (postData.category) formData.append('category', postData.category);
+    if (postData.visibility) formData.append('visibility', postData.visibility);
+    if (postData.content !== undefined) formData.append('content', postData.content);
+    
+    // Add existing images to keep
+    if (postData.existing_images) {
+      postData.existing_images.forEach(image => {
+        formData.append('existing_images[]', image);
+      });
+    }
+    
+    // Add new images
+    if (postData.images && postData.images.length > 0) {
+      postData.images.forEach((image, index) => {
+        formData.append('images[]', {
+          uri: image.uri,
+          name: image.name || `image_${index}.jpg`,
+          type: image.type || 'image/jpeg'
+        });
+      });
+    }
+    
+    const response = await api.post(`/user/community-posts/${id}`, formData, {
+      headers: { 
+        'Content-Type': 'multipart/form-data',
+        'X-HTTP-Method-Override': 'PUT'
+      }
+    });
+    return response.data; // { success, data: post, message }
+  },
+
+  // Delete a post
+  deletePost: async (id) => {
+    const response = await api.delete(`/user/community-posts/${id}`);
+    return response.data; // { success, message }
+  },
+
+  // Toggle like on a post
+  toggleLike: async (id, reaction = 'like') => {
+    const response = await api.post(`/user/community-posts/${id}/like`, { reaction });
+    return response.data; // { success, data: { likes_count, user_reaction, is_liked }, message }
+  },
+
+  // Add a comment to a post
+  addComment: async (id, content, parentId = null) => {
+    const response = await api.post(`/user/community-posts/${id}/comment`, { 
+      content, 
+      parent_id: parentId 
+    });
+    return response.data; // { success, data: comment, message }
+  },
+
+  // Get comments for a post
+  getComments: async (id) => {
+    const response = await api.get(`/user/community-posts/${id}/comments`);
+    return response.data; // { success, data: comments, message }
+  },
+
+  // Delete a comment
+  deleteComment: async (postId, commentId) => {
+    const response = await api.delete(`/user/community-posts/${postId}/comments/${commentId}`);
+    return response.data; // { success, message }
+  }
+};
+
+export const vendorService = {
+  // Create vendor request
+  createVendorRequest: async (businessName) => {
+    const response = await api.post('/user/vendor-request', {
+      business_name: businessName
+    });
+    return response.data; // { success, message, data }
+  },
+
+  // Update vendor profile
+  updateVendorProfile: async (businessName) => {
+    const response = await api.put('/user/vendor-profile', {
+      business_name: businessName
+    });
+    return response.data; // { success, message, data }
+  },
+
+  // Check vendor request status
+  checkVendorRequestStatus: async () => {
+    const response = await api.get('/user/vendor-request-status');
+    return response.data; // { success, data: { has_request, status, business_name } }
   }
 }; 

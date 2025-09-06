@@ -9,6 +9,8 @@ import {
   Modal,
   Image,
   Alert,
+  TextInput,
+  RefreshControl,
 } from "react-native";
 import React, { useEffect, useState, useRef } from "react";
 import Navbar from "../../components/Navbar";
@@ -17,8 +19,10 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { Ionicons } from "@expo/vector-icons";
-import { authStorage, authService, buildStorageUrl } from "../../services/api";
+import { authStorage, authService, buildStorageUrl, communityService, vendorService } from "../../services/api";
 import * as ImagePicker from "expo-image-picker";
+import CommentSection from "../Community/CommentSection";
+import { useFocusEffect } from "@react-navigation/native";
 
 const CHIP_LABELS = ["Posts", "Business"];
 
@@ -76,18 +80,406 @@ const MainProfile = () => {
 
   const [user, setUser] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [userPosts, setUserPosts] = useState([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [loadingMorePosts, setLoadingMorePosts] = useState(false);
+  const [currentPostsPage, setCurrentPostsPage] = useState(1);
+  const [hasMoreUserPosts, setHasMoreUserPosts] = useState(true);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [editCaption, setEditCaption] = useState('');
+  const [likedPosts, setLikedPosts] = useState({});
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [comments, setComments] = useState({});
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [editBusinessModalVisible, setEditBusinessModalVisible] = useState(false);
+  const [becomeVendorModalVisible, setBecomeVendorModalVisible] = useState(false);
+  const [businessName, setBusinessName] = useState('');
+  const [vendorRequestModalVisible, setVendorRequestModalVisible] = useState(false);
+  const [vendorRequestBusinessName, setVendorRequestBusinessName] = useState('');
+  const [hasVendorRequest, setHasVendorRequest] = useState(false);
+  const [vendorRequestStatus, setVendorRequestStatus] = useState(null);
+  const [pendingBusinessName, setPendingBusinessName] = useState('');
 
   useEffect(() => {
     (async () => {
       const { user: cachedUser } = await authStorage.load();
       if (cachedUser) setUser(cachedUser);
       try {
-        const fresh = await authService.getProfileCached();
+        // Clear cache and force refresh to get latest user data including vendor info
+        await authService.clearProfileCache();
+        const fresh = await authService.getProfileCached({ force: true });
         setUser(fresh);
         await authStorage.save({ token: null, user: fresh });
-      } catch (_) {}
+        
+        console.log('User vendor data:', fresh?.vendor);
+        
+        // Check vendor request status
+        await checkVendorRequestStatus();
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
     })();
   }, []);
+
+  // Load user's posts
+  const loadUserPosts = async (page = 1, append = false) => {
+    if (!user?.id) return;
+    
+    try {
+      if (page === 1) {
+        setLoadingPosts(true);
+      } else {
+        setLoadingMorePosts(true);
+      }
+      
+      const response = await communityService.getPosts({ 
+        user_id: user.id, 
+        page,
+        per_page: 20
+      });
+      
+      console.log('User Posts API Response:', { 
+        success: response.success, 
+        postsCount: response.data?.data?.length || 0,
+        pagination: response.data?.links,
+        currentPage: page,
+        append,
+        userId: user.id
+      });
+      
+      if (response.success) {
+        const postsData = response.data.data || [];
+        const paginationData = response.data.links || {};
+        
+        if (append) {
+          setUserPosts(prev => [...prev, ...postsData]);
+        } else {
+          setUserPosts(postsData);
+        }
+        
+        // Check if there are more posts
+        const hasMore = paginationData.next !== null && postsData.length > 0;
+        console.log('Has more user posts:', hasMore, 'Next URL:', paginationData.next, 'Posts received:', postsData.length);
+        setHasMoreUserPosts(hasMore);
+        
+        // If no posts received and not appending, set hasMoreUserPosts to false
+        if (postsData.length === 0 && !append) {
+          setHasMoreUserPosts(false);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading user posts:', error);
+    } finally {
+      setLoadingPosts(false);
+      setLoadingMorePosts(false);
+    }
+  };
+
+  // Load posts when user is available
+  useEffect(() => {
+    if (user?.id) {
+      setCurrentPostsPage(1);
+      setHasMoreUserPosts(true);
+      loadUserPosts(1, false);
+    }
+  }, [user?.id]);
+
+  // Load more user posts
+  const loadMoreUserPosts = async () => {
+    console.log('loadMoreUserPosts called:', { loadingMorePosts, hasMoreUserPosts, currentPostsPage, userId: user?.id });
+    if (!loadingMorePosts && hasMoreUserPosts && user?.id) {
+      const nextPage = currentPostsPage + 1;
+      console.log('Loading more user posts, next page:', nextPage);
+      setCurrentPostsPage(nextPage);
+      await loadUserPosts(nextPage, true);
+    }
+  };
+
+  // Reload posts when screen comes into focus (after posting)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (user?.id) {
+        setCurrentPostsPage(1);
+        setHasMoreUserPosts(true);
+        loadUserPosts(1, false);
+      }
+    }, [user?.id])
+  );
+
+  // Handle pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      // Refresh user data
+      await authService.clearProfileCache();
+      const freshUser = await authService.getProfileCached({ force: true });
+      setUser(freshUser);
+      await authStorage.save({ token: null, user: freshUser });
+      
+      // Refresh posts
+      if (freshUser?.id) {
+        setCurrentPostsPage(1);
+        setHasMoreUserPosts(true);
+        await loadUserPosts(1, false);
+      }
+      
+      // Check vendor request status
+      await checkVendorRequestStatus();
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Initialize like states from posts data
+  useEffect(() => {
+    if (userPosts.length > 0) {
+      const initialLikedStates = {};
+      userPosts.forEach(post => {
+        // Initialize with is_liked from API, or default to false
+        initialLikedStates[post.id] = post.is_liked || false;
+      });
+      setLikedPosts(initialLikedStates);
+    }
+  }, [userPosts]);
+
+  // Handle edit post
+  const handleEditPost = (post) => {
+    setSelectedPost(post);
+    setEditCaption(post.content || '');
+    setEditModalVisible(true);
+  };
+
+  // Handle update post
+  const handleUpdatePost = async () => {
+    if (!selectedPost || !editCaption.trim()) return;
+    
+    try {
+      const response = await communityService.updatePost(selectedPost.id, {
+        content: editCaption.trim(),
+        type: selectedPost.type,
+        category: selectedPost.category,
+        visibility: selectedPost.visibility
+      });
+      
+      if (response.success) {
+        setEditModalVisible(false);
+        setSelectedPost(null);
+        setEditCaption('');
+        setCurrentPostsPage(1);
+        setHasMoreUserPosts(true);
+        await loadUserPosts(1, false); // Refresh posts
+        setSuccessMessage('Post updated successfully!');
+        setSuccessModalVisible(true);
+      } else {
+        Alert.alert('Error', response.message || 'Failed to update post');
+      }
+    } catch (error) {
+      console.error('Error updating post:', error);
+      Alert.alert('Error', 'Failed to update post. Please try again.');
+    }
+  };
+
+  // Handle delete post
+  const handleDeletePost = (post) => {
+    setSelectedPost(post);
+    setDeleteModalVisible(true);
+  };
+
+  // Confirm delete post
+  const confirmDeletePost = async () => {
+    if (!selectedPost) return;
+    
+    try {
+      const response = await communityService.deletePost(selectedPost.id);
+      
+      if (response.success) {
+        setDeleteModalVisible(false);
+        setSelectedPost(null);
+        setCurrentPostsPage(1);
+        setHasMoreUserPosts(true);
+        await loadUserPosts(1, false); // Refresh posts
+        setSuccessMessage('Post deleted successfully!');
+        setSuccessModalVisible(true);
+      } else {
+        Alert.alert('Error', response.message || 'Failed to delete post');
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      Alert.alert('Error', 'Failed to delete post. Please try again.');
+    }
+  };
+
+  // Handle like toggle
+  const handleToggleLike = async (postId) => {
+    try {
+      const response = await communityService.toggleLike(postId);
+      
+      if (response.success) {
+        // Update like state
+        setLikedPosts(prev => ({
+          ...prev,
+          [postId]: response.data.is_liked || false
+        }));
+        // Update the post in the posts array
+        setUserPosts(prev => prev.map(post => 
+          post.id === postId 
+            ? { 
+                ...post, 
+                likes_count: response.data.likes_count || 0,
+                is_liked: response.data.is_liked || false
+              }
+            : post
+        ));
+      } else {
+        Alert.alert('Error', response.message || 'Failed to update like');
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      Alert.alert('Error', 'Failed to update like. Please try again.');
+    }
+  };
+
+  // Handle comment button press
+  const handleCommentPress = (post) => {
+    setSelectedPost(post);
+    setCommentModalVisible(true);
+    loadComments(post.id);
+  };
+
+  // Load comments for a post
+  const loadComments = async (postId) => {
+    try {
+      setLoadingComments(true);
+      const response = await communityService.getComments(postId);
+      if (response.success) {
+        setComments(prev => ({
+          ...prev,
+          [postId]: response.data || []
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading comments:', error);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  // Handle comment added
+  const handleCommentAdded = async (newComment) => {
+    if (!selectedPost || !newComment || !newComment.trim()) return;
+    
+    try {
+      const response = await communityService.addComment(selectedPost.id, newComment.trim());
+      if (response.success) {
+        // Reload comments for this post
+        await loadComments(selectedPost.id);
+        // Update comment count in posts array
+        setUserPosts(prev => prev.map(post => 
+          post.id === selectedPost.id 
+            ? { ...post, comments_count: (post.comments_count || 0) + 1 }
+            : post
+        ));
+      } else {
+        Alert.alert('Error', response.message || 'Failed to add comment');
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      Alert.alert('Error', 'Failed to add comment. Please try again.');
+    }
+  };
+
+  // Handle edit business
+  const handleEditBusiness = () => {
+    setBusinessName(user?.vendor?.business_name || '');
+    setEditBusinessModalVisible(true);
+  };
+
+  // Handle update business
+  const handleUpdateBusiness = async () => {
+    if (!businessName.trim()) {
+      Alert.alert('Error', 'Business name is required');
+      return;
+    }
+    
+    try {
+      const response = await vendorService.updateVendorProfile(businessName.trim());
+      if (response.success) {
+        setEditBusinessModalVisible(false);
+        setBusinessName('');
+        // Refresh user data
+        await authService.clearProfileCache();
+        const freshUser = await authService.getProfileCached({ force: true });
+        setUser(freshUser);
+        await authStorage.save({ token: null, user: freshUser });
+        setSuccessMessage('Business name updated successfully!');
+        setSuccessModalVisible(true);
+      } else {
+        Alert.alert('Error', response.message || 'Failed to update business name');
+      }
+    } catch (error) {
+      console.error('Error updating business name:', error);
+      Alert.alert('Error', 'Failed to update business name. Please try again.');
+    }
+  };
+
+  // Handle become vendor
+  const handleBecomeVendor = () => {
+    setVendorRequestBusinessName('');
+    setVendorRequestModalVisible(true);
+  };
+
+  // Check vendor request status
+  const checkVendorRequestStatus = async () => {
+    try {
+      const response = await vendorService.checkVendorRequestStatus();
+      console.log('Vendor request status response:', response);
+      if (response.success) {
+        setHasVendorRequest(response.data.has_request);
+        setVendorRequestStatus(response.data.status);
+        setPendingBusinessName(response.data.business_name || '');
+        console.log('Vendor status set:', {
+          hasVendorRequest: response.data.has_request,
+          status: response.data.status,
+          businessName: response.data.business_name
+        });
+      }
+    } catch (error) {
+      console.error('Error checking vendor request status:', error);
+    }
+  };
+
+  // Handle vendor request submission
+  const handleVendorRequest = async () => {
+    if (!vendorRequestBusinessName.trim()) {
+      Alert.alert('Error', 'Business name is required');
+      return;
+    }
+    
+    try {
+      const response = await vendorService.createVendorRequest(vendorRequestBusinessName.trim());
+      if (response.success) {
+        setVendorRequestModalVisible(false);
+        setVendorRequestBusinessName('');
+        setHasVendorRequest(true);
+        setVendorRequestStatus('pending');
+        setPendingBusinessName(vendorRequestBusinessName.trim());
+        setSuccessMessage('Vendor request submitted successfully! Please wait for admin approval.');
+        setSuccessModalVisible(true);
+      } else {
+        Alert.alert('Error', response.message || 'Failed to submit vendor request');
+      }
+    } catch (error) {
+      console.error('Error submitting vendor request:', error);
+      Alert.alert('Error', 'Failed to submit vendor request. Please try again.');
+    }
+  };
 
   const pickAndUploadProfilePicture = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -126,7 +518,6 @@ const MainProfile = () => {
     street: user?.house?.street || "",
     contactNumber: user?.contact_no || "",
     businessName: user?.vendor?.business_name || "",
-    services: Array.isArray(user?.vendor?.services) ? user.vendor.services : [],
     posts: [],
   };
 
@@ -134,34 +525,101 @@ const MainProfile = () => {
     console.log("Open camera or gallery to pick profile picture.");
   };
 
-  const PostCard = ({ post }) => (
-    <View style={[styles.postCard, { backgroundColor: cardBackground }]}>
-      <View style={styles.postHeader}>
-        <View style={styles.postAvatar}>
-          <Ionicons name="person" size={20} color="#ccc" />
+  const PostCard = ({ post }) => {
+    const formatTimeAgo = (timestamp) => {
+      if (!timestamp) return "just now";
+      
+      const now = new Date();
+      const postTime = new Date(timestamp);
+      const diffInMinutes = Math.floor((now - postTime) / (1000 * 60));
+      
+      if (diffInMinutes < 1) {
+        return "just now";
+      } else if (diffInMinutes < 60) {
+        return `${diffInMinutes}m ago`;
+      } else if (diffInMinutes < 1440) {
+        const hours = Math.floor(diffInMinutes / 60);
+        return `${hours}h ago`;
+      } else {
+        const days = Math.floor(diffInMinutes / 1440);
+        return `${days}d ago`;
+      }
+    };
+
+    return (
+      <View style={[styles.postCard, { backgroundColor: cardBackground }]}>
+        <View style={styles.postHeader}>
+          <View style={styles.postAvatar}>
+            {user?.profile_picture ? (
+              <Image 
+                source={{ uri: buildStorageUrl(user.profile_picture) }} 
+                style={styles.avatarImage} 
+              />
+            ) : (
+              <Ionicons name="person" size={20} color="#ccc" />
+            )}
+          </View>
+          <View style={styles.postHeaderText}>
+            <Text style={[styles.postAuthor, { color: textColor }]}>
+              {user?.name || 'You'}
+            </Text>
+            <Text style={styles.postTimestamp}>{formatTimeAgo(post.published_at)}</Text>
+          </View>
+          <View style={styles.postActions}>
+            <TouchableOpacity 
+              style={styles.actionButtonSmall}
+              onPress={() => handleEditPost(post)}
+            >
+              <Ionicons name="create-outline" size={16} color={textColor} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.actionButtonSmall}
+              onPress={() => handleDeletePost(post)}
+            >
+              <Ionicons name="trash-outline" size={16} color="#e74c3c" />
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.postHeaderText}>
-          <Text style={[styles.postAuthor, { color: textColor }]}>
-            {residentData.residentName}
+        
+        {post.content && (
+          <Text style={[styles.postContent, { color: textColor }]}>
+            {post.content}
           </Text>
-          <Text style={styles.postTimestamp}>{post.timestamp}</Text>
+        )}
+        
+        {post.images && post.images.length > 0 && (
+          <View style={styles.postImageContainer}>
+            <Image 
+              source={{ uri: buildStorageUrl(post.images[0]) }} 
+              style={styles.postImage}
+              resizeMode="cover"
+            />
+          </View>
+        )}
+        
+        <View style={styles.postStats}>
+          <TouchableOpacity 
+            style={styles.postStat}
+            onPress={() => handleToggleLike(post.id)}
+          >
+            <Ionicons 
+              name={likedPosts[post.id] ? "heart" : "heart-outline"} 
+              size={16} 
+              color={likedPosts[post.id] ? "#28942c" : "gray"} 
+            />
+            <Text style={styles.postStatText}>{post.likes_count || 0}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.postStat}
+            onPress={() => handleCommentPress(post)}
+          >
+            <Ionicons name="chatbubble-outline" size={16} color="gray" />
+            <Text style={styles.postStatText}>{post.comments_count || 0}</Text>
+          </TouchableOpacity>
         </View>
       </View>
-      <Text style={[styles.postContent, { color: textColor }]}>
-        {post.content}
-      </Text>
-      <View style={styles.postActions}>
-        <TouchableOpacity style={styles.postAction}>
-          <Ionicons name="heart-outline" size={16} color="gray" />
-          <Text style={styles.postActionText}>{post.likes}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.postAction}>
-          <Ionicons name="chatbubble-outline" size={16} color="gray" />
-          <Text style={styles.postActionText}>{post.comments}</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView
@@ -176,22 +634,26 @@ const MainProfile = () => {
       />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <HeaderBack title="Profile" onBack={() => router.back()} />
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <ScrollView 
+          contentContainerStyle={[styles.scrollContainer, { flexGrow: 1 }]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#28942c']} // Android
+              tintColor="#28942c" // iOS
+            />
+          }
+          onEndReached={loadMoreUserPosts}
+          onEndReachedThreshold={0.3}
+          showsVerticalScrollIndicator={true}
+        >
           <View
             style={[
               styles.coverPhotoWrapper,
               { backgroundColor: buttonBackground },
             ]}
           >
-            <TouchableOpacity
-              style={[
-                styles.coverCameraButton,
-                { backgroundColor: buttonBackground },
-              ]}
-              onPress={() => console.log("Change cover photo")}
-            >
-              <Ionicons name="camera" size={18} color={textColor} />
-            </TouchableOpacity>
           </View>
 
           <View style={styles.profileImageContainer}>
@@ -252,12 +714,6 @@ const MainProfile = () => {
               { backgroundColor: buttonBackground },
             ]}
           >
-            <View style={styles.infoHeader}>
-              <Text style={styles.sectionTitle}>Details</Text>
-              <TouchableOpacity onPress={() => setModalVisible(true)}>
-                <Ionicons name="eye-outline" size={22} color={textColor} />
-              </TouchableOpacity>
-            </View>
 
             {!hideSensitiveInfo ? (
               <>
@@ -306,21 +762,6 @@ const MainProfile = () => {
                   </View>
                 </View>
 
-                <TouchableOpacity
-                  style={[
-                    styles.actionButton,
-                    {
-                      borderColor: textColor,
-                      alignSelf: "flex-start",
-                      marginTop: 10,
-                    },
-                  ]}
-                  onPress={() => router.push("/Profile/EditPublicDetails")}
-                >
-                  <Text style={[styles.buttonText, { color: textColor }]}>
-                    Edit Public Details
-                  </Text>
-                </TouchableOpacity>
               </>
             ) : (
               <Text style={{ color: "gray", marginBottom: 10 }}>
@@ -336,91 +777,57 @@ const MainProfile = () => {
               <Text style={[styles.sectionTitle, { marginLeft: 0 }]}>
                 Business
               </Text>
-              {residentData.businessName ? (
-                <View
-                  style={[
-                    styles.vendorContainer,
-                    {
-                      backgroundColor: cardBackground,
-                      marginLeft: 0,
-                      marginRight: 0,
-                    },
-                  ]}
-                >
-                  <View style={styles.vendorProfileImage} />
-                  <View style={{ flex: 1, justifyContent: "center" }}>
-                    <Text style={[styles.vendorName, { color: textColor }]}>
-                      {residentData.businessName}
+              {user?.vendor?.business_name && user?.vendor?.isAccepted ? (
+                <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
+                  <View style={styles.businessInfoContainer}>
+                    <Text style={[styles.businessName, { color: textColor }]}>
+                      {user.vendor.business_name}
                     </Text>
                     <TouchableOpacity
-                      style={[
-                        styles.actionButton,
-                        { borderColor: textColor, marginTop: 8 },
-                      ]}
-                      onPress={() => router.push("/Profile/MainBusiness")}
+                      style={[styles.editBusinessButton, { backgroundColor: buttonBackground }]}
+                      onPress={handleEditBusiness}
                     >
-                      <Text style={[styles.buttonText, { color: textColor }]}>
-                        Open Profile
+                      <Ionicons name="create-outline" size={16} color={textColor} />
+                      <Text style={[styles.editBusinessButtonText, { color: textColor }]}>
+                        Edit
                       </Text>
                     </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (hasVendorRequest && vendorRequestStatus === 'pending') || (user?.vendor?.business_name && !user?.vendor?.isAccepted) ? (
+                <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
+                  <View style={[styles.pendingVendorContainer, { backgroundColor: "#f39c12" }]}>
+                    <View style={styles.pendingVendorContent}>
+                      <Ionicons 
+                        name="time-outline" 
+                        size={20} 
+                        color="#ffffff" 
+                        style={styles.pendingIcon}
+                      />
+                      <View style={styles.pendingTextContainer}>
+                        <Text style={[styles.pendingTitle, { color: "#ffffff" }]}>
+                          {user?.vendor?.business_name || pendingBusinessName || 'Business'} - Pending
+                        </Text>
+                        <Text style={[styles.pendingSubtitle, { color: "#ffffff" }]}>
+                          Your business request is under review. You'll be notified once approved.
+                        </Text>
+                      </View>
+                    </View>
                   </View>
                 </View>
               ) : (
                 <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
                   <Text style={[styles.subText, { color: textColor }]}>
-                    None
+                    No business registered
                   </Text>
-                </View>
-              )}
-
-              {/* Services Section */}
-              <Text style={[styles.sectionTitle, { marginLeft: 0 }]}>
-                Services
-              </Text>
-              {residentData.services.length > 0 ? (
-                <View
-                  style={[
-                    styles.servicesContainer,
-                    {
-                      backgroundColor: cardBackground,
-                      alignSelf: "stretch",
-                      marginLeft: 0,
-                      marginRight: 0,
-                    },
-                  ]}
-                >
-                  {residentData.services.map((service, index) => (
-                    <Text
-                      key={index}
-                      style={[
-                        styles.infoText,
-                        { color: textColor, marginBottom: 6 },
-                      ]}
-                    >
-                      • {service}
-                    </Text>
-                  ))}
                   <TouchableOpacity
-                    style={[
-                      styles.actionButton,
-                      {
-                        borderColor: textColor,
-                        alignSelf: "flex-start",
-                        marginTop: 10,
-                      },
-                    ]}
-                    onPress={() => router.push("/Profile/EditServices")}
+                    style={[styles.becomeVendorButton, { backgroundColor: "#28942c" }]}
+                    onPress={handleBecomeVendor}
                   >
-                    <Text style={[styles.buttonText, { color: textColor }]}>
-                      Edit Services
+                    <Text style={styles.becomeVendorButtonText}>
+                      Become a Vendor
                     </Text>
                   </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
-                  <Text style={[styles.subText, { color: textColor }]}>
-                    None
-                  </Text>
                 </View>
               )}
             </View>
@@ -432,7 +839,14 @@ const MainProfile = () => {
               </Text>
               <View style={styles.avatarContainer}>
                 <View style={styles.placeholder}>
-                  <Ionicons name="person" size={24} color="#ccc" />
+                  {user?.profile_picture ? (
+                    <Image 
+                      source={{ uri: buildStorageUrl(user.profile_picture) }} 
+                      style={styles.placeholderImage} 
+                    />
+                  ) : (
+                    <Ionicons name="person" size={24} color="#ccc" />
+                  )}
                 </View>
                 <TouchableOpacity
                   style={[
@@ -447,23 +861,48 @@ const MainProfile = () => {
                 </TouchableOpacity>
               </View>
 
-              {/* Previous Posts Section */}
-              <TouchableOpacity
-                style={[
-                  styles.buttonAlt,
-                  { backgroundColor: buttonBackground },
-                ]}
-                onPress={() => router.push("/Profile/ManagePost")}
-              >
-                <Text style={[styles.buttonAltText, { color: textColor }]}>
-                  Manage Posts
-                </Text>
-              </TouchableOpacity>
-
-              {residentData.posts.length > 0 ? (
-                residentData.posts.map((post) => (
-                  <PostCard key={post.id} post={post} />
-                ))
+              {loadingPosts ? (
+                <View style={[styles.loadingContainer, { backgroundColor: buttonBackground }]}>
+                  <Text style={[styles.loadingText, { color: textColor }]}>
+                    Loading your posts...
+                  </Text>
+                </View>
+              ) : userPosts.length > 0 ? (
+                <>
+                  {userPosts.map((post) => (
+                    <PostCard key={post.id} post={post} />
+                  ))}
+                  
+                  {/* Loading more indicator */}
+                  {loadingMorePosts && userPosts.length > 0 && (
+                    <View style={styles.loadingMoreContainer}>
+                      <Text style={[styles.loadingMoreText, { color: textColor }]}>
+                        Loading more posts...
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {/* Load More Button (fallback) */}
+                  {hasMoreUserPosts && !loadingMorePosts && userPosts.length > 0 && (
+                    <TouchableOpacity
+                      style={[styles.loadMoreButton, { backgroundColor: buttonBackground }]}
+                      onPress={loadMoreUserPosts}
+                    >
+                      <Text style={[styles.loadMoreButtonText, { color: textColor }]}>
+                        Load More Posts
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  
+                  {/* End of posts indicator */}
+                  {!hasMoreUserPosts && userPosts.length > 0 && (
+                    <View style={styles.endOfPostsContainer}>
+                      <Text style={[styles.endOfPostsText, { color: textColor }]}>
+                        You've reached the end of your posts
+                      </Text>
+                    </View>
+                  )}
+                </>
               ) : (
                 <View
                   style={[
@@ -500,7 +939,7 @@ const MainProfile = () => {
           <Navbar />
         </View>
 
-        {/* Modal */}
+        {/* Privacy Modal */}
         <Modal
           visible={modalVisible}
           animationType="slide"
@@ -508,10 +947,10 @@ const MainProfile = () => {
           onRequestClose={() => setModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Privacy Settings</Text>
+            <View style={[styles.modalContent, { backgroundColor: cardBackground }]}>
+              <Text style={[styles.modalTitle, { color: textColor }]}>Privacy Settings</Text>
               <Text
-                style={styles.modalOption}
+                style={[styles.modalOption, { color: textColor }]}
                 onPress={() => {
                   setHideSensitiveInfo(true);
                   setModalVisible(false);
@@ -520,7 +959,7 @@ const MainProfile = () => {
                 Hide to Other users
               </Text>
               <Text
-                style={styles.modalOption}
+                style={[styles.modalOption, { color: textColor }]}
                 onPress={() => {
                   setHideSensitiveInfo(false);
                   setModalVisible(false);
@@ -534,6 +973,258 @@ const MainProfile = () => {
               >
                 Cancel
               </Text>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Edit Post Modal */}
+        <Modal
+          visible={editModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setEditModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.editModalContent, { backgroundColor: cardBackground }]}>
+              <Text style={[styles.modalTitle, { color: textColor }]}>Edit Post</Text>
+              
+              {selectedPost?.images && selectedPost.images.length > 0 && (
+                <View style={styles.editImageContainer}>
+                  <Image 
+                    source={{ uri: buildStorageUrl(selectedPost.images[0]) }} 
+                    style={styles.editImage}
+                    resizeMode="cover"
+                  />
+                  <Text style={[styles.editImageNote, { color: textColor }]}>
+                    Image cannot be changed
+                  </Text>
+                </View>
+              )}
+              
+              <TextInput
+                style={[styles.editTextInput, { 
+                  color: textColor, 
+                  borderColor: textColor,
+                  backgroundColor: buttonBackground 
+                }]}
+                placeholder="What's on your mind?"
+                placeholderTextColor="#888"
+                multiline
+                value={editCaption}
+                onChangeText={setEditCaption}
+                maxLength={5000}
+              />
+              
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => {
+                    setEditModalVisible(false);
+                    setSelectedPost(null);
+                    setEditCaption('');
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={handleUpdatePost}
+                >
+                  <Text style={styles.saveButtonText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          visible={deleteModalVisible}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setDeleteModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.deleteModalContent, { backgroundColor: cardBackground }]}>
+              <Text style={[styles.deleteModalTitle, { color: textColor }]}>
+                Delete Post
+              </Text>
+              <Text style={[styles.deleteModalMessage, { color: textColor }]}>
+                Are you sure you want to delete this post? This action cannot be undone.
+              </Text>
+              
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => {
+                    setDeleteModalVisible(false);
+                    setSelectedPost(null);
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.deleteButton]}
+                  onPress={confirmDeletePost}
+                >
+                  <Text style={styles.deleteButtonText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Success Modal */}
+        <Modal
+          visible={successModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setSuccessModalVisible(false)}
+        >
+          <View style={[styles.modalOverlay, { backgroundColor: theme === 'light' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.7)' }]}>
+            <View style={[
+              styles.successModal, 
+              { 
+                backgroundColor: colors.cardBackground || (theme === 'light' ? '#ffffff' : '#1F2633'),
+                borderColor: colors.border || (theme === 'light' ? '#e0e0e0' : '#2A2F3A'),
+                shadowColor: theme === 'light' ? '#000' : '#fff'
+              }
+            ]}>
+              <Text style={[styles.successTitle, { color: colors.text || (theme === 'light' ? '#000' : '#fff') }]}>
+                Success!
+              </Text>
+              <Text style={[styles.successMessage, { color: colors.textSecondary || (theme === 'light' ? '#666' : '#999') }]}>
+                {successMessage}
+              </Text>
+              <TouchableOpacity
+                style={[styles.successButton, { backgroundColor: '#28942c' }]}
+                onPress={() => setSuccessModalVisible(false)}
+              >
+                <Text style={styles.successButtonText}>Continue</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Comment Modal */}
+        <Modal
+          visible={commentModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setCommentModalVisible(false)}
+        >
+          <View style={[styles.modalOverlay, { backgroundColor: theme === 'light' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.7)' }]}>
+            <View style={[styles.commentModalContent, { backgroundColor: cardBackground }]}>
+              <View style={styles.commentModalHeader}>
+                <Text style={[styles.commentModalTitle, { color: textColor }]}>
+                  Comments ({selectedPost ? (comments[selectedPost.id] || []).length : 0})
+                </Text>
+                <TouchableOpacity 
+                  onPress={() => setCommentModalVisible(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={24} color={textColor} />
+                </TouchableOpacity>
+              </View>
+              
+              <CommentSection
+                comments={selectedPost ? (comments[selectedPost.id] || []) : []}
+                onCommentAdd={handleCommentAdded}
+                postId={selectedPost?.id}
+              />
+            </View>
+          </View>
+        </Modal>
+
+        {/* Edit Business Modal */}
+        <Modal
+          visible={editBusinessModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setEditBusinessModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.editModalContent, { backgroundColor: cardBackground }]}>
+              <Text style={[styles.modalTitle, { color: textColor }]}>Edit Business Name</Text>
+              
+              <TextInput
+                style={[styles.editTextInput, { 
+                  color: textColor, 
+                  borderColor: textColor,
+                  backgroundColor: buttonBackground 
+                }]}
+                placeholder="Enter business name"
+                placeholderTextColor="#888"
+                value={businessName}
+                onChangeText={setBusinessName}
+                maxLength={255}
+              />
+              
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => {
+                    setEditBusinessModalVisible(false);
+                    setBusinessName('');
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={handleUpdateBusiness}
+                >
+                  <Text style={styles.saveButtonText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Vendor Request Modal */}
+        <Modal
+          visible={vendorRequestModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setVendorRequestModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.editModalContent, { backgroundColor: cardBackground }]}>
+              <Text style={[styles.modalTitle, { color: textColor }]}>Become a Vendor</Text>
+              <Text style={[styles.modalSubtitle, { color: textColor }]}>
+                Enter your business name to submit a vendor request. Admin approval is required.
+              </Text>
+              
+              <TextInput
+                style={[styles.editTextInput, { 
+                  color: textColor, 
+                  borderColor: textColor,
+                  backgroundColor: buttonBackground 
+                }]}
+                placeholder="Enter business name"
+                placeholderTextColor="#888"
+                value={vendorRequestBusinessName}
+                onChangeText={setVendorRequestBusinessName}
+                maxLength={255}
+              />
+              
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => {
+                    setVendorRequestModalVisible(false);
+                    setVendorRequestBusinessName('');
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={handleVendorRequest}
+                >
+                  <Text style={styles.saveButtonText}>Submit Request</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
@@ -832,15 +1523,308 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  servicesContainer: {
+  // New styles for posts and modals
+  avatarImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  placeholderImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  postImageContainer: {
+    marginVertical: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  postImage: {
+    width: '100%',
+    height: 200,
+  },
+  postStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+    marginTop: 10,
+  },
+  postStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  postStatText: {
+    fontSize: 12,
+    color: 'gray',
+  },
+  actionButtonSmall: {
+    padding: 6,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  loadingContainer: {
     width: "100%",
-    padding: 15,
-    marginBottom: 15,
     borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
+    padding: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 15,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  // Edit Modal Styles
+  editModalContent: {
+    width: "90%",
+    maxWidth: 400,
+    padding: 20,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  editImageContainer: {
+    width: '100%',
+    marginBottom: 15,
+    alignItems: 'center',
+  },
+  editImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  editImageNote: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    opacity: 0.7,
+  },
+  editTextInput: {
+    width: '100%',
+    minHeight: 100,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    textAlignVertical: 'top',
+    marginBottom: 20,
+  },
+  // Delete Modal Styles
+  deleteModalContent: {
+    width: "85%",
+    maxWidth: 350,
+    padding: 20,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  deleteModalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  deleteModalMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  // Modal Button Styles
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#e0e0e0',
+  },
+  saveButton: {
+    backgroundColor: '#28942c',
+  },
+  deleteButton: {
+    backgroundColor: '#e74c3c',
+  },
+  cancelButtonText: {
+    color: '#333',
+    fontWeight: '600',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  // Success Modal Styles
+  successModal: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  successTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  successMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  successButton: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  successButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Comment Modal Styles
+  commentModalContent: {
+    width: '100%',
+    height: '80%',
+    borderRadius: 16,
+    padding: 0,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  commentModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  commentModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  // Business-related styles
+  businessInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  businessName: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 12,
+  },
+  editBusinessButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  editBusinessButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  becomeVendorButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  becomeVendorButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  // Infinite scroll styles
+  loadingMoreContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  loadingMoreText: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  endOfPostsContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  endOfPostsText: {
+    fontSize: 14,
+    opacity: 0.7,
+    fontStyle: "italic",
+  },
+  loadMoreButton: {
+    margin: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  loadMoreButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  // Pending vendor styles
+  pendingVendorContainer: {
+    marginTop: 12,
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#f39c12",
+  },
+  pendingVendorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pendingIcon: {
+    marginRight: 12,
+  },
+  pendingTextContainer: {
+    flex: 1,
+  },
+  pendingTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  pendingSubtitle: {
+    fontSize: 14,
+    opacity: 0.9,
+    lineHeight: 18,
   },
 });
