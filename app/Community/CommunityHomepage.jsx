@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useFocusEffect } from '@react-navigation/native';
 import {
   StyleSheet,
   Text,
@@ -13,31 +14,51 @@ import {
   KeyboardAvoidingView,
   Platform,
   ImageBackground,
+  RefreshControl,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
+import { communityService, buildStorageUrl, authService } from "../../services/api";
 
 import Navbar from "../../components/Navbar";
 import Header from "../../components/Header";
 import CommentSection from "./CommentSection";
 
-const CHIP_LABELS = ["All", "Events", "Announcements", "Vendors", "Businesses"];
+const CHIP_LABELS = ["All", "Events", "Announcements", "Businesses", "Projects"];
 const CATEGORY_MAP = {
-  All: "All",
-  Events: "Event",
-  Announcements: "Announcement",
-  Vendors: "Vendor",
-  Businesses: "Business",
+  All: "all",
+  Events: "events",
+  Announcements: "announcement",
+  Businesses: "business",
+  Projects: "project",
 };
 
-const CategoryBadge = ({ label }) => (
-  <View style={styles.categoryBadge}>
-    <Text style={styles.categoryText}>{label}</Text>
-  </View>
-);
+const CategoryBadge = ({ category }) => {
+  const getCategoryColor = (cat) => {
+    switch (cat?.toLowerCase()) {
+      case "announcement":
+        return "#e74c3c"; // Red
+      case "events":
+        return "#3498db"; // Blue
+      case "business":
+        return "#f39c12"; // Orange
+      case "project":
+        return "#27ae60"; // Green
+      default:
+        return "#95a5a6"; // Light Gray
+    }
+  };
+
+  return (
+    <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(category) }]}>
+      <Text style={styles.categoryText}>{category?.toUpperCase() || "GENERAL"}</Text>
+    </View>
+  );
+};
 
 const RatingStars = ({ rating = 4, size = 16 }) => {
   return (
@@ -66,56 +87,243 @@ const CommunityHomepage = () => {
   const textColor = colors.text;
 
   const [selectedChip, setSelectedChip] = useState("All");
-  const [showCategory, setShowCategory] = useState(false);
   const [interestedStates, setInterestedStates] = useState({});
   const [likedPosts, setLikedPosts] = useState({});
-  const [comments, setComments] = useState({
-    0: [
-      {
-        id: 1,
-        author: "Anna Cruz",
-        content: "Great event! Looking forward to it.",
-        time: "2 hours ago",
-        avatar: null,
-      },
-      {
-        id: 2,
-        author: "Mark Santos",
-        content: "Will there be parking available?",
-        time: "1 hour ago",
-        avatar: null,
-      },
-    ],
-    1: [
-      {
-        id: 3,
-        author: "Lisa Reyes",
-        content: "I saw a gray cat near the playground yesterday!",
-        time: "30 minutes ago",
-        avatar: null,
-      },
-    ],
-    2: [
-      {
-        id: 4,
-        author: "Tom Garcia",
-        content: "Do you deliver? I'm interested in your vegetables.",
-        time: "45 minutes ago",
-        avatar: null,
-      },
-    ],
-  });
-
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMorePosts, setHasMorePosts] = useState(true);
+  const [comments, setComments] = useState({});
   const [isCommentSheetVisible, setCommentSheetVisible] = useState(false);
   const [selectedPostIndex, setSelectedPostIndex] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  // Fetch posts from API
+  const fetchPosts = async (category = null, page = 1, append = false) => {
+    try {
+      if (page === 1) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+      
+      const params = { page, per_page: 20 };
+      if (category && category !== "All") {
+        params.category = CATEGORY_MAP[category];
+      }
+      
+      const response = await communityService.getPosts(params);
+      console.log('API Response:', { 
+        success: response.success, 
+        postsCount: response.data?.data?.length || 0,
+        pagination: response.data?.links,
+        currentPage: page,
+        append
+      });
+      
+      if (response.success) {
+        const postsData = response.data.data || [];
+        const paginationData = response.data.links || {};
+        
+        if (append) {
+          setPosts(prev => [...prev, ...postsData]);
+        } else {
+          setPosts(postsData);
+        }
+        
+        // Check if there are more posts
+        const hasMore = paginationData.next !== null && postsData.length > 0;
+        console.log('Has more posts:', hasMore, 'Next URL:', paginationData.next, 'Posts received:', postsData.length);
+        setHasMorePosts(hasMore);
+        
+        // If no posts received and not appending, set hasMorePosts to false
+        if (postsData.length === 0 && !append) {
+          setHasMorePosts(false);
+        }
+        
+        // Initialize like states from API data
+        const initialLikedStates = {};
+        const initialInterestedStates = {};
+        postsData.forEach(post => {
+          // Handle both is_liked and is_interested fields
+          // Also check for alternative field names that might be used
+          const isLiked = post.is_liked !== undefined ? post.is_liked : 
+                         post.liked !== undefined ? post.liked : 
+                         post.user_liked !== undefined ? post.user_liked : false;
+          
+          const isInterested = post.is_interested !== undefined ? post.is_interested : 
+                              post.interested !== undefined ? post.interested : 
+                              post.user_interested !== undefined ? post.user_interested : false;
+          
+          if (isLiked !== false) {
+            initialLikedStates[post.id] = isLiked;
+          }
+          if (isInterested !== false) {
+            initialInterestedStates[post.id] = isInterested;
+          }
+        });
+        
+        if (append) {
+          setLikedPosts(prev => ({ ...prev, ...initialLikedStates }));
+          setInterestedStates(prev => ({ ...prev, ...initialInterestedStates }));
+        } else {
+          setLikedPosts(initialLikedStates);
+          setInterestedStates(initialInterestedStates);
+        }
+      } else {
+        Alert.alert("Error", response.message || "Failed to load posts");
+      }
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      Alert.alert("Error", "Failed to load posts. Please try again.");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  // Refresh posts
+  const onRefresh = async () => {
+    setRefreshing(true);
+    setCurrentPage(1);
+    setHasMorePosts(true);
+    await fetchPosts(selectedChip, 1, false);
+    setRefreshing(false);
+  };
+
+  // Load more posts
+  const loadMorePosts = async () => {
+    console.log('loadMorePosts called:', { loadingMore, hasMorePosts, currentPage });
+    if (!loadingMore && hasMorePosts) {
+      const nextPage = currentPage + 1;
+      console.log('Loading more posts, next page:', nextPage);
+      setCurrentPage(nextPage);
+      await fetchPosts(selectedChip, nextPage, true);
+    }
+  };
+
+  // Format time ago function
+  const formatTimeAgo = (timestamp) => {
+    if (!timestamp) return "just now";
+    
+    const now = new Date();
+    const postTime = new Date(timestamp);
+    const diffInMinutes = Math.floor((now - postTime) / (1000 * 60));
+    
+    if (diffInMinutes < 1) {
+      return "just now";
+    } else if (diffInMinutes < 60) {
+      return `${diffInMinutes}m ago`;
+    } else if (diffInMinutes < 1440) {
+      const hours = Math.floor(diffInMinutes / 60);
+      return `${hours}h ago`;
+    } else {
+      const days = Math.floor(diffInMinutes / 1440);
+      return `${days}d ago`;
+    }
+  };
+
+  // Parse event details from post content
+  const parseEventDetails = (content) => {
+    if (!content) return { date: null, time: null, location: null, description: content };
+    
+    const lines = content.split('\n');
+    let description = content;
+    let date = null;
+    let time = null;
+    let location = null;
+    
+    // Look for "Event Details:" section
+    const eventDetailsIndex = lines.findIndex(line => line.includes('Event Details:'));
+    if (eventDetailsIndex !== -1) {
+      // Extract description (everything before "Event Details:")
+      description = lines.slice(0, eventDetailsIndex).join('\n').trim();
+      
+      // Parse event details
+      const eventLines = lines.slice(eventDetailsIndex + 1);
+      eventLines.forEach(line => {
+        if (line.startsWith('Date:')) {
+          date = line.replace('Date:', '').trim();
+        } else if (line.startsWith('Time:')) {
+          time = line.replace('Time:', '').trim();
+        } else if (line.startsWith('Location:')) {
+          location = line.replace('Location:', '').trim();
+        }
+      });
+    }
+    
+    return { date, time, location, description };
+  };
+
+  // Load comments for a post
+  const loadComments = async (postId) => {
+    try {
+      const response = await communityService.getComments(postId);
+      if (response.success) {
+        console.log("Comments loaded for post", postId, ":", response.data);
+        setComments(prev => ({
+          ...prev,
+          [postId]: response.data || []
+        }));
+      }
+    } catch (error) {
+      console.error("Error loading comments:", error);
+    }
+  };
+
+  // Toggle like on a post
+  const toggleLike = async (postId) => {
+    try {
+      const response = await communityService.toggleLike(postId);
+      if (response.success) {
+        setLikedPosts(prev => ({
+          ...prev,
+          [postId]: response.data.is_liked
+        }));
+        // Update the post in the posts array
+        setPosts(prev => prev.map(post => 
+          post.id === postId 
+            ? { ...post, likes_count: response.data.likes_count }
+            : post
+        ));
+      }
+    } catch (error) {
+      console.error("Error toggling like:", error);
+      Alert.alert("Error", "Failed to update like. Please try again.");
+    }
+  };
+
+  useEffect(() => {
+    fetchPosts();
+    loadCurrentUser();
+  }, []);
+
+  // Refresh posts when returning to this screen (e.g., after creating a post)
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchPosts(selectedChip);
+    }, [selectedChip])
+  );
+
+  // Load current user data
+  const loadCurrentUser = async () => {
+    try {
+      const userData = await authService.getProfileCached();
+      setCurrentUser(userData);
+    } catch (error) {
+      console.error('Error loading current user:', error);
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
     const animate = () => {
       if (!isMounted) return;
       fadeAnim.setValue(0);
-      setShowCategory((prev) => !prev);
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 400,
@@ -134,6 +342,9 @@ const CommunityHomepage = () => {
   const chipScrollRef = useRef(null);
   const handleChipPress = (label) => {
     setSelectedChip(label);
+    setCurrentPage(1);
+    setHasMorePosts(true);
+    fetchPosts(label, 1, false);
     const chipRef = chipRefs.current[label];
     if (chipRef && chipScrollRef.current) {
       chipRef.measureLayout(
@@ -144,115 +355,67 @@ const CommunityHomepage = () => {
     }
   };
 
-  const openCommentSheet = (postIndex) => {
-    setSelectedPostIndex(postIndex);
+  const openCommentSheet = (postId) => {
+    setSelectedPostIndex(postId);
     setCommentSheetVisible(true);
+    loadComments(postId);
   };
+  
   const closeCommentSheet = () => {
     setCommentSheetVisible(false);
     setSelectedPostIndex(null);
   };
 
-  const handleCommentAdded = (newComment) => {
+  const handleCommentAdded = async (newComment) => {
     if (selectedPostIndex === null || !newComment || !newComment.trim()) return;
-    const newCommentObj = {
-      id: Date.now(),
-      author: "You",
-      content: newComment.trim(),
-      time: "Just now",
-      avatar: null,
-    };
-    setComments((prev) => ({
-      ...prev,
-      [selectedPostIndex]: [...(prev[selectedPostIndex] || []), newCommentObj],
-    }));
+    
+    try {
+      const response = await communityService.addComment(selectedPostIndex, newComment.trim());
+      if (response.success) {
+        // Reload comments for this post
+        await loadComments(selectedPostIndex);
+        // Update comment count in posts array
+        setPosts(prev => prev.map(post => 
+          post.id === selectedPostIndex 
+            ? { ...post, comments_count: (post.comments_count || 0) + 1 }
+            : post
+        ));
+      } else {
+        Alert.alert("Error", response.message || "Failed to add comment");
+      }
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      Alert.alert("Error", "Failed to add comment. Please try again.");
+    }
   };
 
   const handleChatPress = () => router.push("/Chat/ChatHomepage");
   const goToCreatePost = () => router.push("/Community/CreatePost");
   const goToSearch = () => router.push("/Community/Search");
-  const goToViewPost = (postData, index) => {
+  
+  // Handle profile navigation
+  const handleProfilePress = (postUserId) => {
+    if (currentUser && postUserId === currentUser.id) {
+      // Navigate to own profile
+      router.push("/Profile/MainProfile");
+    } else {
+      // Navigate to other user's profile
+      router.push({
+        pathname: "/Profile/OtherProfile",
+        params: { userId: postUserId }
+      });
+    }
+  };
+  const goToViewPost = (postData) => {
     // Navigate to ViewPost page with post data
     router.push({
       pathname: "/Community/ViewPost",
       params: {
-        postId: index.toString(),
-        homeownerName: postData.homeownerName || '',
-        residentId: postData.residentId || '',
-        postTime: postData.postTime || '',
-        caption: postData.caption || '',
-        category: postData.category || '',
-        commentCount: postData.commentCount?.toString() || '0',
-        likes: postData.likes?.toString() || '0',
-        residentName: postData.residentName || '',
-        residentID: postData.residentID || '',
-        houseNumber: postData.houseNumber || '',
-        street: postData.street || '',
-        businessName: postData.businessName || '',
-        contactNumber: postData.contactNumber || '',
-        eventDateTime: postData.event?.dateTime || '',
-        eventLocation: postData.event?.location || '',
-        eventImage: postData.event?.image || '',
+        postId: postData.id.toString(),
+        postData: JSON.stringify(postData),
       },
     });
   };
-
-  const posts = [
-    {
-      homeownerName: "Juan Dela Cruz",
-      residentId: "B3A - L23",
-      avatarUri: null,
-      postTime: "July 31, 2025 at 10:30 AM",
-      caption: "Join us for our grand opening!",
-      category: "Event",
-      commentCount: 12,
-      likes: 45,
-      event: {
-        dateTime: "Fri, 2 June – 11:00 AM",
-        location: "Clubhouse, Community Area",
-        image:
-          "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1000&h=600&fit=crop",
-      },
-      residentName: "Juan Dela Cruz",
-      residentID: "B3A - L23",
-      houseNumber: "23",
-      street: "Blk B3A",
-      businessName: "Juan's Buko Shake",
-      contactNumber: "09171234567",
-    },
-    {
-      homeownerName: "Maria Santos",
-      residentId: "C2B - L12",
-      avatarUri: null,
-      postTime: "July 30, 2025 at 2:15 PM",
-      caption: "Lost cat! Please help us find Luna near Block C.",
-      category: "Announcement",
-      commentCount: 8,
-      likes: 30,
-      residentName: "Maria Santos",
-      residentID: "C2B - L12",
-      houseNumber: "12",
-      street: "Blk C2B",
-      businessName: "",
-      contactNumber: "09182345678",
-    },
-    {
-      homeownerName: "Pedro Reyes",
-      residentId: "A1 - L5",
-      avatarUri: null,
-      postTime: "July 29, 2025 at 6:00 PM",
-      caption: "Fresh vegetables for sale this Saturday!",
-      category: "Vendor",
-      commentCount: 5,
-      likes: 18,
-      residentName: "Pedro Reyes",
-      residentID: "A1 - L5",
-      houseNumber: "5",
-      street: "Blk A1",
-      businessName: "Pedro's Farm Goods",
-      contactNumber: "09183456789",
-    },
-  ];
 
   const renderChips = () => (
     <ScrollView
@@ -291,112 +454,178 @@ const CommunityHomepage = () => {
     </ScrollView>
   );
 
-  const renderEventCard = (post, index, isInterested) => (
-    <View
-      key={`event-${index}`}
-      style={[styles.eventCard, { backgroundColor: cardBackground }]}
-    >
-      <TouchableOpacity
-        style={styles.eventImageContainer}
-        onPress={() => goToViewPost(post, index)}
-        activeOpacity={0.8}
+  const renderEventCard = (post, isInterested) => {
+    const eventDetails = parseEventDetails(post.content);
+    
+    return (
+      <View
+        key={`event-${post.id}`}
+        style={[styles.eventCard, { backgroundColor: cardBackground }]}
       >
-        <ImageBackground
-          source={{
-            uri:
-              post.event?.image ||
-              "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&h=400&fit=crop",
-          }}
-          style={styles.eventImage}
-          imageStyle={styles.eventImageStyle}
-        >
-          <LinearGradient
-            colors={["rgba(0,0,0,0.7)", "transparent", "rgba(0,0,0,0.7)"]}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
-
-          <CategoryBadge label="Event" />
+        {post.images && post.images.length > 0 ? (
           <TouchableOpacity
-            style={[
-              styles.interestButtonOverlay,
-              {
-                backgroundColor: isInterested
-                  ? "rgba(40,148,44,0.95)"
-                  : "rgba(255,255,255,0.9)",
-              },
-            ]}
-            onPress={(e) => {
-              e.stopPropagation();
-              setInterestedStates((prev) => ({
-                ...prev,
-                [index]: !prev[index],
-              }));
-            }}
+            style={styles.eventImageContainer}
+            onPress={() => goToViewPost(post)}
+            activeOpacity={0.8}
           >
-            <Text
-              style={[
-                styles.interestButtonOverlayText,
-                { color: isInterested ? "#fff" : "#000" },
-              ]}
+            <ImageBackground
+              source={{ uri: buildStorageUrl(post.images[0]) }}
+              style={styles.eventImage}
+              imageStyle={styles.eventImageStyle}
             >
-              Interested
-            </Text>
+              <LinearGradient
+                colors={["rgba(0,0,0,0.7)", "transparent", "rgba(0,0,0,0.7)"]}
+                style={StyleSheet.absoluteFill}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              />
+
+              <CategoryBadge category={post.category} />
+              <TouchableOpacity
+                style={[
+                  styles.interestButtonOverlay,
+                  {
+                    backgroundColor: isInterested
+                      ? "rgba(40,148,44,0.95)"
+                      : "rgba(255,255,255,0.9)",
+                  },
+                ]}
+                onPress={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await toggleLike(post.id);
+                    setInterestedStates((prev) => ({
+                      ...prev,
+                      [post.id]: !prev[post.id],
+                    }));
+                  } catch (error) {
+                    console.error('Error toggling like:', error);
+                  }
+                }}
+              >
+                <Text
+                  style={[
+                    styles.interestButtonOverlayText,
+                    { color: isInterested ? "#fff" : "#000" },
+                  ]}
+                >
+                  Interested
+                </Text>
+              </TouchableOpacity>
+            </ImageBackground>
           </TouchableOpacity>
-        </ImageBackground>
-      </TouchableOpacity>
-
-      <View style={styles.eventDetailsContainer}>
-        <Text style={[styles.eventTitleMain, { color: textColor }]}>
-          {post.caption}
-        </Text>
-        <Text
-          style={[
-            styles.eventSubtitle,
-            { color: textColor, opacity: 0.8, marginBottom: 12 },
-          ]}
-        >
-          Hosted by {post.homeownerName}
-        </Text>
-
-        <View style={styles.eventMeta}>
-          <View style={styles.metaRow}>
-            <Ionicons name="calendar-outline" size={16} color={textColor} />
-            <Text style={[styles.metaText, { color: textColor }]}>
-              {post.event?.dateTime}
-            </Text>
+        ) : (
+          <View style={styles.eventHeaderContainer}>
+            <View style={styles.eventHeaderTop}>
+              <CategoryBadge category={post.category} />
+              <TouchableOpacity
+                style={[
+                  styles.interestButton,
+                  {
+                    backgroundColor: isInterested ? "#28942c" : "#e0e0e0",
+                  },
+                ]}
+                onPress={async () => {
+                  try {
+                    await toggleLike(post.id);
+                    setInterestedStates((prev) => ({
+                      ...prev,
+                      [post.id]: !prev[post.id],
+                    }));
+                  } catch (error) {
+                    console.error('Error toggling like:', error);
+                  }
+                }}
+              >
+                <Text
+                  style={[
+                    styles.interestButtonText,
+                    { color: isInterested ? "#fff" : "#000" },
+                  ]}
+                >
+                  Interested
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
+        )}
 
-          <View style={styles.metaRow}>
-            <Ionicons name="location-outline" size={16} color={textColor} />
-            <Text style={[styles.metaText, { color: textColor }]}>
-              {post.event?.location}
-            </Text>
+        <View style={styles.eventDetailsContainer}>
+          <Text style={[styles.eventTitleMain, { color: textColor }]}>
+            {eventDetails.description}
+          </Text>
+          <Text
+            style={[
+              styles.eventSubtitle,
+              { color: textColor, opacity: 0.8, marginBottom: 12 },
+            ]}
+          >
+            Hosted by {post.user?.is_admin ? 'Administrator' : (post.user?.name || 'Unknown User')}
+          </Text>
+
+          <View style={styles.eventMeta}>
+            {eventDetails.date && (
+              <View style={styles.metaRow}>
+                <Ionicons name="calendar-outline" size={16} color={textColor} />
+                <Text style={[styles.metaText, { color: textColor }]}>
+                  {eventDetails.date}
+                </Text>
+              </View>
+            )}
+
+            {eventDetails.time && (
+              <View style={styles.metaRow}>
+                <Ionicons name="time-outline" size={16} color={textColor} />
+                <Text style={[styles.metaText, { color: textColor }]}>
+                  {eventDetails.time}
+                </Text>
+              </View>
+            )}
+
+            {eventDetails.location && (
+              <View style={styles.metaRow}>
+                <Ionicons name="location-outline" size={16} color={textColor} />
+                <Text style={[styles.metaText, { color: textColor }]}>
+                  {eventDetails.location}
+                </Text>
+              </View>
+            )}
+
+            {!eventDetails.date && !eventDetails.time && !eventDetails.location && (
+              <View style={styles.metaRow}>
+                <Ionicons name="calendar-outline" size={16} color={textColor} />
+                <Text style={[styles.metaText, { color: textColor }]}>
+                  {new Date(post.published_at).toLocaleDateString()}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
-  const renderPostCard = (post, index) => {
+  const renderPostCard = (post) => {
     const lowerCat = (post.category || "").toLowerCase();
-    const isVendorOrBusiness = ["vendor", "business"].includes(lowerCat);
+    const isVendorOrBusiness = ["business"].includes(lowerCat);
     const isAnnouncement = lowerCat === "announcement";
-    const isLiked = !!likedPosts[index];
+    const isLiked = !!likedPosts[post.id];
 
     return (
       <View
-        key={`post-${index}`}
+        key={`post-${post.id}`}
         style={[styles.postCard, { backgroundColor: cardBackground }]}
       >
         <TouchableOpacity
-          onPress={() => router.push("/Profile/OtherProfile")}
+          onPress={() => handleProfilePress(post.user?.id)}
           style={styles.postHeaderRow}
         >
           <View style={styles.avatarContainer}>
-            {post.avatarUri ? (
-              <Image source={{ uri: post.avatarUri }} style={styles.avatar} />
+            {post.user?.profile_picture ? (
+              <Image 
+                source={{ uri: buildStorageUrl(post.user.profile_picture) }} 
+                style={styles.avatar} 
+              />
             ) : (
               <View style={styles.placeholder}>
                 <Ionicons name="person" size={24} color="#ccc" />
@@ -405,33 +634,37 @@ const CommunityHomepage = () => {
           </View>
 
           <View style={{ marginLeft: 10, flex: 1 }}>
-            <Text style={[styles.postName, { color: textColor }]}>
-              {post.homeownerName}
-            </Text>
-            <Animated.Text
-              style={[styles.postTime, { color: textColor, opacity: fadeAnim }]}
-            >
-              {showCategory ? post.category : post.postTime}
-            </Animated.Text>
+            <View style={styles.postHeaderTop}>
+              <Text style={[styles.postName, { color: textColor }]}>
+                {post.user?.is_admin ? 'Administrator' : (post.user?.name || 'Unknown User')}
+              </Text>
+              <CategoryBadge category={post.category} />
+            </View>
+            <View style={styles.postTimeContainer}>
+              <Ionicons name="globe-outline" size={12} color={textColor} style={{ marginRight: 4 }} />
+              <Text style={[styles.postTime, { color: textColor }]}>
+                {formatTimeAgo(post.published_at)}
+              </Text>
+            </View>
           </View>
         </TouchableOpacity>
 
         <Text style={[styles.postCaption, { color: textColor }]}>
-          {post.caption}
+          {post.content}
         </Text>
 
-        {/* Image placeholder - clickable for non-announcement posts */}
-        {isAnnouncement ? (
-          <View style={styles.imagePlaceholder}>
-            <Text style={{ color: "#888" }}>Photo goes here</Text>
-          </View>
-        ) : (
+        {/* Images - only show if there are images */}
+        {post.images && post.images.length > 0 && (
           <TouchableOpacity
             style={styles.imagePlaceholder}
-            onPress={() => goToViewPost(post, index)}
+            onPress={() => goToViewPost(post)}
             activeOpacity={0.8}
           >
-            <Text style={{ color: "#888" }}>Photo goes here</Text>
+            <Image 
+              source={{ uri: buildStorageUrl(post.images[0]) }} 
+              style={styles.postImage}
+              resizeMode="cover"
+            />
           </TouchableOpacity>
         )}
 
@@ -441,16 +674,9 @@ const CommunityHomepage = () => {
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                justifyContent: "space-between",
+                justifyContent: "flex-end",
               }}
             >
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <RatingStars rating={4} />
-                <Text style={{ marginLeft: 8, fontSize: 12, color: textColor }}>
-                  4.0
-                </Text>
-              </View>
-
               <TouchableOpacity
                 onPress={handleChatPress}
                 style={{
@@ -475,9 +701,7 @@ const CommunityHomepage = () => {
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={styles.iconButton}
-            onPress={() =>
-              setLikedPosts((prev) => ({ ...prev, [index]: !prev[index] }))
-            }
+            onPress={() => toggleLike(post.id)}
           >
             <Ionicons
               name={isLiked ? "heart" : "heart-outline"}
@@ -485,24 +709,24 @@ const CommunityHomepage = () => {
               color={isLiked ? "green" : textColor}
             />
             <Text style={[styles.iconText, { color: textColor }]}>
-              {post.likes + (isLiked ? 1 : 0)}
+              {post.likes_count || 0}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.iconButton}
-            onPress={() => openCommentSheet(index)}
+            onPress={() => openCommentSheet(post.id)}
           >
             <Ionicons name="chatbubble-outline" size={20} color={textColor} />
             <Text style={[styles.iconText, { color: textColor }]}>Comment</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => openCommentSheet(index)}
+            onPress={() => openCommentSheet(post.id)}
             style={{ marginLeft: "auto" }}
           >
             <Text style={[styles.commentCount, { color: textColor }]}>
-              {(comments[index] || []).length} comments
+              {post.comments_count || 0} comments
             </Text>
           </TouchableOpacity>
         </View>
@@ -524,7 +748,15 @@ const CommunityHomepage = () => {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Header />
 
-        <ScrollView contentContainerStyle={{ paddingBottom: 90 }}>
+        <ScrollView 
+          contentContainerStyle={{ paddingBottom: 90, flexGrow: 1 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          onEndReached={loadMorePosts}
+          onEndReachedThreshold={0.3}
+          showsVerticalScrollIndicator={true}
+        >
           <View style={styles.container}>
             {/* Topbar */}
             <View style={styles.topBar}>
@@ -561,9 +793,16 @@ const CommunityHomepage = () => {
               ]}
             >
               <View style={styles.avatarContainer}>
-                <View style={styles.placeholder}>
-                  <Ionicons name="person" size={24} color="#ccc" />
-                </View>
+                {currentUser?.profile_picture ? (
+                  <Image 
+                    source={{ uri: buildStorageUrl(currentUser.profile_picture) }} 
+                    style={styles.avatar} 
+                  />
+                ) : (
+                  <View style={styles.placeholder}>
+                    <Ionicons name="person" size={24} color="#ccc" />
+                  </View>
+                )}
               </View>
               <TouchableOpacity
                 style={[
@@ -580,24 +819,62 @@ const CommunityHomepage = () => {
 
             {/* Main content (filtered posts) */}
             <View style={styles.content}>
-              {posts
-                .filter((post) =>
-                  selectedChip === "All"
-                    ? true
-                    : (post.category || "").toLowerCase() ===
-                      CATEGORY_MAP[selectedChip].toLowerCase()
-                )
-                .map((post, index) => {
-                  const isEvent = (post.category || "").toLowerCase() === "event";
-                  if (isEvent && post.event) {
-                    return renderEventCard(
-                      post,
-                      index,
-                      !!interestedStates[index]
-                    );
-                  }
-                  return renderPostCard(post, index);
-                })}
+              {loading ? (
+                <View style={styles.loadingContainer}>
+                  <Text style={[styles.loadingText, { color: textColor }]}>
+                    Loading posts...
+                  </Text>
+                </View>
+              ) : posts.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Text style={[styles.emptyText, { color: textColor }]}>
+                    No posts found
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  {posts.map((post) => {
+                    const isEvent = (post.category || "").toLowerCase() === "events";
+                    if (isEvent) {
+                      return renderEventCard(
+                        post,
+                        !!interestedStates[post.id]
+                      );
+                    }
+                    return renderPostCard(post);
+                  })}
+                  
+                  {/* Loading more indicator */}
+                  {loadingMore && posts.length > 0 && (
+                    <View style={styles.loadingMoreContainer}>
+                      <Text style={[styles.loadingMoreText, { color: textColor }]}>
+                        Loading more posts...
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {/* Load More Button (fallback) */}
+                  {hasMorePosts && !loadingMore && posts.length > 0 && (
+                    <TouchableOpacity
+                      style={[styles.loadMoreButton, { backgroundColor: buttonBackground }]}
+                      onPress={loadMorePosts}
+                    >
+                      <Text style={[styles.loadMoreButtonText, { color: textColor }]}>
+                        Load More Posts
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  
+                  {/* End of posts indicator */}
+                  {!hasMorePosts && posts.length > 0 && (
+                    <View style={styles.endOfPostsContainer}>
+                      <Text style={[styles.endOfPostsText, { color: textColor }]}>
+                        You've reached the end of posts
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -740,14 +1017,17 @@ const styles = StyleSheet.create({
   },
   eventImageStyle: { borderRadius: 0 },
   categoryBadge: {
-    backgroundColor: "#28942c",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     alignSelf: "flex-start",
-    margin: 12,
   },
-  categoryText: { color: "#ffffff", fontSize: 12, fontWeight: "600" },
+  categoryText: { 
+    color: "#ffffff", 
+    fontSize: 10, 
+    fontWeight: "600",
+    letterSpacing: 0.5,
+  },
 
   interestButtonOverlay: {
     position: "absolute",
@@ -766,6 +1046,25 @@ const styles = StyleSheet.create({
   },
   interestButtonOverlayText: { fontSize: 11, fontWeight: "600" },
 
+  eventHeaderContainer: {
+    padding: 16,
+    paddingBottom: 8,
+  },
+  eventHeaderTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  interestButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  interestButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
   eventDetailsContainer: { padding: 16 },
   eventTitleMain: { fontSize: 18, fontWeight: "bold", marginBottom: 8 },
   eventSubtitle: { fontSize: 14 },
@@ -787,8 +1086,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
+  postHeaderTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
   postName: { fontWeight: "bold", fontSize: 16 },
   postTime: { fontSize: 10, color: "#555" },
+  postTimeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   postCaption: { fontSize: 16, marginBottom: 12, fontWeight: "bold" },
 
   imagePlaceholder: {
@@ -802,9 +1111,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 2,
-
     marginHorizontal: -16,
     overflow: "hidden",
+  },
+  postImage: {
+    width: "100%",
+    height: "100%",
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: 16,
+    opacity: 0.7,
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 16,
+    opacity: 0.7,
   },
   actionRow: {
     flexDirection: "row",
@@ -838,6 +1166,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   bottomSheetTitle: { fontSize: 18, fontWeight: "bold" },
+
+  loadingMoreContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  loadingMoreText: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  endOfPostsContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  endOfPostsText: {
+    fontSize: 14,
+    opacity: 0.7,
+    fontStyle: "italic",
+  },
+  loadMoreButton: {
+    margin: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  loadMoreButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
 
   navWrapper: { backgroundColor: "#968585ff" },
 });
