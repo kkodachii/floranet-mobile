@@ -25,7 +25,7 @@
     "expo-router": "~5.1.4",
     "expo-secure-store": "~14.2.3",
     "expo-status-bar": "~2.2.3",
-     "expo-video": "~2.2.2",
+    "expo-video": "~2.2.2",
     "onesignal-expo-plugin": "^2.0.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
