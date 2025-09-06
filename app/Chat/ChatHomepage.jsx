@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import {
   RefreshControl,
   Modal,
   Platform,
-  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../Theme/ThemeProvider";
@@ -20,7 +19,6 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Navbar from "../../components/Navbar";
 import Header from "../../components/Header";
-import { chatService } from "../../services/api";
 
 const sampleUsers = [
   { id: "1", name: "John Smith", role: "Admin", avatar: null },
@@ -40,11 +38,9 @@ const ChatHomepage = () => {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredChats, setFilteredChats] = useState([]);
-  const [conversations, setConversations] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [userSearch, setUserSearch] = useState("");
-  const [loading, setLoading] = useState(true);
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const chatBg = theme === "light" ? "#f7f8fa" : "#181c23";
@@ -54,49 +50,95 @@ const ChatHomepage = () => {
   const timeColor = theme === "light" ? "#999" : "#aaa";
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
 
-  // Load conversations from API
-  const loadConversations = async () => {
-    try {
-      setLoading(true);
-      const response = await chatService.getConversations();
-      if (response.success) {
-        setConversations(response.data);
-        setFilteredChats(response.data);
-      }
-    } catch (error) {
-      console.error('Error loading conversations:', error);
-      Alert.alert('Error', 'Failed to load conversations');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Sample data for different user types
+  const chatList = [
+    {
+      id: "1",
+      name: "John Smith",
+      role: "Admin",
+      lastMessage: "Please submit your maintenance request",
+      timestamp: "2:30 PM",
+      unreadCount: 2,
+      avatar: null,
+      online: true,
+    },
+    {
+      id: "2",
+      name: "Sarah Johnson",
+      role: "Resident",
+      lastMessage: "Thanks for the update!",
+      timestamp: "1:45 PM",
+      unreadCount: 0,
+      avatar: null,
+      online: false,
+    },
+    {
+      id: "3",
+      name: "Mike's Plumbing",
+      role: "Vendor",
+      lastMessage: "We'll be there tomorrow at 9 AM",
+      timestamp: "11:20 AM",
+      unreadCount: 1,
+      avatar: null,
+      online: true,
+    },
+    {
+      id: "4",
+      name: "Emma Davis",
+      role: "Resident",
+      lastMessage: "Can you help with the parking issue?",
+      timestamp: "Yesterday",
+      unreadCount: 0,
+      avatar: null,
+      online: false,
+    },
+    {
+      id: "5",
+      name: "Security Team",
+      role: "Admin",
+      lastMessage: "Gate access updated",
+      timestamp: "Yesterday",
+      unreadCount: 0,
+      avatar: null,
+      online: true,
+    },
+    {
+      id: "6",
+      name: "Green Thumb Landscaping",
+      role: "Vendor",
+      lastMessage: "Garden maintenance completed",
+      timestamp: "2 days ago",
+      unreadCount: 0,
+      avatar: null,
+      online: false,
+    },
+  ];
 
   // Filter chats based on search query
   const filterChats = (query) => {
     setSearchQuery(query);
     if (query.trim() === "") {
-      setFilteredChats(conversations);
+      setFilteredChats(chatList);
     } else {
-      const filtered = conversations.filter((conversation) => {
-        // Search in conversation title or participant names
-        const titleMatch = conversation.title?.toLowerCase().includes(query.toLowerCase());
-        const participantMatch = conversation.participants?.some(participant => 
-          participant.name.toLowerCase().includes(query.toLowerCase())
-        );
-        return titleMatch || participantMatch;
-      });
+      const filtered = chatList.filter(
+        (chat) =>
+          chat.name.toLowerCase().includes(query.toLowerCase()) ||
+          chat.role.toLowerCase().includes(query.toLowerCase())
+      );
       setFilteredChats(filtered);
     }
   };
 
-  useEffect(() => {
-    loadConversations();
+  React.useEffect(() => {
+    setFilteredChats(chatList);
   }, []);
 
-  const onRefresh = async () => {
+  const onRefresh = () => {
     setRefreshing(true);
-    await loadConversations();
-    setRefreshing(false);
+    setTimeout(() => {
+      setRefreshing(false);
+      // Here you would fetch new data
+    }, 1200);
   };
 
   const getRoleColor = (role) => {
@@ -112,65 +154,42 @@ const ChatHomepage = () => {
     }
   };
 
-  const renderChatItem = ({ item }) => {
-    // Get the other participant (not current user)
-    const otherParticipant = item.participants?.find(p => !p.is_me);
-    const displayName = item.title || otherParticipant?.name || 'Unknown';
-    const displayRole = otherParticipant?.isAdmin ? 'Admin' : 'Resident';
-    
-    // Format timestamp
-    const formatTimestamp = (timestamp) => {
-      if (!timestamp) return '';
-      const date = new Date(timestamp);
-      const now = new Date();
-      const diffInHours = (now - date) / (1000 * 60 * 60);
-      
-      if (diffInHours < 24) {
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      } else if (diffInHours < 48) {
-        return 'Yesterday';
-      } else {
-        return date.toLocaleDateString();
-      }
-    };
-
-    return (
-      <TouchableOpacity
-        style={[styles.chatItem, { backgroundColor: cardBg, borderColor: borderColor }]}
-        onPress={() => router.push({ pathname: "/Chat/ChatScreen", params: { conversation: JSON.stringify(item) } })}
-        activeOpacity={0.8}
-      >
-        <View style={styles.avatarContainer}>
-          {otherParticipant?.profile_picture ? (
-            <Image source={{ uri: otherParticipant.profile_picture }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatarPlaceholder, { backgroundColor: getRoleColor(displayRole) }] }>
-              <Text style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.chatInfo}>
-          <View style={styles.chatHeader}>
-            <Text style={[styles.chatName, { color: textColor }]} numberOfLines={1}>{displayName}</Text>
-            <View style={styles.headerRight}>
-              <Text style={[styles.timestamp, { color: timeColor }]}>{formatTimestamp(item.last_message_at)}</Text>
-              {item.unread_count > 0 && (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadText}>{item.unread_count}</Text>
-                </View>
-              )}
-            </View>
+  const renderChatItem = ({ item }) => (
+    <TouchableOpacity
+      style={[styles.chatItem, { backgroundColor: cardBg, borderColor: borderColor }]}
+      onPress={() => router.push({ pathname: "/Chat/ChatScreen", params: { chat: JSON.stringify(item) } })}
+      activeOpacity={0.8}
+    >
+      <View style={styles.avatarContainer}>
+        {item.avatar ? (
+          <Image source={{ uri: item.avatar }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatarPlaceholder, { backgroundColor: getRoleColor(item.role) }] }>
+            <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
           </View>
-          <View style={styles.chatDetails}>
-            <View style={[styles.roleBadge, { backgroundColor: getRoleColor(displayRole) }] }>
-              <Text style={styles.roleText}>{displayRole}</Text>
-            </View>
-            <Text style={[styles.lastMessage, { color: timeColor }]} numberOfLines={1}>{item.last_message || 'No messages yet'}</Text>
+        )}
+      </View>
+      <View style={styles.chatInfo}>
+        <View style={styles.chatHeader}>
+          <Text style={[styles.chatName, { color: textColor }]} numberOfLines={1}>{item.name}</Text>
+          <View style={styles.headerRight}>
+            <Text style={[styles.timestamp, { color: timeColor }]}>{item.timestamp}</Text>
+            {item.unreadCount > 0 && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadText}>{item.unreadCount}</Text>
+              </View>
+            )}
           </View>
         </View>
-      </TouchableOpacity>
-    );
-  };
+        <View style={styles.chatDetails}>
+          <View style={[styles.roleBadge, { backgroundColor: getRoleColor(item.role) }] }>
+            <Text style={styles.roleText}>{item.role}</Text>
+          </View>
+          <Text style={[styles.lastMessage, { color: timeColor }]} numberOfLines={1}>{item.lastMessage}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
   // --- New Chat Modal ---
   const filteredUsers = userSearch.trim() === ""

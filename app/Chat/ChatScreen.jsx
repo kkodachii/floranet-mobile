@@ -13,26 +13,22 @@ import {
   StatusBar,
   Keyboard,
   AppState,
-  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import HeaderBack from "../../components/HeaderBack";
-import { chatService } from "../../services/api";
 
 const ChatScreen = () => {
   const insets = useSafeAreaInsets();
   const { colors, theme } = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const conversation = params.conversation ? JSON.parse(params.conversation) : null;
+  const chat = params.chat ? JSON.parse(params.chat) : null;
 
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
   const flatListRef = useRef(null);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const keyboardOpenRef = useRef(false);
@@ -47,29 +43,55 @@ const ChatScreen = () => {
   const textColor = colors.text;
   const timeColor = theme === "light" ? "#999" : "#aaa";
 
-  // Load messages from API
-  const loadMessages = async () => {
-    if (!conversation?.id) return;
-    
-    try {
-      setLoading(true);
-      const response = await chatService.getMessages(conversation.id);
-      if (response.success) {
-        setMessages(response.data.reverse()); // Reverse to show oldest first
-        // Mark messages as read
-        await chatService.markAsRead(conversation.id);
-      }
-    } catch (error) {
-      console.error('Error loading messages:', error);
-      Alert.alert('Error', 'Failed to load messages');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Sample messages for the chat
+  const sampleMessages = [
+    {
+      id: "1",
+      text: "Hi there! How can I help you today?",
+      sender: chat?.id,
+      timestamp: "10:30 AM",
+      isOwn: false,
+    },
+    {
+      id: "2",
+      text: "I have a question about the maintenance request I submitted",
+      sender: "me",
+      timestamp: "10:32 AM",
+      isOwn: true,
+    },
+    {
+      id: "3",
+      text: "Sure! I can see your request. What would you like to know?",
+      sender: chat?.id,
+      timestamp: "10:33 AM",
+      isOwn: false,
+    },
+    {
+      id: "4",
+      text: "When will the maintenance team arrive?",
+      sender: "me",
+      timestamp: "10:35 AM",
+      isOwn: true,
+    },
+    {
+      id: "5",
+      text: "The team is scheduled to arrive tomorrow between 9 AM and 11 AM. I'll send you a notification when they're on their way.",
+      sender: chat?.id,
+      timestamp: "10:36 AM",
+      isOwn: false,
+    },
+    {
+      id: "6",
+      text: "Perfect! Thank you for the update.",
+      sender: "me",
+      timestamp: "10:37 AM",
+      isOwn: true,
+    },
+  ];
 
   useEffect(() => {
-    loadMessages();
-  }, [conversation?.id]);
+    setMessages(sampleMessages);
+  }, []);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -112,51 +134,23 @@ const ChatScreen = () => {
     };
   }, []);
 
-  const sendMessage = async () => {
-    if (newMessage.trim() === "" || sending || !conversation?.id) return;
-    
-    const messageContent = newMessage.trim();
-    setNewMessage("");
-    setSending(true);
-    
-    // Optimistically add message to UI
-    const tempMessage = {
-      id: `temp_${Date.now()}`,
-      content: messageContent,
-      sender_id: 0, // Will be updated when real message comes back
-      is_own_message: true,
-      created_at: new Date().toISOString(),
-      formatted_time: new Date().toLocaleTimeString([], {
+  const sendMessage = () => {
+    if (newMessage.trim() === "") return;
+    const message = {
+      id: Date.now().toString(),
+      text: newMessage.trim(),
+      sender: "me",
+      timestamp: new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
       }),
+      isOwn: true,
     };
-    setMessages((prev) => [...prev, tempMessage]);
-    
-    try {
-      const response = await chatService.sendMessage(conversation.id, messageContent);
-      if (response.success) {
-        // Replace temp message with real message
-        setMessages((prev) => prev.map(msg => 
-          msg.id === tempMessage.id ? response.data : msg
-        ));
-      } else {
-        // Remove temp message on error
-        setMessages((prev) => prev.filter(msg => msg.id !== tempMessage.id));
-        setNewMessage(messageContent); // Restore message text
-        Alert.alert('Error', 'Failed to send message');
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      setMessages((prev) => prev.filter(msg => msg.id !== tempMessage.id));
-      setNewMessage(messageContent); // Restore message text
-      Alert.alert('Error', 'Failed to send message');
-    } finally {
-      setSending(false);
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    }
+    setMessages((prev) => [...prev, message]);
+    setNewMessage("");
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
 
   const getRoleColor = (role) => {
@@ -172,51 +166,46 @@ const ChatScreen = () => {
     }
   };
 
-  const renderMessage = ({ item }) => {
-    const isOwn = item.is_own_message;
-    const otherParticipant = conversation?.participants?.find(p => !p.is_me);
-    
-    return (
+  const renderMessage = ({ item }) => (
+    <View
+      style={[
+        styles.messageRow,
+        item.isOwn ? { justifyContent: "flex-end" } : { justifyContent: "flex-start" },
+      ]}
+    >
+      {!item.isOwn && (
+        <View style={styles.avatarMini}>
+          {chat?.avatar ? (
+            <Image source={{ uri: chat.avatar }} style={styles.avatarImgMini} />
+          ) : (
+            <View style={[styles.avatarMiniCircle, { backgroundColor: getRoleColor(chat?.role) }] }>
+              <Text style={styles.avatarMiniText}>{chat?.name?.charAt(0).toUpperCase()}</Text>
+            </View>
+          )}
+        </View>
+      )}
       <View
         style={[
-          styles.messageRow,
-          isOwn ? { justifyContent: "flex-end" } : { justifyContent: "flex-start" },
+          styles.bubble,
+          {
+            backgroundColor: item.isOwn ? bubbleOwn : bubbleOther,
+            alignSelf: item.isOwn ? "flex-end" : "flex-start",
+            borderTopLeftRadius: item.isOwn ? 18 : 6,
+            borderTopRightRadius: item.isOwn ? 6 : 18,
+            borderBottomLeftRadius: 18,
+            borderBottomRightRadius: 18,
+            marginLeft: item.isOwn ? 40 : 0,
+            marginRight: item.isOwn ? 0 : 8,
+          },
         ]}
       >
-        {!isOwn && (
-          <View style={styles.avatarMini}>
-            {item.sender?.profile_picture ? (
-              <Image source={{ uri: item.sender.profile_picture }} style={styles.avatarImgMini} />
-            ) : (
-              <View style={[styles.avatarMiniCircle, { backgroundColor: getRoleColor(item.sender?.isAdmin ? 'Admin' : 'Resident') }] }>
-                <Text style={styles.avatarMiniText}>{item.sender?.name?.charAt(0).toUpperCase() || '?'}</Text>
-              </View>
-            )}
-          </View>
-        )}
-        <View
-          style={[
-            styles.bubble,
-            {
-              backgroundColor: isOwn ? bubbleOwn : bubbleOther,
-              alignSelf: isOwn ? "flex-end" : "flex-start",
-              borderTopLeftRadius: isOwn ? 18 : 6,
-              borderTopRightRadius: isOwn ? 6 : 18,
-              borderBottomLeftRadius: 18,
-              borderBottomRightRadius: 18,
-              marginLeft: isOwn ? 40 : 0,
-              marginRight: isOwn ? 0 : 8,
-            },
-          ]}
-        >
-          <Text style={[styles.bubbleText, { color: isOwn ? '#fff' : textColor }]}>{item.content}</Text>
-          <Text style={[styles.bubbleTime, { color: isOwn ? 'rgba(255,255,255,0.7)' : timeColor }]}>{item.formatted_time}</Text>
-        </View>
+        <Text style={[styles.bubbleText, { color: item.isOwn ? '#fff' : textColor }]}>{item.text}</Text>
+        <Text style={[styles.bubbleTime, { color: item.isOwn ? 'rgba(255,255,255,0.7)' : timeColor }]}>{item.timestamp}</Text>
       </View>
-    );
-  };
+    </View>
+  );
 
-  if (!conversation) {
+  if (!chat) {
     return (
       <SafeAreaView
         style={[
@@ -231,7 +220,7 @@ const ChatScreen = () => {
         <View style={styles.container}>
           <HeaderBack title="Chat" />
           <View style={styles.errorContainer}>
-            <Text style={[styles.errorText, { color: textColor }]}>Conversation not found</Text>
+            <Text style={[styles.errorText, { color: textColor }]}>Chat not found</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -264,29 +253,19 @@ const ChatScreen = () => {
             <Ionicons name="arrow-back" size={24} color={textColor} />
           </TouchableOpacity>
           <View style={styles.headerInfoStandard}>
-            {(() => {
-              const otherParticipant = conversation.participants?.find(p => !p.is_me);
-              const displayName = conversation.title || otherParticipant?.name || 'Unknown';
-              const displayRole = otherParticipant?.isAdmin ? 'Admin' : 'Resident';
-              
-              return (
-                <>
-                  {otherParticipant?.profile_picture ? (
-                    <Image source={{ uri: otherParticipant.profile_picture }} style={styles.avatarImg} />
-                  ) : (
-                    <View style={[styles.avatarCircle, { backgroundColor: getRoleColor(displayRole) }] }>
-                      <Text style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</Text>
-                    </View>
-                  )}
-                  <View style={{ marginLeft: 10 }}>
-                    <Text style={[styles.headerName, { color: textColor }]}>{displayName}</Text>
-                    <View style={[styles.roleBadge, { backgroundColor: getRoleColor(displayRole) }]}>
-                      <Text style={styles.roleText}>{displayRole}</Text>
-                    </View>
-                  </View>
-                </>
-              );
-            })()}
+            {chat.avatar ? (
+              <Image source={{ uri: chat.avatar }} style={styles.avatarImg} />
+            ) : (
+              <View style={[styles.avatarCircle, { backgroundColor: getRoleColor(chat.role) }] }>
+                <Text style={styles.avatarText}>{chat.name.charAt(0).toUpperCase()}</Text>
+              </View>
+            )}
+            <View style={{ marginLeft: 10 }}>
+              <Text style={[styles.headerName, { color: textColor }]}>{chat.name}</Text>
+              <View style={[styles.roleBadge, { backgroundColor: getRoleColor(chat.role) }]}>
+                <Text style={styles.roleText}>{chat.role}</Text>
+              </View>
+            </View>
           </View>
           <TouchableOpacity style={styles.moreButton}>
             <Ionicons name="ellipsis-vertical" size={22} color={textColor} />
@@ -294,27 +273,16 @@ const ChatScreen = () => {
         </View>
 
         {/* Messages */}
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={[styles.loadingText, { color: textColor }]}>Loading messages...</Text>
-          </View>
-        ) : (
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderMessage}
-            keyExtractor={(item) => item.id}
-            style={styles.messagesList}
-            contentContainerStyle={styles.messagesContainer}
-            showsVerticalScrollIndicator={false}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={[styles.emptyText, { color: timeColor }]}>No messages yet. Start the conversation!</Text>
-              </View>
-            }
-          />
-        )}
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item.id}
+          style={styles.messagesList}
+          contentContainerStyle={styles.messagesContainer}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        />
 
         {/* Custom Message Input Bar */}
         <View
@@ -343,11 +311,11 @@ const ChatScreen = () => {
               />
             </View>
             <TouchableOpacity
-              style={[styles.sendButton, { backgroundColor: (newMessage.trim() && !sending) ? "#28942c" : borderColor }]}
+              style={[styles.sendButton, { backgroundColor: newMessage.trim() ? "#28942c" : borderColor }]}
               onPress={sendMessage}
-              disabled={newMessage.trim() === "" || sending}
+              disabled={newMessage.trim() === ""}
             >
-              <Ionicons name="send" size={20} color={(newMessage.trim() && !sending) ? "#fff" : timeColor} />
+              <Ionicons name="send" size={20} color={newMessage.trim() ? "#fff" : timeColor} />
             </TouchableOpacity>
           </View>
         </View>
@@ -511,25 +479,6 @@ const styles = StyleSheet.create({
   errorText: {
     textAlign: "center",
     fontSize: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    fontSize: 16,
-    textAlign: "center",
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: 60,
-  },
-  emptyText: {
-    fontSize: 15,
-    textAlign: "center",
   },
 });
 
