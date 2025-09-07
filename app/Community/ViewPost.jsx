@@ -130,6 +130,7 @@ const ViewPost = () => {
   const [imageLikes, setImageLikes] = useState({});
   const [comments, setComments] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [adminAccessDeniedModal, setAdminAccessDeniedModal] = useState(false);
 
   // Load post data
   useEffect(() => {
@@ -227,12 +228,20 @@ const ViewPost = () => {
 
 
   // Handle profile navigation
-  const handleProfilePress = (postUserId) => {
-    if (currentUser && postUserId === currentUser.id) {
+  const handleProfilePress = (postUserId, isAdmin = false) => {
+    console.log('ViewPost - Profile press - currentUser.id:', currentUser?.id, 'postUserId:', postUserId, 'isAdmin:', isAdmin);
+    
+    if (currentUser && parseInt(currentUser.id) === parseInt(postUserId)) {
       // Navigate to own profile
+      console.log('ViewPost - Navigating to own profile');
       router.push("/Profile/MainProfile");
+    } else if (isAdmin) {
+      // Show admin access denied modal
+      console.log('ViewPost - Admin profile clicked - showing access denied modal');
+      setAdminAccessDeniedModal(true);
     } else {
       // Navigate to other user's profile
+      console.log('ViewPost - Navigating to other profile for userId:', postUserId);
       router.push({
         pathname: "/Profile/OtherProfile",
         params: { userId: postUserId }
@@ -376,7 +385,7 @@ const ViewPost = () => {
           {/* Post Header */}
           <TouchableOpacity
             style={styles.postHeaderRow}
-            onPress={() => handleProfilePress(postData.user?.id)}
+            onPress={() => handleProfilePress(postData.user?.id, postData.user?.is_admin)}
           >
             <View style={styles.avatarContainer}>
               {postData.user?.profile_picture ? (
@@ -509,6 +518,41 @@ const ViewPost = () => {
             </TouchableOpacity>
           </TouchableOpacity>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Admin Access Denied Modal */}
+      <Modal
+        visible={adminAccessDeniedModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setAdminAccessDeniedModal(false)}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: theme === 'light' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.7)' }]}>
+          <View style={[
+            styles.adminAccessModal, 
+            { 
+              backgroundColor: colors.cardBackground || (theme === 'light' ? '#ffffff' : '#1F2633'),
+              borderColor: colors.border || (theme === 'light' ? '#e0e0e0' : '#2A2F3A'),
+              shadowColor: theme === 'light' ? '#000' : '#fff'
+            }
+          ]}>
+            <View style={styles.adminAccessIconContainer}>
+              <Ionicons name="shield-checkmark" size={48} color="#e74c3c" />
+            </View>
+            <Text style={[styles.adminAccessTitle, { color: colors.text || (theme === 'light' ? '#000' : '#fff') }]}>
+              Access Restricted
+            </Text>
+            <Text style={[styles.adminAccessMessage, { color: colors.textSecondary || (theme === 'light' ? '#666' : '#999') }]}>
+              You cannot view administrator profiles for security reasons.
+            </Text>
+            <TouchableOpacity
+              style={[styles.adminAccessButton, { backgroundColor: '#28942c' }]}
+              onPress={() => setAdminAccessDeniedModal(false)}
+            >
+              <Text style={styles.adminAccessButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -664,5 +708,55 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     opacity: 0.7,
+  },
+  
+  // Admin Access Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  adminAccessModal: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  adminAccessIconContainer: {
+    marginBottom: 16,
+  },
+  adminAccessTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  adminAccessMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  adminAccessButton: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  adminAccessButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

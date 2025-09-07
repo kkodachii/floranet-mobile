@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -19,6 +19,23 @@ import { communityService, buildStorageUrl, authService } from '../../services/a
 import Header from '../../components/HeaderBack';
 import Navbar from '../../components/Navbar';
 
+// Custom debounce hook
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
 const Search = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -33,6 +50,12 @@ const Search = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [adminAccessDeniedModal, setAdminAccessDeniedModal] = useState(false);
+  
+  // Debounce search query with 500ms delay
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
   // Load current user data
   useEffect(() => {
@@ -48,12 +71,20 @@ const Search = () => {
   }, []);
 
   // Handle profile navigation
-  const handleProfilePress = (postUserId) => {
-    if (currentUser && postUserId === currentUser.id) {
+  const handleProfilePress = (postUserId, isAdmin = false) => {
+    console.log('Search - Profile press - currentUser.id:', currentUser?.id, 'postUserId:', postUserId, 'isAdmin:', isAdmin);
+    
+    if (currentUser && parseInt(currentUser.id) === parseInt(postUserId)) {
       // Navigate to own profile
+      console.log('Search - Navigating to own profile');
       router.push("/Profile/MainProfile");
+    } else if (isAdmin) {
+      // Show admin access denied modal
+      console.log('Search - Admin profile clicked - showing access denied modal');
+      setAdminAccessDeniedModal(true);
     } else {
       // Navigate to other user's profile
+      console.log('Search - Navigating to other profile for userId:', postUserId);
       router.push({
         pathname: "/Profile/OtherProfile",
         params: { userId: postUserId }
@@ -61,23 +92,51 @@ const Search = () => {
     }
   };
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+  const performSearch = useCallback(async (query) => {
+    if (!query.trim()) {
+      setPosts([]);
+      setHasSearched(false);
+      return;
+    }
 
     try {
       setLoading(true);
-      const response = await communityService.getPosts({ search: searchQuery.trim() });
+      setHasSearched(true);
+      const response = await communityService.getPosts({ search: query.trim() });
       if (response.success) {
         setPosts(response.data.data || []);
       } else {
-        Alert.alert('Error', response.message || 'Search failed');
+        console.error('Search failed:', response.message);
+        setPosts([]);
       }
     } catch (error) {
       console.error('Search error:', error);
-      Alert.alert('Error', 'Search failed. Please try again.');
+      setPosts([]);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Trigger search when debounced query changes
+  useEffect(() => {
+    performSearch(debouncedSearchQuery);
+  }, [debouncedSearchQuery, performSearch]);
+
+  // Handle typing indicator
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      setIsTyping(true);
+      const timer = setTimeout(() => {
+        setIsTyping(false);
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      setIsTyping(false);
+    }
+  }, [searchQuery]);
+
+  const handleSearch = () => {
+    performSearch(searchQuery);
   };
 
   // Parse event details from post content
@@ -151,7 +210,7 @@ const Search = () => {
     >
       <TouchableOpacity 
         style={styles.postHeader}
-        onPress={() => handleProfilePress(post.user?.id)}
+        onPress={() => handleProfilePress(post.user?.id, post.user?.is_admin)}
       >
         <View style={styles.avatarContainer}>
           {post.user?.profile_picture ? (
@@ -266,12 +325,30 @@ const Search = () => {
               value={searchQuery}
               onChangeText={setSearchQuery}
               onSubmitEditing={handleSearch}
+              returnKeyType="search"
+              clearButtonMode="while-editing"
             />
-            <TouchableOpacity onPress={handleSearch} disabled={loading}>
+            {searchQuery ? (
+              <TouchableOpacity 
+                onPress={() => {
+                  setSearchQuery('');
+                  setPosts([]);
+                  setHasSearched(false);
+                }}
+                style={{ marginRight: 8 }}
+              >
+                <Ionicons
+                  name="close-circle"
+                  size={20}
+                  color={textColor + '60'}
+                />
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity onPress={handleSearch} disabled={loading || isTyping}>
               <Ionicons
-                name="arrow-forward"
+                name={isTyping ? "time-outline" : loading ? "hourglass-outline" : "arrow-forward"}
                 size={20}
-                color={loading ? textColor + '60' : textColor}
+                color={loading || isTyping ? textColor + '60' : textColor}
               />
             </TouchableOpacity>
           </View>
@@ -284,8 +361,23 @@ const Search = () => {
                 Searching...
               </Text>
             </View>
-          ) : posts.length === 0 && searchQuery ? (
+          ) : isTyping ? (
+            <View style={styles.loadingContainer}>
+              <Ionicons name="time-outline" size={24} color={textColor + '60'} />
+              <Text style={[styles.loadingText, { color: textColor }]}>
+                Typing...
+              </Text>
+            </View>
+          ) : !hasSearched && !searchQuery ? (
             <View style={styles.emptyContainer}>
+              <Ionicons name="search-outline" size={48} color={textColor + '40'} />
+              <Text style={[styles.emptyText, { color: textColor }]}>
+                Start typing to search posts
+              </Text>
+            </View>
+          ) : posts.length === 0 && hasSearched ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="document-text-outline" size={48} color={textColor + '40'} />
               <Text style={[styles.emptyText, { color: textColor }]}>
                 No posts found for "{searchQuery}"
               </Text>
@@ -306,6 +398,41 @@ const Search = () => {
         >
           <Navbar />
         </View>
+
+        {/* Admin Access Denied Modal */}
+        <Modal
+          visible={adminAccessDeniedModal}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setAdminAccessDeniedModal(false)}
+        >
+          <View style={[styles.modalOverlay, { backgroundColor: theme === 'light' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.7)' }]}>
+            <View style={[
+              styles.adminAccessModal, 
+              { 
+                backgroundColor: colors.cardBackground || (theme === 'light' ? '#ffffff' : '#1F2633'),
+                borderColor: colors.border || (theme === 'light' ? '#e0e0e0' : '#2A2F3A'),
+                shadowColor: theme === 'light' ? '#000' : '#fff'
+              }
+            ]}>
+              <View style={styles.adminAccessIconContainer}>
+                <Ionicons name="shield-checkmark" size={48} color="#e74c3c" />
+              </View>
+              <Text style={[styles.adminAccessTitle, { color: colors.text || (theme === 'light' ? '#000' : '#fff') }]}>
+                Access Restricted
+              </Text>
+              <Text style={[styles.adminAccessMessage, { color: colors.textSecondary || (theme === 'light' ? '#666' : '#999') }]}>
+                You cannot view administrator profiles for security reasons.
+              </Text>
+              <TouchableOpacity
+                style={[styles.adminAccessButton, { backgroundColor: '#28942c' }]}
+                onPress={() => setAdminAccessDeniedModal(false)}
+              >
+                <Text style={styles.adminAccessButtonText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
     </SafeAreaView>
   );
@@ -458,5 +585,55 @@ const styles = StyleSheet.create({
   },
   navWrapper: {
     backgroundColor: '#fff',
+  },
+  
+  // Admin Access Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  adminAccessModal: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  adminAccessIconContainer: {
+    marginBottom: 16,
+  },
+  adminAccessTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  adminAccessMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  adminAccessButton: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  adminAccessButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
