@@ -223,6 +223,11 @@ export const authService = {
     await authService.getProfileCached({ force: true });
     return response.data;
   },
+  // Get other user's profile by ID
+  getUserProfile: async (userId) => {
+    const response = await api.get(`/user/profile/${userId}`);
+    return response.data;
+  },
 };
 
 export const complaintsService = {
