@@ -327,7 +327,7 @@ const FinanceHomepage = () => {
                   <Ionicons name="qr-code" size={24} color="#4A90E2" />
                 </View>
                 <Text style={[styles.quickActionText, { color: colors.text }]}>
-                  QR Payment
+                  Payment
                 </Text>
               </TouchableOpacity>
 

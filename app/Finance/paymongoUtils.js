@@ -297,6 +297,182 @@ export const getPaymentIntent = async (paymentIntentId) => {
   }
 };
 
+// Create a Checkout Session
+export const createCheckoutSession = async (amount, description, metadata, successUrl, cancelUrl, userProfile = null) => {
+  try {
+    console.log('Creating checkout session with user profile:', userProfile);
+    
+    const requestBody = {
+      data: {
+        attributes: {
+          line_items: [
+            {
+              currency: 'PHP',
+              amount: Math.round(parseFloat(amount) * 100),
+              name: description,
+              quantity: 1
+            }
+          ],
+          payment_method_types: ['card', 'gcash', 'grab_pay', 'paymaya'],
+          success_url: successUrl,
+          cancel_url: cancelUrl,
+          metadata,
+          ...(userProfile && {
+            billing: {
+              name: userProfile.name || 'Floranet Resident',
+              email: userProfile.email || 'resident@floranet.com',
+              phone: userProfile.contact_no || '+639000000000',
+              address: {
+                line1: userProfile.house?.address || 'Floranet Community',
+                city: 'Makati',
+                state: 'NCR',
+                postal_code: '1234',
+                country: 'PH'
+              }
+            }
+          })
+        }
+      }
+    };
+    
+    console.log('PayMongo request body:', JSON.stringify(requestBody, null, 2));
+    
+    const response = await fetch('https://api.paymongo.com/v1/checkout_sessions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${encodeBase64(PAYMONGO_SECRET_KEY + ':')}`,
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.data) {
+      return {
+        success: true,
+        data: result.data,
+        id: result.data.id,
+        checkout_url: result.data.attributes?.checkout_url,
+        status: result.data.attributes?.status,
+      };
+    } else {
+      console.error('PayMongo API Error (createCheckoutSession):', result);
+      return {
+        success: false,
+        error: result.errors?.[0]?.detail || 'Failed to create checkout session',
+        data: result,
+      };
+    }
+  } catch (error) {
+    console.error('Error creating checkout session:', error);
+    return {
+      success: false,
+      error: 'Network error. Please check your connection and try again.',
+      data: null,
+    };
+  }
+};
+
+// Retrieve Checkout Session status
+export const getCheckoutSession = async (checkoutSessionId) => {
+  try {
+    const response = await fetch(`https://api.paymongo.com/v1/checkout_sessions/${checkoutSessionId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${encodeBase64(PAYMONGO_SECRET_KEY + ':')}`,
+        'Accept': 'application/json',
+      },
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.data) {
+      return {
+        success: true,
+        data: result.data,
+        status: result.data.attributes?.status,
+        amount: result.data.attributes?.amount,
+        checkout_url: result.data.attributes?.checkout_url,
+      };
+    } else {
+      return {
+        success: false,
+        error: result.errors?.[0]?.detail || 'Failed to get checkout session',
+        data: result,
+      };
+    }
+  } catch (error) {
+    console.error('Error getting checkout session:', error);
+    return {
+      success: false,
+      error: 'Network error. Please check your connection and try again.',
+      data: null,
+    };
+  }
+};
+
+// Record payment in database
+export const recordPayment = async (amount, monthlyDueId, methodOfPayment = 'PayMongo Gateway') => {
+  try {
+    const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || (__DEV__ ? 'http://192.168.254.107:8000/api' : 'https://api.floranet.online/api');
+    
+    const paymentData = {
+      method_of_payment: methodOfPayment,
+      amount: amount,
+      paid_at: new Date().toISOString(),
+      monthly_due_id: monthlyDueId,
+    };
+    
+    console.log('Sending payment data to API:', paymentData);
+    
+    const response = await fetch(`${API_BASE_URL}/user/payments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${await getAuthToken()}`,
+      },
+      body: JSON.stringify(paymentData)
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.data) {
+      return {
+        success: true,
+        data: result.data,
+        message: result.message || 'Payment recorded successfully',
+      };
+    } else {
+      return {
+        success: false,
+        error: result.message || 'Failed to record payment',
+        data: result,
+      };
+    }
+  } catch (error) {
+    console.error('Error recording payment:', error);
+    return {
+      success: false,
+      error: 'Network error. Please check your connection and try again.',
+      data: null,
+    };
+  }
+};
+
+// Helper function to get auth token
+const getAuthToken = async () => {
+  try {
+    const { getItemAsync } = await import('expo-secure-store');
+    return await getItemAsync('floranet_token');
+  } catch (error) {
+    console.error('Error getting auth token:', error);
+    return null;
+  }
+};
+
 export { PAYMONGO_SECRET_KEY, PAYMONGO_PUBLIC_KEY };
 
 // Default export for Expo Router

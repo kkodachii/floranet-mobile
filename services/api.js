@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-const DEFAULT_PROD_API = 'https://floranet-laravel.onrender.com/api';
+const DEFAULT_PROD_API = 'https://api.floranet.online/api';
 
 const DEFAULT_DEV_API = 'http://192.168.254.107:8000/api';
 
@@ -341,6 +341,12 @@ export const financeService = {
   getPaymentHistory: async ({ page = 1 } = {}) => {
     const response = await api.get('/user/payments', { params: { page } });
     return response.data; // Laravel resource collection
+  },
+
+  // Create a payment record
+  createPayment: async (paymentData) => {
+    const response = await api.post('/user/payments', paymentData);
+    return response.data; // Payment resource
   },
 
   // Get available years for monthly dues
