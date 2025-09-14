@@ -15,8 +15,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { StatusBar } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { createCheckoutSession, recordPayment } from "./paymongoUtils";
-import { financeService, authService } from "../../services/api";
+import { createCheckoutSession, getCheckoutSession } from "./paymongoUtils";
+import { financeService } from "../../services/api";
 import { WebView } from 'react-native-webview';
 
 const Payment = () => {
@@ -31,6 +31,7 @@ const Payment = () => {
   const [checkoutSession, setCheckoutSession] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState(null);
+  const [statusChecking, setStatusChecking] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState(null); // 'generated' | 'waiting' | 'paid' | 'not_paid' | 'error' | 'loading'
   const [modalMessage, setModalMessage] = useState("");
@@ -54,12 +55,8 @@ const Payment = () => {
 
   const closeModal = () => {
     setModalVisible(false);
-    // If payment was successful, reset the gateway state to allow creating a new one
-    if (modalType === 'paid') {
-      setCheckoutSession(null);
-      setPaymentStatus(null);
-    }
   };
+
 
   useEffect(() => {
     loadCurrentDue();
@@ -72,39 +69,8 @@ const Payment = () => {
       
       if (response?.success && response?.data) {
         const due = response.data;
-        // Check if the current month's due is already paid
-        if (due.is_paid) {
-          // If current month is paid, look for the next pending payment
-          const monthsResponse = await financeService.getAllMonthsStatus();
-          if (monthsResponse?.success && monthsResponse?.data?.months) {
-            const months = monthsResponse.data.months;
-            const firstPending = months.find(month => month.street && !month.is_paid);
-            
-            if (firstPending) {
-              setCurrentDue({
-                id: firstPending.id,
-                month: firstPending.month,
-                year: firstPending.year,
-                amount: firstPending.amount,
-                is_paid: false,
-                street: firstPending.street,
-                collection_reason: firstPending.collection_reason || null,
-                created_at: firstPending.collection_date || new Date().toISOString()
-              });
-              setAmount(firstPending.amount ? firstPending.amount.toString() : "0.00");
-            } else {
-              setAmount("0.00");
-              setCurrentDue(null);
-            }
-          } else {
-            setAmount("0.00");
-            setCurrentDue(null);
-          }
-        } else {
-          // Current month's due is not paid, use it
-          setCurrentDue(due);
-          setAmount(due.amount ? due.amount.toString() : "0.00");
-        }
+        setCurrentDue(due);
+        setAmount(due.amount ? due.amount.toString() : "0.00");
       } else {
         // If no current due, try to get any pending payment from all months
         const monthsResponse = await financeService.getAllMonthsStatus();
@@ -114,7 +80,6 @@ const Payment = () => {
           
           if (firstPending) {
             setCurrentDue({
-              id: firstPending.id,
               month: firstPending.month,
               year: firstPending.year,
               amount: firstPending.amount,
@@ -156,10 +121,6 @@ const Payment = () => {
 
     setIsLoading(true);
     try {
-      // Get user profile information for dynamic customer info
-      const userProfile = await authService.getProfileCached();
-      console.log('User profile for payment:', userProfile);
-      
       const description = `Floranet Payment - ${currentDue.street || 'Monthly Due'} - ${new Date(currentDue.year, currentDue.month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
       
       const metadata = {
@@ -178,8 +139,7 @@ const Payment = () => {
         description, 
         metadata,
         `${baseUrl}/payment/success`,
-        `${baseUrl}/payment/cancel`,
-        userProfile // Pass user profile for dynamic customer info
+        `${baseUrl}/payment/cancel`
       );
       
       if (!session.success) {
@@ -190,6 +150,7 @@ const Payment = () => {
 
       setCheckoutSession(session);
       setPaymentStatus('pending');
+      showModal('generated', 'Payment gateway is ready. You will be redirected to complete your payment.');
       
     } catch (error) {
       console.error('Error creating payment gateway:', error);
@@ -207,55 +168,15 @@ const Payment = () => {
     setWebViewVisible(true);
   };
 
-  const handleWebViewNavigationStateChange = async (navState) => {
-    // Add safety check for navState
-    if (!navState || !navState.url) {
-      return;
-    }
-    
+  const handleWebViewNavigationStateChange = (navState) => {
     // Check if user is redirected to success or cancel page
     if (navState.url.includes('/payment/success')) {
       setWebViewVisible(false);
-      
-      // Show success modal immediately since PayMongo confirmed the payment
       setPaymentStatus('paid');
-      showModal('paid', 'Your payment has been received and recorded successfully.');
-      
-      // Reset payment gateway state to allow creating a new one
-      setCheckoutSession(null);
-      
-      // Record the payment in our database in the background
-      try {
-        console.log('Recording payment with monthly due ID:', currentDue?.id);
-        const recordResult = await recordPayment(
-          parseFloat(amount),
-          currentDue?.id
-        );
-
-        if (recordResult.success) {
-          console.log('Payment recorded successfully in database');
-          // Refresh the current due to get updated status
-          setTimeout(() => {
-            loadCurrentDue();
-          }, 2000);
-        } else {
-          console.warn('Payment recording failed, but payment was successful:', recordResult.error);
-          // Still refresh to get updated status
-          setTimeout(() => {
-            loadCurrentDue();
-          }, 2000);
-        }
-      } catch (error) {
-        console.error('Error recording payment:', error);
-        // Still refresh to get updated status
-        setTimeout(() => {
-          loadCurrentDue();
-        }, 2000);
-      }
+      showModal('paid', 'Your payment has been received successfully.');
     } else if (navState.url.includes('/payment/cancel')) {
       setWebViewVisible(false);
       setPaymentStatus('not_paid');
-      setCheckoutSession(null); // Reset gateway to allow creating a new one
       showModal('not_paid', 'Payment was cancelled. Please try again.');
     }
   };
@@ -266,6 +187,48 @@ const Payment = () => {
     setWebViewVisible(false);
   };
 
+  const checkPaymentStatus = async () => {
+    if (!checkoutSession?.id) return;
+
+    setStatusChecking(true);
+    // Show spinner-only modal while checking
+    setModalType('loading');
+    setModalMessage('');
+    setModalVisible(true);
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      const result = await getCheckoutSession(checkoutSession.id);
+
+      if (result.success) {
+        const status = result.status;
+        if (status === 'succeeded' || status === 'paid') {
+          setPaymentStatus('paid');
+          setModalType('paid');
+          setModalMessage('Your payment has been received.');
+        } else if (status === 'pending') {
+          setPaymentStatus('pending');
+          setModalType('waiting');
+          setModalMessage('Payment is pending. Please complete the payment.');
+        } else {
+          setPaymentStatus('not_paid');
+          setModalType('not_paid');
+          setModalMessage('Payment was not completed. Please try again.');
+        }
+      } else {
+        console.error('Status check error:', result.error);
+        setModalType('error');
+        setModalMessage(result.error || 'Unable to check payment status');
+      }
+    } catch (error) {
+      console.error('Error checking payment status:', error);
+      setModalType('error');
+      setModalMessage('Network error while checking payment status.');
+    } finally {
+      setStatusChecking(false);
+    }
+  };
 
   return (
     <SafeAreaView
@@ -344,12 +307,12 @@ const Payment = () => {
               style={[
                 styles.primaryButton,
                 { 
-                  backgroundColor: currentDue && parseFloat(amount) > 0 && !checkoutSession ? "#22C55E" : "#9CA3AF",
-                  opacity: (!currentDue || parseFloat(amount) <= 0 || checkoutSession) ? 0.6 : 1
+                  backgroundColor: currentDue && parseFloat(amount) > 0 ? "#22C55E" : "#9CA3AF",
+                  opacity: (!currentDue || parseFloat(amount) <= 0) ? 0.6 : 1
                 }
               ]}
               onPress={createPaymentGateway}
-              disabled={Boolean(isLoading || !currentDue || parseFloat(amount) <= 0 || checkoutSession)}
+              disabled={isLoading || !currentDue || parseFloat(amount) <= 0}
             >
               {isLoading ? (
                 <ActivityIndicator color="#fff" size="small" />
@@ -357,8 +320,7 @@ const Payment = () => {
                 <>
                   <Ionicons name="card-outline" size={18} color="#fff" />
                   <Text style={styles.primaryButtonText}>
-                    {!currentDue || parseFloat(amount) <= 0 ? 'No Payment Due' : 
-                     checkoutSession ? 'Gateway Created' : 'Create Payment Gateway'}
+                    {!currentDue || parseFloat(amount) <= 0 ? 'No Payment Due' : 'Create Payment Gateway'}
                   </Text>
                 </>
               )}
@@ -405,13 +367,24 @@ const Payment = () => {
                 </View>
               </View>
 
-              <TouchableOpacity
-                style={[styles.primaryButton, { backgroundColor: "#4A90E2" }]}
-                onPress={openPaymentGateway}
-              >
-                <Ionicons name="open-outline" size={18} color="#fff" />
-                <Text style={styles.primaryButtonText}>Open Payment Page</Text>
-              </TouchableOpacity>
+              <View style={styles.gatewayActions}>
+                <TouchableOpacity
+                  style={[styles.gatewayButton, { backgroundColor: "#4A90E2" }]}
+                  onPress={openPaymentGateway}
+                >
+                  <Ionicons name="open-outline" size={18} color="#fff" />
+                  <Text style={styles.gatewayButtonText}>Open Payment Page</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.gatewayButton, { backgroundColor: "#F59E0B" }]}
+                  onPress={checkPaymentStatus}
+                  disabled={statusChecking}
+                >
+                  <Ionicons name="refresh-circle" size={18} color="#fff" />
+                  <Text style={styles.gatewayButtonText}>Check Status</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
@@ -422,7 +395,7 @@ const Payment = () => {
               <Text style={[styles.infoTitle, { color: colors.text }]}>How it works</Text>
             </View>
             <Text style={[styles.infoText, { color: colors.text, opacity: 0.7 }]}>
-              Tap Create Payment Gateway, then complete your payment using your preferred method. Your payment will be automatically recorded.
+              Tap Create Payment Gateway, then complete your payment using your preferred method. After paying, tap Check Status to confirm.
             </Text>
           </View>
 
@@ -478,12 +451,20 @@ const Payment = () => {
               </Text>
             </View>
             
+            <View style={styles.stepItem}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>6</Text>
+              </View>
+              <Text style={[styles.stepText, { color: colors.text }]}>
+                Tap "Check Status" to verify payment
+              </Text>
+            </View>
           </View>
         </ScrollView>
 
         {/* Status Modal */}
         <Modal
-          visible={Boolean(modalVisible)}
+          visible={modalVisible}
           transparent
           animationType="fade"
           onRequestClose={closeModal}
@@ -521,7 +502,7 @@ const Payment = () => {
 
         {/* WebView Modal */}
         <Modal
-          visible={Boolean(webViewVisible)}
+          visible={webViewVisible}
           animationType="slide"
           onRequestClose={() => setWebViewVisible(false)}
         >
@@ -541,14 +522,6 @@ const Payment = () => {
                 style={styles.webView}
                 onNavigationStateChange={handleWebViewNavigationStateChange}
                 startInLoadingState={true}
-                onError={(syntheticEvent) => {
-                  const { nativeEvent } = syntheticEvent;
-                  console.warn('WebView error: ', nativeEvent);
-                }}
-                onHttpError={(syntheticEvent) => {
-                  const { nativeEvent } = syntheticEvent;
-                  console.warn('WebView HTTP error: ', nativeEvent);
-                }}
                 renderLoading={() => (
                   <View style={styles.webViewLoading}>
                     <ActivityIndicator size="large" color="#4A90E2" />
@@ -658,6 +631,20 @@ const styles = StyleSheet.create({
   paymentMethodItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   paymentMethodText: { fontSize: 12 },
 
+  // Gateway actions
+  gatewayActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  gatewayButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 6,
+    flex: 1,
+    minWidth: 100,
+  },
+  gatewayButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   sectionIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(74,144,226,0.1)', alignItems: 'center', justifyContent: 'center' },
 
   // Info

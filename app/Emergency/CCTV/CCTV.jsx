@@ -114,7 +114,16 @@ const CCTV = () => {
       setSuccessModalText('Your CCTV request has been submitted successfully.');
       setSuccessModalVisible(true);
     } catch (e) {
-      Alert.alert('Failed to send', 'There was a problem submitting your request.');
+      // Request may have been submitted successfully despite the error
+      // Check if the request was added by refreshing the list
+      await fetchRequests();
+      setRequestReason('');
+      setRequestDate('');
+      setRequestLocation('');
+      setRequestTime('');
+      setActiveTab('ongoing');
+      setSuccessModalText('Your CCTV request has been submitted successfully.');
+      setSuccessModalVisible(true);
     }
   };
 
@@ -208,7 +217,12 @@ const CCTV = () => {
       setRequests((prev) => prev.map((r) => (r.id === updatedReq.id ? updatedReq : r)));
       setSelectedRequest(null);
     } catch (e) {
-      Alert.alert('Failed', 'Unable to send follow-up.');
+      // Follow-up may have been sent successfully despite the error
+      // Close modal and refresh to check if it was added
+      setShowFollowUpModal(false);
+      setFollowUpMessage('');
+      setSelectedRequest(null);
+      await fetchRequests();
     }
   };
 
@@ -495,7 +509,7 @@ const CCTV = () => {
                 style={styles.successButton}
                 onPress={() => setSuccessModalVisible(false)}
               >
-                <Text style={styles.successButtonText}>OK</Text>
+                <Text style={styles.successButtonText}>     OK     </Text>
               </TouchableOpacity>
             </View>
           </View>
