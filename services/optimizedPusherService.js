@@ -8,7 +8,7 @@ class OptimizedPusherService {
     this.pollingIntervals = new Map();
     this.lastMessageIds = new Map();
     this.isAppInBackground = false;
-    this.pollingFrequency = 2000; // 2 seconds - faster than before
+    this.pollingFrequency = 1000; // 2 seconds - faster than before
     this.connectionStatus = 'disconnected';
   }
 

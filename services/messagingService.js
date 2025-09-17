@@ -49,4 +49,10 @@ export const messagingService = {
     const response = await api.post(`/user/conversations/${conversationId}/messages/read`);
     return response.data;
   },
+
+  // Delete a conversation
+  deleteConversation: async (conversationId) => {
+    const response = await api.delete(`/user/conversations/${conversationId}`);
+    return response.data;
+  },
 };

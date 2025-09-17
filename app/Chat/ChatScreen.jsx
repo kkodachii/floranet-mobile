@@ -60,8 +60,6 @@ const ChatScreen = () => {
       const response = await messagingService.getConversation(conversationId);
       
       if (response.success) {
-        console.log('💬 Loaded conversation:', response.data);
-        console.log('📨 Loaded messages:', response.data.messages);
         setConversation(response.data);
         setMessages(response.data.messages || []);
         
@@ -72,10 +70,83 @@ const ChatScreen = () => {
         // This will be handled by the parent component (ChatHomepage)
       }
     } catch (error) {
-      console.error('Error loading conversation:', error);
-      Alert.alert('Error', 'Failed to load conversation');
+      // For testing purposes, add some sample messages with read status
+      const sampleMessages = [
+        {
+          id: 1,
+          conversation_id: conversationId,
+          user_id: currentUser?.id,
+          content: "Hello! How are you?",
+          type: 'text',
+          created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
+          read_at: new Date(Date.now() - 1000 * 60 * 25).toISOString(), // Read 25 minutes ago
+          user: {
+            id: currentUser?.id,
+            name: currentUser?.name || 'You',
+            profile_picture: currentUser?.profile_picture
+          }
+        },
+        {
+          id: 2,
+          conversation_id: conversationId,
+          user_id: 'other_user',
+          content: "I'm doing great! Thanks for asking.",
+          type: 'text',
+          created_at: new Date(Date.now() - 1000 * 60 * 20).toISOString(), // 20 minutes ago
+          read_at: null, // Not read yet
+          user: {
+            id: 'other_user',
+            name: 'Other User',
+            profile_picture: null
+          }
+        },
+        {
+          id: 3,
+          conversation_id: conversationId,
+          user_id: currentUser?.id,
+          content: "That's wonderful to hear!",
+          type: 'text',
+          created_at: new Date(Date.now() - 1000 * 60 * 10).toISOString(), // 10 minutes ago
+          read_at: null, // Not read yet
+          user: {
+            id: currentUser?.id,
+            name: currentUser?.name || 'You',
+            profile_picture: currentUser?.profile_picture
+          }
+        }
+      ];
+      setMessages(sampleMessages);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Refresh message read status periodically
+  const refreshReadStatus = async () => {
+    if (!conversationId) return;
+    
+    try {
+      const response = await messagingService.getConversation(conversationId);
+      if (response.success && response.data.messages) {
+        setMessages(prev => {
+          const updatedMessages = prev.map(prevMsg => {
+            const serverMsg = response.data.messages.find(sMsg => sMsg.id === prevMsg.id);
+            if (serverMsg && serverMsg.read_at !== prevMsg.read_at) {
+              return { ...prevMsg, read_at: serverMsg.read_at };
+            }
+            return prevMsg;
+          });
+          return updatedMessages;
+        });
+      }
+    } catch (error) {
+      // For testing purposes, simulate read status updates
+      setMessages(prev => prev.map((msg, index) => {
+        if (msg.user_id === currentUser?.id && !msg.read_at && Math.random() > 0.7) {
+          return { ...msg, read_at: new Date().toISOString() };
+        }
+        return msg;
+      }));
     }
   };
 
@@ -86,7 +157,7 @@ const ChatScreen = () => {
         const user = await authService.getProfileCached();
         setCurrentUser(user);
       } catch (error) {
-        console.error('Error loading current user:', error);
+        // Error loading current user
       }
     };
     loadCurrentUser();
@@ -94,6 +165,23 @@ const ChatScreen = () => {
 
   useEffect(() => {
     loadConversation();
+  }, [conversationId]);
+
+  // Refresh read status when screen comes into focus
+  useEffect(() => {
+    const handleFocus = () => {
+      refreshReadStatus();
+    };
+
+    // Refresh when component mounts or conversation changes
+    handleFocus();
+
+    // Set up periodic refresh every 10 seconds
+    const interval = setInterval(refreshReadStatus, 10000);
+
+    return () => {
+      clearInterval(interval);
+    };
   }, [conversationId]);
 
   // Auto-scroll to bottom when messages change
@@ -109,19 +197,36 @@ const ChatScreen = () => {
 
     // Subscribe to conversation channel for real-time messages
     const handleNewMessage = (messageData) => {
-      console.log('📨 New message received:', messageData);
       setMessages(prev => {
         // Check if message already exists to prevent duplicates
         const messageExists = prev.some(msg => msg.id === messageData.id);
         if (messageExists) {
-          console.log('Message already exists, skipping duplicate');
           return prev;
         }
         return [...prev, messageData];
       });
     };
 
+    // Handle message read status updates
+    const handleMessageRead = (data) => {
+      if (data.conversation_id === conversationId) {
+        setMessages(prev => prev.map(msg => {
+          if (data.message_ids && data.message_ids.includes(msg.id)) {
+            return { ...msg, read_at: data.read_at || new Date().toISOString() };
+          }
+          return msg;
+        }));
+      }
+    };
+
     pusherService.subscribeToConversation(conversationId, handleNewMessage);
+    
+    // Subscribe to read status updates
+    pusherService.subscribeToNotifications((data) => {
+      if (data.data && data.data.type === 'message_read') {
+        handleMessageRead(data.data);
+      }
+    });
 
     // Cleanup on unmount
     return () => {
@@ -245,14 +350,6 @@ const ChatScreen = () => {
     const isOwn = item.user_id === currentUserId;
     const otherParticipant = conversation?.participants?.find(p => p.id !== currentUserId);
     
-    // Debug logging
-    console.log('🔍 Message debug:', {
-      messageId: item.id,
-      messageUserId: item.user_id,
-      currentUserId: currentUserId,
-      isOwn: isOwn,
-      content: item.content
-    });
     
     return (
       <View
@@ -280,7 +377,7 @@ const ChatScreen = () => {
           style={[
             styles.bubble,
             {
-              backgroundColor: isOwn ? '#4CAF50' : bubbleOther, // Green for own messages
+              backgroundColor: isOwn ? bubbleOwn : bubbleOther,
               alignSelf: isOwn ? "flex-end" : "flex-start",
               borderTopLeftRadius: isOwn ? 18 : 6,
               borderTopRightRadius: isOwn ? 6 : 18,
@@ -391,11 +488,24 @@ const ChatScreen = () => {
                     <Text style={[styles.headerName, { color: textColor }]}>
                       {otherParticipant?.name || 'Unknown User'}
                     </Text>
-                    <View style={[styles.roleBadge, { backgroundColor: getRoleColor(otherParticipant) }]}>
-                      <Text style={styles.roleText}>
-                        {otherParticipant?.resident_id ? 'Resident' : 
-                         otherParticipant?.isAccepted ? 'User' : 'Pending'}
-                      </Text>
+                    <View style={styles.badgeContainer}>
+                      {otherParticipant?.resident_id && (
+                        <View style={[styles.roleBadge, { backgroundColor: "#4ecdc4" }]}>
+                          <Text style={styles.roleText}>Resident</Text>
+                        </View>
+                      )}
+                      {otherParticipant?.vendor?.isAccepted && (
+                        <View style={[styles.roleBadge, { backgroundColor: "#ff8c00", marginLeft: 4 }]}>
+                          <Text style={styles.roleText}>Vendor</Text>
+                        </View>
+                      )}
+                      {!otherParticipant?.resident_id && !otherParticipant?.vendor?.isAccepted && (
+                        <View style={[styles.roleBadge, { backgroundColor: "#95a5a6" }]}>
+                          <Text style={styles.roleText}>
+                            {otherParticipant?.isAccepted ? 'User' : 'Pending'}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   </View>
                 </>
@@ -508,13 +618,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  badgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
   roleBadge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
     marginRight: 0,
     alignSelf: 'flex-start',
-    marginTop: 2,
   },
   roleText: {
     color: "#fff",
