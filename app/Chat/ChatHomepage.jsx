@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   RefreshControl,
   Modal,
   Platform,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../Theme/ThemeProvider";
@@ -19,6 +20,11 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Navbar from "../../components/Navbar";
 import Header from "../../components/Header";
+import { messagingService } from "../../services/messagingService";
+import { buildStorageUrl } from "../../services/api";
+import { useFocusEffect } from "@react-navigation/native";
+import { AppState } from "react-native";
+import pusherService from "../../services/optimizedPusherService";
 
 const sampleUsers = [
   { id: "1", name: "John Smith", role: "Admin", avatar: null },
@@ -38,9 +44,14 @@ const ChatHomepage = () => {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredChats, setFilteredChats] = useState([]);
+  const [conversations, setConversations] = useState([]);
+  const [availableUsers, setAvailableUsers] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [userSearch, setUserSearch] = useState("");
+  const [pusherConnected, setPusherConnected] = useState(false);
+  const [appState, setAppState] = useState(AppState.currentState);
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const chatBg = theme === "light" ? "#f7f8fa" : "#181c23";
@@ -114,114 +125,248 @@ const ChatHomepage = () => {
     },
   ];
 
+  // Load conversations and available users
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [conversationsResponse, usersResponse] = await Promise.all([
+        messagingService.getConversations(),
+        messagingService.getAvailableUsers(),
+      ]);
+
+      if (conversationsResponse.success) {
+        console.log('📋 Loaded conversations:', conversationsResponse.data);
+        setConversations(conversationsResponse.data);
+        setFilteredChats(conversationsResponse.data);
+      }
+
+      if (usersResponse.success) {
+        setAvailableUsers(usersResponse.data);
+      }
+    } catch (error) {
+      console.error('Error loading chat data:', error);
+      Alert.alert('Error', 'Failed to load conversations');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter chats based on search query
   const filterChats = (query) => {
     setSearchQuery(query);
     if (query.trim() === "") {
-      setFilteredChats(chatList);
+      setFilteredChats(conversations);
     } else {
-      const filtered = chatList.filter(
+      const filtered = conversations.filter(
         (chat) =>
-          chat.name.toLowerCase().includes(query.toLowerCase()) ||
-          chat.role.toLowerCase().includes(query.toLowerCase())
+          chat.title.toLowerCase().includes(query.toLowerCase()) ||
+          chat.participants.some(p => p.name.toLowerCase().includes(query.toLowerCase()))
       );
       setFilteredChats(filtered);
     }
   };
 
-  React.useEffect(() => {
-    setFilteredChats(chatList);
+  useEffect(() => {
+    loadData();
   }, []);
 
-  const onRefresh = () => {
+  // Refresh conversations when screen comes into focus (e.g., returning from ChatScreen)
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
+
+  // Set up Pusher WebSocket for real-time conversation updates
+  useEffect(() => {
+    const initializePusher = () => {
+      try {
+        // Initialize Pusher connection
+        pusherService.initialize();
+        
+        // Check connection status
+        const checkConnection = () => {
+          const status = pusherService.getConnectionState();
+          setPusherConnected(status === 'connected');
+        };
+        
+        // Check connection status periodically
+        const connectionInterval = setInterval(checkConnection, 1000);
+        
+        // Subscribe to general message updates
+        pusherService.subscribeToNotifications((data) => {
+          console.log('📨 New message received via Pusher, refreshing conversation list...');
+          loadData(); // Refresh conversation list
+        });
+        
+        // Cleanup interval on unmount
+        return () => {
+          clearInterval(connectionInterval);
+        };
+      } catch (error) {
+        console.error('Failed to initialize Pusher:', error);
+      }
+    };
+
+    initializePusher();
+
+    // Handle app state changes
+    const handleAppStateChange = (nextAppState) => {
+      setAppState(nextAppState);
+      // Let the service handle app state changes
+      pusherService.handleAppStateChange(nextAppState);
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    // Cleanup on unmount
+    return () => {
+      pusherService.unsubscribeFromNotifications();
+      if (subscription && typeof subscription.remove === 'function') {
+        subscription.remove();
+      }
+    };
+  }, []);
+
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-      // Here you would fetch new data
-    }, 1200);
+    await loadData();
+    setRefreshing(false);
   };
 
-  const getRoleColor = (role) => {
-    switch (role) {
-      case "Admin":
-        return "#ff6b6b";
-      case "Resident":
-        return "#4ecdc4";
-      case "Vendor":
-        return "#45b7d1";
-      default:
-        return "#95a5a6";
+  const getRoleColor = (participant) => {
+    // Determine role based on participant data (no admin users)
+    if (participant?.resident_id) {
+      return "#4ecdc4"; // Resident - Teal
+    } else if (participant?.isAccepted) {
+      return "#45b7d1"; // Accepted User - Blue
+    }
+    return "#95a5a6"; // Default - Gray
+  };
+
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInHours = (now - date) / (1000 * 60 * 60);
+    
+    if (diffInHours < 24) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (diffInHours < 48) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString();
     }
   };
 
-  const renderChatItem = ({ item }) => (
-    <TouchableOpacity
-      style={[styles.chatItem, { backgroundColor: cardBg, borderColor: borderColor }]}
-      onPress={() => router.push({ pathname: "/Chat/ChatScreen", params: { chat: JSON.stringify(item) } })}
-      activeOpacity={0.8}
-    >
-      <View style={styles.avatarContainer}>
-        {item.avatar ? (
-          <Image source={{ uri: item.avatar }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatarPlaceholder, { backgroundColor: getRoleColor(item.role) }] }>
-            <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
+  const renderChatItem = ({ item }) => {
+    // Safely find the other participant, avoiding potential undefined issues
+    const otherParticipant = item.other_participant || item.participants?.[0] || {};
+    const lastMessage = item.last_message;
+    
+    // Debug logging
+    console.log('🔍 Chat item debug:', {
+      id: item.id,
+      otherParticipant: otherParticipant?.name,
+      lastMessage: lastMessage?.content,
+      lastMessageAt: item.last_message_at,
+      unreadCount: item.unread_count
+    });
+    
+    return (
+      <TouchableOpacity
+        style={[styles.chatItem, { backgroundColor: cardBg, borderColor: borderColor }]}
+        onPress={() => router.push({ pathname: "/Chat/ChatScreen", params: { conversationId: item.id } })}
+        activeOpacity={0.8}
+      >
+        <View style={styles.avatarContainer}>
+          {otherParticipant?.profile_picture ? (
+            <Image 
+              source={{ uri: buildStorageUrl(otherParticipant.profile_picture) }} 
+              style={styles.avatar}
+              onError={() => console.log('Failed to load profile picture')}
+            />
+          ) : (
+            <View style={[styles.avatarPlaceholder, { backgroundColor: getRoleColor(otherParticipant) }] }>
+              <Ionicons name="person" size={20} color="#fff" />
+            </View>
+          )}
+        </View>
+        <View style={styles.chatInfo}>
+          <View style={styles.chatHeader}>
+            <Text style={[styles.chatName, { color: textColor }]} numberOfLines={1}>
+              {otherParticipant?.name || 'Unknown User'}
+            </Text>
+            <View style={styles.headerRight}>
+              <Text style={[styles.timestamp, { color: timeColor }]}>{formatTimestamp(item.last_message_at)}</Text>
+              {item.unread_count > 0 && (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadText}>{item.unread_count}</Text>
+                </View>
+              )}
+            </View>
           </View>
-        )}
-      </View>
-      <View style={styles.chatInfo}>
-        <View style={styles.chatHeader}>
-          <Text style={[styles.chatName, { color: textColor }]} numberOfLines={1}>{item.name}</Text>
-          <View style={styles.headerRight}>
-            <Text style={[styles.timestamp, { color: timeColor }]}>{item.timestamp}</Text>
-            {item.unreadCount > 0 && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadText}>{item.unreadCount}</Text>
-              </View>
-            )}
+          <View style={styles.chatDetails}>
+            <View style={[styles.roleBadge, { backgroundColor: getRoleColor(otherParticipant) }] }>
+              <Text style={styles.roleText}>
+                {otherParticipant?.resident_id ? 'Resident' : 
+                 otherParticipant?.isAccepted ? 'User' : 'Pending'}
+              </Text>
+            </View>
+            <Text style={[styles.lastMessage, { color: timeColor }]} numberOfLines={1}>
+              {lastMessage?.content || 'No messages yet'}
+            </Text>
           </View>
         </View>
-        <View style={styles.chatDetails}>
-          <View style={[styles.roleBadge, { backgroundColor: getRoleColor(item.role) }] }>
-            <Text style={styles.roleText}>{item.role}</Text>
-          </View>
-          <Text style={[styles.lastMessage, { color: timeColor }]} numberOfLines={1}>{item.lastMessage}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   // --- New Chat Modal ---
   const filteredUsers = userSearch.trim() === ""
-    ? sampleUsers
-    : sampleUsers.filter(u =>
-        u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
-        u.role.toLowerCase().includes(userSearch.toLowerCase())
+    ? availableUsers
+    : availableUsers.filter(u =>
+        u.name.toLowerCase().includes(userSearch.toLowerCase())
       );
 
   const renderUserItem = ({ item }) => (
     <TouchableOpacity
       style={styles.userItem}
-      onPress={() => {
-        setModalVisible(false);
-        setUserSearch("");
-        // Navigate to chat with this user
-        router.push({ pathname: "/Chat/ChatScreen", params: { chat: JSON.stringify({ ...item, lastMessage: "", timestamp: "", unreadCount: 0 }) } });
+      onPress={async () => {
+        try {
+          setModalVisible(false);
+          setUserSearch("");
+          
+          // Create conversation with this user
+          const response = await messagingService.createConversation(item.id);
+          if (response.success) {
+            // Navigate to chat with the conversation ID
+            router.push({ pathname: "/Chat/ChatScreen", params: { conversationId: response.data.id } });
+          } else {
+            Alert.alert('Error', 'Failed to create conversation');
+          }
+        } catch (error) {
+          console.error('Error creating conversation:', error);
+          Alert.alert('Error', 'Failed to create conversation');
+        }
       }}
       activeOpacity={0.8}
     >
       <View style={styles.avatarContainer}>
-        {item.avatar ? (
-          <Image source={{ uri: item.avatar }} style={styles.avatar} />
+        {item.profile_picture ? (
+          <Image source={{ uri: buildStorageUrl(item.profile_picture) }} style={styles.avatar} />
         ) : (
-          <View style={[styles.avatarPlaceholder, { backgroundColor: getRoleColor(item.role) }] }>
+          <View style={[styles.avatarPlaceholder, { backgroundColor: getRoleColor(item) }] }>
             <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
           </View>
         )}
       </View>
       <View style={{ flex: 1 }}>
         <Text style={[styles.chatName, { color: textColor }]} numberOfLines={1}>{item.name}</Text>
-        <Text style={[styles.roleText, { color: getRoleColor(item.role), fontWeight: 'bold', marginTop: 2 }]}>{item.role}</Text>
+        <Text style={[styles.roleText, { color: getRoleColor(item), fontWeight: 'bold', marginTop: 2 }]}>
+          {item.resident_id ? 'Resident' : 
+           item.isAccepted ? 'User' : 'Pending'}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -246,6 +391,11 @@ const ChatHomepage = () => {
       />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Header />
+        {pusherConnected && (
+          <View style={[styles.pusherIndicator, { backgroundColor: colors.primary }]}>
+            <Text style={styles.pusherText}>⚡ Smart polling active</Text>
+          </View>
+        )}
         <View style={styles.content}>
           <View style={[styles.searchContainer, { backgroundColor: cardBg, borderColor: borderColor }] }>
             <Ionicons name="search" size={20} color={timeColor} style={styles.searchIcon} />
@@ -265,7 +415,7 @@ const ChatHomepage = () => {
           <FlatList
             data={filteredChats}
             renderItem={renderChatItem}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item, index) => `conversation-${item.id || index}`}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.chatList}
             ListEmptyComponent={renderEmpty}
@@ -327,7 +477,7 @@ const ChatHomepage = () => {
               <FlatList
                 data={filteredUsers}
                 renderItem={renderUserItem}
-                keyExtractor={item => item.id}
+                keyExtractor={(item, index) => `user-${item.id || index}`}
                 keyboardShouldPersistTaps="handled"
                 style={{ maxHeight: 320 }}
                 ListEmptyComponent={
@@ -556,6 +706,17 @@ const styles = StyleSheet.create({
   modalSearchInput: {
     flex: 1,
     fontSize: 15,
+  },
+  pusherIndicator: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pusherText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
   },
 });
 

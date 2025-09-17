@@ -18,6 +18,7 @@ import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 
 import { OneSignal, LogLevel } from "react-native-onesignal";
+import pusherService from "../services/optimizedPusherService";
 
 //
 // ---------------------------
@@ -106,6 +107,15 @@ function AppLayout() {
 
   useExpoNotifications(); // Expo push
   useOneSignalNotifications(); // OneSignal push
+  
+  // Initialize Pusher for real-time messaging
+  useEffect(() => {
+    pusherService.initialize();
+    
+    return () => {
+      pusherService.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     if (Platform.OS === "android") {

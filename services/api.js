@@ -3,8 +3,8 @@ import * as SecureStore from 'expo-secure-store';
 
 const DEFAULT_PROD_API = 'https://api.floranet.online/api';
 
-// const DEFAULT_DEV_API = 'http://192.168.254.107:8000/api';
-const DEFAULT_DEV_API = 'https://api.floranet.online/api';
+const DEFAULT_DEV_API = 'http://192.168.254.107:8000/api';
+//const DEFAULT_DEV_API = 'https://api.floranet.online/api';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || (__DEV__ ? DEFAULT_DEV_API : DEFAULT_PROD_API);
 export const API_ORIGIN = API_BASE_URL.replace(/\/?api$/, '');
