@@ -13,6 +13,7 @@ import { useEffect, useState, useRef } from "react";
 import * as NavigationBar from "expo-navigation-bar";
 import { ThemeProvider, useTheme } from "../Theme/ThemeProvider";
 import { NotificationProvider } from "../services/NotificationContext";
+import { ScreenProvider, useScreenContext } from "../services/ScreenContext";
 
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
@@ -215,18 +216,24 @@ export const forceGetOneSignalIds = async () => {
 function AppLayout() {
   const { colors, theme } = useTheme();
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const screenContext = useScreenContext();
 
   useExpoNotifications(); // Expo push
   useOneSignalNotifications(); // OneSignal push
   
   // Initialize Pusher for real-time messaging
   useEffect(() => {
-    pusherService.initialize();
+    pusherService.initialize(screenContext);
     
     return () => {
       pusherService.disconnect();
     };
   }, []);
+
+  // Update pusher service when screen context changes
+  useEffect(() => {
+    pusherService.updateScreenContext(screenContext);
+  }, [screenContext]);
 
   useEffect(() => {
     if (Platform.OS === "android") {
@@ -283,9 +290,11 @@ function AppLayout() {
 export default function LayoutWrapper() {
   return (
     <ThemeProvider>
-      <NotificationProvider>
-        <AppLayout />
-      </NotificationProvider>
+      <ScreenProvider>
+        <NotificationProvider>
+          <AppLayout />
+        </NotificationProvider>
+      </ScreenProvider>
     </ThemeProvider>
   );
 }
