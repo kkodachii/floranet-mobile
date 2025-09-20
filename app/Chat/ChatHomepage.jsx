@@ -275,7 +275,6 @@ const ChatHomepage = () => {
         
         // Subscribe to general message updates
         pusherService.subscribeToNotifications((data) => {
-          console.log('📨 New message received via Pusher, refreshing conversation list...');
           loadData(); // Refresh conversation list
         });
         
@@ -406,7 +405,6 @@ const ChatHomepage = () => {
             <Image 
               source={{ uri: buildStorageUrl(otherParticipant.profile_picture) }} 
               style={styles.avatar}
-              onError={() => console.log('Failed to load profile picture')}
             />
           ) : (
             <View style={[styles.avatarPlaceholder, { backgroundColor: getRoleColor(otherParticipant) }] }>

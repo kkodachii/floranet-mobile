@@ -14,7 +14,6 @@ class OptimizedPusherService {
 
   // Initialize the service
   initialize() {
-    console.log('📡 Optimized Pusher service initialized');
     this.connectionStatus = 'connected';
     return true;
   }
@@ -36,14 +35,31 @@ class OptimizedPusherService {
     // Start smart polling for new messages
     this.startSmartPolling(conversationId, onMessage);
 
-    console.log(`📡 Subscribed to conversation channel: ${channelName}`);
     return { conversationId, onMessage };
+  }
+
+  // Check if user is authenticated
+  async isUserAuthenticated() {
+    try {
+      const { authService } = await import('./api');
+      const user = await authService.getProfileCached();
+      return user !== null;
+    } catch (error) {
+      return false;
+    }
   }
 
   // Start smart polling for new messages
   startSmartPolling(conversationId, onMessage) {
     const pollInterval = setInterval(async () => {
       if (this.isAppInBackground) return; // Don't poll if app is in background
+
+      // Check if user is still authenticated
+      const isAuthenticated = await this.isUserAuthenticated();
+      if (!isAuthenticated) {
+        this.unsubscribeFromConversation(conversationId);
+        return;
+      }
 
       try {
         // Import messagingService dynamically to avoid circular imports
@@ -66,12 +82,16 @@ class OptimizedPusherService {
             
             // Call the message handler for each new message
             newMessages.forEach(message => {
-              console.log('📨 New message received via smart polling:', message);
               onMessage(message);
             });
           }
         }
       } catch (error) {
+        // Handle authentication errors gracefully
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          this.unsubscribeFromConversation(conversationId);
+          return;
+        }
         console.error('Error polling for messages:', error);
       }
     }, this.pollingFrequency);
@@ -93,8 +113,6 @@ class OptimizedPusherService {
       clearInterval(this.pollingIntervals.get(conversationId));
       this.pollingIntervals.delete(conversationId);
     }
-
-    console.log(`📡 Unsubscribed from conversation channel: ${channelName}`);
   }
 
   // Subscribe to notifications channel (using smart polling)
@@ -111,7 +129,6 @@ class OptimizedPusherService {
     // Start polling for conversation list updates
     this.startConversationListPolling(onNotification);
 
-    console.log(`📡 Subscribed to notifications channel: ${channelName}`);
     return { onNotification };
   }
 
@@ -119,6 +136,13 @@ class OptimizedPusherService {
   startConversationListPolling(onNotification) {
     const pollInterval = setInterval(async () => {
       if (this.isAppInBackground) return;
+
+      // Check if user is still authenticated
+      const isAuthenticated = await this.isUserAuthenticated();
+      if (!isAuthenticated) {
+        this.unsubscribeFromNotifications();
+        return;
+      }
 
       try {
         // Import messagingService dynamically
@@ -135,6 +159,11 @@ class OptimizedPusherService {
           });
         }
       } catch (error) {
+        // Handle authentication errors gracefully
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          this.unsubscribeFromNotifications();
+          return;
+        }
         console.error('Error polling for conversation updates:', error);
       }
     }, this.pollingFrequency * 2); // Poll less frequently for conversation list
@@ -155,8 +184,6 @@ class OptimizedPusherService {
         clearInterval(this.pollingIntervals.get('notifications'));
         this.pollingIntervals.delete('notifications');
       }
-      
-      console.log(`📡 Unsubscribed from notifications channel: ${channelName}`);
     }
   }
 
@@ -165,11 +192,9 @@ class OptimizedPusherService {
     if (nextAppState === 'background' || nextAppState === 'inactive') {
       this.isAppInBackground = true;
       this.connectionStatus = 'background';
-      console.log('📱 App is in background, reducing polling frequency');
     } else if (nextAppState === 'active') {
       this.isAppInBackground = false;
       this.connectionStatus = 'connected';
-      console.log('📱 App is in foreground, resuming normal polling');
     }
   };
 
@@ -181,7 +206,9 @@ class OptimizedPusherService {
   // Disconnect from service
   disconnect() {
     // Clear all polling intervals
-    this.pollingIntervals.forEach(interval => clearInterval(interval));
+    this.pollingIntervals.forEach((interval, key) => {
+      clearInterval(interval);
+    });
     this.pollingIntervals.clear();
     
     // Clear all channels and listeners
@@ -190,12 +217,11 @@ class OptimizedPusherService {
     this.lastMessageIds.clear();
     
     this.connectionStatus = 'disconnected';
-    console.log('📡 Disconnected from Optimized Pusher service');
+    this.isAppInBackground = false;
   }
 
   // Reconnect to service
   reconnect() {
-    console.log('📡 Reconnecting to Optimized Pusher service...');
     this.connectionStatus = 'connected';
     this.isAppInBackground = false;
   }
@@ -203,7 +229,6 @@ class OptimizedPusherService {
   // Set polling frequency (useful for battery optimization)
   setPollingFrequency(frequency) {
     this.pollingFrequency = frequency;
-    console.log(`📡 Polling frequency set to ${frequency}ms`);
   }
 }
 

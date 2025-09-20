@@ -229,6 +229,14 @@ export const authService = {
     const response = await api.get(`/user/profile/${userId}`);
     return response.data;
   },
+  // Update OneSignal external ID and user ID
+  updateOneSignalIds: async (externalId, userId) => {
+    const response = await api.post('/user/onesignal-ids', {
+      onesignal_external_id: externalId,
+      onesignal_user_id: userId,
+    });
+    return response.data;
+  },
 };
 
 export const complaintsService = {

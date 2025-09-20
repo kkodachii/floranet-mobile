@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { Feather } from "@expo/vector-icons";
 import { authService } from "../../services/api";
+import { setOneSignalUserId } from "../_layout";
 
 const screenHeight = Dimensions.get("window").height;
 
@@ -60,7 +61,13 @@ const Settings = () => {
     if (isLoggingOut) return;
     try {
       setIsLoggingOut(true);
+      // Disconnect pusher service to stop pooling
+      const pusherService = (await import('../../services/optimizedPusherService')).default;
+      pusherService.disconnect();
+      
       await authService.logout();
+      // Clear OneSignal external user ID
+      await setOneSignalUserId(null);
     } catch (_) {}
     setShowLogoutModal(false);
     router.replace("/");

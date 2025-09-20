@@ -364,7 +364,6 @@ const ChatScreen = () => {
               <Image 
                 source={{ uri: buildStorageUrl(otherParticipant.profile_picture) }} 
                 style={styles.avatarImgMini}
-                onError={() => console.log('Failed to load profile picture')}
               />
             ) : (
               <View style={[styles.avatarMiniCircle, { backgroundColor: getRoleColor(otherParticipant) }] }>
@@ -474,11 +473,10 @@ const ChatScreen = () => {
               return (
                 <>
                   {otherParticipant?.profile_picture ? (
-                    <Image 
-                      source={{ uri: buildStorageUrl(otherParticipant.profile_picture) }} 
-                      style={styles.avatarImg}
-                      onError={() => console.log('Failed to load profile picture')}
-                    />
+            <Image 
+              source={{ uri: buildStorageUrl(otherParticipant.profile_picture) }} 
+              style={styles.avatarImg}
+            />
                   ) : (
                     <View style={[styles.avatarCircle, { backgroundColor: getRoleColor(otherParticipant) }] }>
                       <Ionicons name="person" size={20} color="#fff" />

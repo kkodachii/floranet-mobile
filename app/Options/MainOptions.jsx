@@ -17,6 +17,7 @@ import { Feather } from "@expo/vector-icons";
 import Navbar from "../../components/Navbar";
 import Header from "../../components/HeaderBack";
 import { authService } from "../../services/api";
+import { setOneSignalUserId } from "../_layout";
 
 const SettingItem = ({ icon, label, onPress, textColor, disabled }) => (
   <TouchableOpacity style={styles.settingItem} onPress={onPress} disabled={disabled}>
@@ -43,7 +44,13 @@ const Option = () => {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
     try {
+      // Disconnect pusher service to stop pooling
+      const pusherService = (await import('../../services/optimizedPusherService')).default;
+      pusherService.disconnect();
+      
       await authService.logout();
+      // Clear OneSignal external user ID
+      await setOneSignalUserId(null);
     } catch (_) {
       // ignore
     }
