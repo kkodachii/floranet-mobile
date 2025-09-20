@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   RefreshControl,
   Modal,
   Platform,
+  Alert,
+  ActionSheetIOS,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../Theme/ThemeProvider";
@@ -19,17 +21,22 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Navbar from "../../components/Navbar";
 import Header from "../../components/Header";
+import { messagingService } from "../../services/messagingService";
+import { buildStorageUrl } from "../../services/api";
+import { useFocusEffect } from "@react-navigation/native";
+import { AppState } from "react-native";
+import pusherService from "../../services/optimizedPusherService";
 
 const sampleUsers = [
   { id: "1", name: "John Smith", role: "Admin", avatar: null },
-  { id: "2", name: "Sarah Johnson", role: "Resident", avatar: null },
-  { id: "3", name: "Mike's Plumbing", role: "Vendor", avatar: null },
-  { id: "4", name: "Emma Davis", role: "Resident", avatar: null },
+  { id: "2", name: "Sarah Johnson", role: "Resident", resident_id: "R001", avatar: null },
+  { id: "3", name: "Mike's Plumbing", role: "Vendor", resident_id: "R002", vendor: { isAccepted: true }, avatar: null },
+  { id: "4", name: "Emma Davis", role: "Resident", resident_id: "R003", avatar: null },
   { id: "5", name: "Security Team", role: "Admin", avatar: null },
-  { id: "6", name: "Green Thumb Landscaping", role: "Vendor", avatar: null },
-  { id: "7", name: "Alex Lee", role: "Resident", avatar: null },
-  { id: "8", name: "Maria Garcia", role: "Resident", avatar: null },
-  { id: "9", name: "Vendor Express", role: "Vendor", avatar: null },
+  { id: "6", name: "Green Thumb Landscaping", role: "Vendor", resident_id: "R004", vendor: { isAccepted: true }, avatar: null },
+  { id: "7", name: "Alex Lee", role: "Resident", resident_id: "R005", avatar: null },
+  { id: "8", name: "Maria Garcia", role: "Resident", resident_id: "R006", avatar: null },
+  { id: "9", name: "Vendor Express", role: "Vendor", resident_id: "R007", vendor: { isAccepted: true }, avatar: null },
 ];
 
 const ChatHomepage = () => {
@@ -38,9 +45,14 @@ const ChatHomepage = () => {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredChats, setFilteredChats] = useState([]);
+  const [conversations, setConversations] = useState([]);
+  const [availableUsers, setAvailableUsers] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [userSearch, setUserSearch] = useState("");
+  const [pusherConnected, setPusherConnected] = useState(false);
+  const [appState, setAppState] = useState(AppState.currentState);
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const chatBg = theme === "light" ? "#f7f8fa" : "#181c23";
@@ -66,6 +78,7 @@ const ChatHomepage = () => {
       id: "2",
       name: "Sarah Johnson",
       role: "Resident",
+      resident_id: "R001",
       lastMessage: "Thanks for the update!",
       timestamp: "1:45 PM",
       unreadCount: 0,
@@ -76,6 +89,8 @@ const ChatHomepage = () => {
       id: "3",
       name: "Mike's Plumbing",
       role: "Vendor",
+      resident_id: "R002",
+      vendor: { isAccepted: true },
       lastMessage: "We'll be there tomorrow at 9 AM",
       timestamp: "11:20 AM",
       unreadCount: 1,
@@ -86,6 +101,7 @@ const ChatHomepage = () => {
       id: "4",
       name: "Emma Davis",
       role: "Resident",
+      resident_id: "R003",
       lastMessage: "Can you help with the parking issue?",
       timestamp: "Yesterday",
       unreadCount: 0,
@@ -106,6 +122,8 @@ const ChatHomepage = () => {
       id: "6",
       name: "Green Thumb Landscaping",
       role: "Vendor",
+      resident_id: "R004",
+      vendor: { isAccepted: true },
       lastMessage: "Garden maintenance completed",
       timestamp: "2 days ago",
       unreadCount: 0,
@@ -114,114 +132,393 @@ const ChatHomepage = () => {
     },
   ];
 
+  // Load conversations and available users
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [conversationsResponse, usersResponse] = await Promise.all([
+        messagingService.getConversations(),
+        messagingService.getAvailableUsers(),
+      ]);
+
+      if (conversationsResponse.success) {
+        // Filter out conversations with no messages
+        const conversationsWithMessages = conversationsResponse.data.filter(conv => 
+          conv.last_message && conv.last_message.content
+        );
+        setConversations(conversationsWithMessages);
+        setFilteredChats(conversationsWithMessages);
+      }
+
+      if (usersResponse.success) {
+        setAvailableUsers(usersResponse.data);
+      } else {
+        // Set fallback users even if API fails
+        const fallbackUsers = [
+          { id: "1", name: "John Smith", resident_id: null, isAccepted: true, profile_picture: null },
+          { id: "2", name: "Sarah Johnson", resident_id: "R001", isAccepted: true, profile_picture: null },
+          { id: "3", name: "Mike's Plumbing", resident_id: "R002", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
+          { id: "4", name: "Emma Davis", resident_id: "R003", isAccepted: true, profile_picture: null },
+          { id: "5", name: "Alex Lee", resident_id: "R005", isAccepted: true, profile_picture: null },
+          { id: "6", name: "Maria Garcia", resident_id: "R006", isAccepted: true, profile_picture: null },
+          { id: "7", name: "Green Thumb Landscaping", resident_id: "R004", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
+          { id: "8", name: "Vendor Express", resident_id: "R007", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
+        ];
+        setAvailableUsers(fallbackUsers);
+      }
+    } catch (error) {
+      // For testing purposes, add some sample conversations
+      const sampleConversations = [
+        {
+          id: "1",
+          title: "Chat with Sarah Johnson",
+          last_message_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+          unread_count: 2,
+          other_participant: {
+            id: "2",
+            name: "Sarah Johnson",
+            resident_id: "R001",
+            profile_picture: null
+          },
+          last_message: {
+            content: "Thanks for the update!",
+            created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString()
+          }
+        },
+        {
+          id: "2",
+          title: "Chat with Mike's Plumbing",
+          last_message_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+          unread_count: 0,
+          other_participant: {
+            id: "3",
+            name: "Mike's Plumbing",
+            resident_id: "R002",
+            vendor: { isAccepted: true },
+            profile_picture: null
+          },
+          last_message: {
+            content: "We'll be there tomorrow at 9 AM",
+            created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString()
+          }
+        }
+      ];
+      // Filter out conversations with no messages
+      const conversationsWithMessages = sampleConversations.filter(conv => 
+        conv.last_message && conv.last_message.content
+      );
+      setConversations(conversationsWithMessages);
+      setFilteredChats(conversationsWithMessages);
+      
+      // Also add sample users for the new chat modal
+      const sampleUsers = [
+        { id: "1", name: "John Smith", resident_id: null, isAccepted: true, profile_picture: null },
+        { id: "2", name: "Sarah Johnson", resident_id: "R001", isAccepted: true, profile_picture: null },
+        { id: "3", name: "Mike's Plumbing", resident_id: "R002", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
+        { id: "4", name: "Emma Davis", resident_id: "R003", isAccepted: true, profile_picture: null },
+        { id: "5", name: "Alex Lee", resident_id: "R005", isAccepted: true, profile_picture: null },
+        { id: "6", name: "Maria Garcia", resident_id: "R006", isAccepted: true, profile_picture: null },
+        { id: "7", name: "Green Thumb Landscaping", resident_id: "R004", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
+        { id: "8", name: "Vendor Express", resident_id: "R007", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
+        { id: "9", name: "Tech Solutions", resident_id: "R008", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
+        { id: "10", name: "David Wilson", resident_id: "R009", isAccepted: true, profile_picture: null },
+        { id: "11", name: "Lisa Chen", resident_id: "R010", isAccepted: true, profile_picture: null },
+        { id: "12", name: "Maintenance Pro", resident_id: "R011", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
+      ];
+      setAvailableUsers(sampleUsers);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter chats based on search query
   const filterChats = (query) => {
     setSearchQuery(query);
     if (query.trim() === "") {
-      setFilteredChats(chatList);
+      setFilteredChats(conversations);
     } else {
-      const filtered = chatList.filter(
+      const filtered = conversations.filter(
         (chat) =>
-          chat.name.toLowerCase().includes(query.toLowerCase()) ||
-          chat.role.toLowerCase().includes(query.toLowerCase())
+          chat.title.toLowerCase().includes(query.toLowerCase()) ||
+          chat.participants.some(p => p.name.toLowerCase().includes(query.toLowerCase()))
       );
       setFilteredChats(filtered);
     }
   };
 
-  React.useEffect(() => {
-    setFilteredChats(chatList);
+  useEffect(() => {
+    loadData();
   }, []);
 
-  const onRefresh = () => {
+  // Refresh conversations when screen comes into focus (e.g., returning from ChatScreen)
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
+
+  // Set up Pusher WebSocket for real-time conversation updates
+  useEffect(() => {
+    const initializePusher = () => {
+      try {
+        // Initialize Pusher connection
+        pusherService.initialize();
+        
+        // Check connection status
+        const checkConnection = () => {
+          const status = pusherService.getConnectionState();
+          setPusherConnected(status === 'connected');
+        };
+        
+        // Check connection status periodically
+        const connectionInterval = setInterval(checkConnection, 1000);
+        
+        // Subscribe to general message updates
+        pusherService.subscribeToNotifications((data) => {
+          loadData(); // Refresh conversation list
+        });
+        
+        // Cleanup interval on unmount
+        return () => {
+          clearInterval(connectionInterval);
+        };
+      } catch (error) {
+        console.error('Failed to initialize Pusher:', error);
+      }
+    };
+
+    initializePusher();
+
+    // Handle app state changes
+    const handleAppStateChange = (nextAppState) => {
+      setAppState(nextAppState);
+      // Let the service handle app state changes
+      pusherService.handleAppStateChange(nextAppState);
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    // Cleanup on unmount
+    return () => {
+      pusherService.unsubscribeFromNotifications();
+      if (subscription && typeof subscription.remove === 'function') {
+        subscription.remove();
+      }
+    };
+  }, []);
+
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-      // Here you would fetch new data
-    }, 1200);
+    await loadData();
+    setRefreshing(false);
   };
 
-  const getRoleColor = (role) => {
-    switch (role) {
-      case "Admin":
-        return "#ff6b6b";
-      case "Resident":
-        return "#4ecdc4";
-      case "Vendor":
-        return "#45b7d1";
-      default:
-        return "#95a5a6";
+  const getRoleColor = (participant) => {
+    // Determine role based on participant data (no admin users)
+    if (participant?.resident_id) {
+      return "#4ecdc4"; // Resident - Teal
+    } else if (participant?.isAccepted) {
+      return "#45b7d1"; // Accepted User - Blue
+    }
+    return "#95a5a6"; // Default - Gray
+  };
+
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInHours = (now - date) / (1000 * 60 * 60);
+    
+    if (diffInHours < 24) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (diffInHours < 48) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString();
     }
   };
 
-  const renderChatItem = ({ item }) => (
-    <TouchableOpacity
-      style={[styles.chatItem, { backgroundColor: cardBg, borderColor: borderColor }]}
-      onPress={() => router.push({ pathname: "/Chat/ChatScreen", params: { chat: JSON.stringify(item) } })}
-      activeOpacity={0.8}
-    >
-      <View style={styles.avatarContainer}>
-        {item.avatar ? (
-          <Image source={{ uri: item.avatar }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatarPlaceholder, { backgroundColor: getRoleColor(item.role) }] }>
-            <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
+  const handleLongPress = (item) => {
+    const otherParticipant = item.other_participant || item.participants?.[0] || {};
+    const participantName = otherParticipant?.name || 'Unknown User';
+    
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Delete Conversation'],
+          destructiveButtonIndex: 1,
+          cancelButtonIndex: 0,
+          title: `Delete conversation with ${participantName}?`,
+          message: 'This action cannot be undone.',
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            deleteConversation(item.id);
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Delete Conversation',
+        `Are you sure you want to delete the conversation with ${participantName}? This action cannot be undone.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Delete', 
+            style: 'destructive',
+            onPress: () => deleteConversation(item.id)
+          }
+        ]
+      );
+    }
+  };
+
+  const deleteConversation = async (conversationId) => {
+    try {
+      const response = await messagingService.deleteConversation(conversationId);
+      if (response.success) {
+        // Remove conversation from local state
+        setConversations(prev => prev.filter(conv => conv.id !== conversationId));
+        setFilteredChats(prev => prev.filter(conv => conv.id !== conversationId));
+      } else {
+        Alert.alert('Error', 'Failed to delete conversation');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to delete conversation');
+    }
+  };
+
+  const renderChatItem = ({ item }) => {
+    // Safely find the other participant, avoiding potential undefined issues
+    const otherParticipant = item.other_participant || item.participants?.[0] || {};
+    const lastMessage = item.last_message;
+    
+    return (
+      <TouchableOpacity
+        style={[styles.chatItem, { backgroundColor: cardBg, borderColor: borderColor }]}
+        onPress={() => router.push({ pathname: "/Chat/ChatScreen", params: { conversationId: item.id } })}
+        onLongPress={() => handleLongPress(item)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.avatarContainer}>
+          {otherParticipant?.profile_picture ? (
+            <Image 
+              source={{ uri: buildStorageUrl(otherParticipant.profile_picture) }} 
+              style={styles.avatar}
+            />
+          ) : (
+            <View style={[styles.avatarPlaceholder, { backgroundColor: getRoleColor(otherParticipant) }] }>
+              <Ionicons name="person" size={20} color="#fff" />
+            </View>
+          )}
+        </View>
+        <View style={styles.chatInfo}>
+          <View style={styles.chatHeader}>
+            <Text style={[styles.chatName, { color: textColor }]} numberOfLines={1}>
+              {otherParticipant?.name || 'Unknown User'}
+            </Text>
+            <View style={styles.headerRight}>
+              <Text style={[styles.timestamp, { color: timeColor }]}>{formatTimestamp(item.last_message_at)}</Text>
+              {item.unread_count > 0 && (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadText}>{item.unread_count}</Text>
+                </View>
+              )}
+            </View>
           </View>
-        )}
-      </View>
-      <View style={styles.chatInfo}>
-        <View style={styles.chatHeader}>
-          <Text style={[styles.chatName, { color: textColor }]} numberOfLines={1}>{item.name}</Text>
-          <View style={styles.headerRight}>
-            <Text style={[styles.timestamp, { color: timeColor }]}>{item.timestamp}</Text>
-            {item.unreadCount > 0 && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadText}>{item.unreadCount}</Text>
-              </View>
-            )}
+          <View style={styles.chatDetails}>
+            <View style={styles.badgeContainer}>
+              {otherParticipant?.resident_id && (
+                <View style={[styles.roleBadge, { backgroundColor: "#4ecdc4" }]}>
+                  <Text style={styles.roleText}>Resident</Text>
+                </View>
+              )}
+              {otherParticipant?.vendor?.isAccepted && (
+                <View style={[styles.roleBadge, { backgroundColor: "#ff8c00", marginLeft: 4 }]}>
+                  <Text style={styles.roleText}>Vendor</Text>
+                </View>
+              )}
+              {!otherParticipant?.resident_id && !otherParticipant?.vendor?.isAccepted && (
+                <View style={[styles.roleBadge, { backgroundColor: "#95a5a6" }]}>
+                  <Text style={styles.roleText}>
+                    {otherParticipant?.isAccepted ? 'User' : 'Pending'}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.lastMessage, { color: timeColor }]} numberOfLines={1}>
+              {lastMessage?.content || 'No messages yet'}
+            </Text>
           </View>
         </View>
-        <View style={styles.chatDetails}>
-          <View style={[styles.roleBadge, { backgroundColor: getRoleColor(item.role) }] }>
-            <Text style={styles.roleText}>{item.role}</Text>
-          </View>
-          <Text style={[styles.lastMessage, { color: timeColor }]} numberOfLines={1}>{item.lastMessage}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   // --- New Chat Modal ---
   const filteredUsers = userSearch.trim() === ""
-    ? sampleUsers
-    : sampleUsers.filter(u =>
-        u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
-        u.role.toLowerCase().includes(userSearch.toLowerCase())
-      );
+    ? availableUsers
+    : availableUsers.filter(u => {
+        const searchTerm = userSearch.toLowerCase();
+        const userName = (u.name || '').toLowerCase();
+        const businessName = (u.vendor?.business_name || '').toLowerCase();
+        return userName.includes(searchTerm) || businessName.includes(searchTerm);
+      });
+
 
   const renderUserItem = ({ item }) => (
     <TouchableOpacity
       style={styles.userItem}
-      onPress={() => {
-        setModalVisible(false);
-        setUserSearch("");
-        // Navigate to chat with this user
-        router.push({ pathname: "/Chat/ChatScreen", params: { chat: JSON.stringify({ ...item, lastMessage: "", timestamp: "", unreadCount: 0 }) } });
+      onPress={async () => {
+        try {
+          setModalVisible(false);
+          setUserSearch("");
+          
+          // Create conversation with this user
+          const response = await messagingService.createConversation(item.id);
+          if (response.success) {
+            // Navigate to chat with the conversation ID
+            router.push({ pathname: "/Chat/ChatScreen", params: { conversationId: response.data.id } });
+          } else {
+            Alert.alert('Error', 'Failed to create conversation');
+          }
+        } catch (error) {
+          console.error('Error creating conversation:', error);
+          Alert.alert('Error', 'Failed to create conversation');
+        }
       }}
       activeOpacity={0.8}
     >
       <View style={styles.avatarContainer}>
-        {item.avatar ? (
-          <Image source={{ uri: item.avatar }} style={styles.avatar} />
+        {item.profile_picture ? (
+          <Image source={{ uri: buildStorageUrl(item.profile_picture) }} style={styles.avatar} />
         ) : (
-          <View style={[styles.avatarPlaceholder, { backgroundColor: getRoleColor(item.role) }] }>
+          <View style={[styles.avatarPlaceholder, { backgroundColor: getRoleColor(item) }] }>
             <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
           </View>
         )}
       </View>
       <View style={{ flex: 1 }}>
         <Text style={[styles.chatName, { color: textColor }]} numberOfLines={1}>{item.name}</Text>
-        <Text style={[styles.roleText, { color: getRoleColor(item.role), fontWeight: 'bold', marginTop: 2 }]}>{item.role}</Text>
+        <View style={styles.badgeContainer}>
+          {item.resident_id && (
+            <View style={[styles.roleBadge, { backgroundColor: "#4ecdc4" }]}>
+              <Text style={styles.roleText}>Resident</Text>
+            </View>
+          )}
+          {item.vendor?.isAccepted && (
+            <View style={[styles.roleBadge, { backgroundColor: "#ff8c00", marginLeft: 4 }]}>
+              <Text style={styles.roleText}>Vendor</Text>
+            </View>
+          )}
+          {!item.resident_id && !item.vendor?.isAccepted && (
+            <View style={[styles.roleBadge, { backgroundColor: "#95a5a6" }]}>
+              <Text style={styles.roleText}>
+                {item.isAccepted ? 'User' : 'Pending'}
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -265,7 +562,7 @@ const ChatHomepage = () => {
           <FlatList
             data={filteredChats}
             renderItem={renderChatItem}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item, index) => `conversation-${item.id || index}`}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.chatList}
             ListEmptyComponent={renderEmpty}
@@ -309,9 +606,22 @@ const ChatHomepage = () => {
             <View style={[styles.modalContent, { backgroundColor: cardBg }] }>
               <View style={styles.modalHeader}>
                 <Text style={[styles.modalTitle, { color: textColor }]}>Start New Chat</Text>
-                <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <Ionicons name="close" size={24} color={timeColor} />
-                </TouchableOpacity>
+                <View style={styles.modalHeaderButtons}>
+                  <TouchableOpacity 
+                    onPress={loadData} 
+                    style={styles.refreshButton}
+                    disabled={loading}
+                  >
+                    <Ionicons 
+                      name="refresh" 
+                      size={20} 
+                      color={loading ? timeColor : colors.primary} 
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setModalVisible(false)}>
+                    <Ionicons name="close" size={24} color={timeColor} />
+                  </TouchableOpacity>
+                </View>
               </View>
               <View style={styles.modalSearchBar}>
                 <Ionicons name="search" size={20} color={timeColor} style={{ marginRight: 8 }} />
@@ -324,16 +634,35 @@ const ChatHomepage = () => {
                   autoFocus
                 />
               </View>
-              <FlatList
-                data={filteredUsers}
-                renderItem={renderUserItem}
-                keyExtractor={item => item.id}
-                keyboardShouldPersistTaps="handled"
-                style={{ maxHeight: 320 }}
-                ListEmptyComponent={
-                  <Text style={[styles.emptyText, { color: timeColor, marginTop: 24 }]}>No users found.</Text>
-                }
-              />
+              {loading ? (
+                <View style={styles.loadingContainer}>
+                  <Ionicons name="refresh" size={24} color={colors.primary} />
+                  <Text style={[styles.loadingText, { color: textColor }]}>Loading users...</Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={filteredUsers}
+                  renderItem={renderUserItem}
+                  keyExtractor={(item, index) => `user-${item.id || index}`}
+                  keyboardShouldPersistTaps="handled"
+                  style={{ maxHeight: 320 }}
+                  ListEmptyComponent={
+                    <View style={styles.emptyUserContainer}>
+                      <Ionicons name="person-outline" size={48} color={timeColor} style={{ marginBottom: 10 }} />
+                      <Text style={[styles.emptyText, { color: timeColor, marginTop: 24 }]}>
+                        {availableUsers.length === 0 
+                          ? 'No users available for messaging' 
+                          : 'No users found matching your search'}
+                      </Text>
+                      {availableUsers.length === 0 && (
+                        <Text style={[styles.emptySubText, { color: timeColor, marginTop: 8 }]}>
+                          Make sure you have the proper permissions to start conversations
+                        </Text>
+                      )}
+                    </View>
+                  }
+                />
+              )}
             </View>
           </View>
         </Modal>
@@ -446,11 +775,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 2,
   },
+  badgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 8,
+  },
   roleBadge: {
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 8,
-    marginRight: 8,
   },
   roleText: {
     color: "#fff",
@@ -489,6 +822,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#aaa',
     textAlign: 'center',
+  },
+  emptySubText: {
+    fontSize: 13,
+    color: '#aaa',
+    textAlign: 'center',
+  },
+  emptyUserContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 8,
+    fontSize: 14,
   },
   fab: {
     position: 'absolute',
@@ -540,6 +890,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 10,
   },
+  modalHeaderButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  refreshButton: {
+    padding: 4,
+  },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -556,6 +914,17 @@ const styles = StyleSheet.create({
   modalSearchInput: {
     flex: 1,
     fontSize: 15,
+  },
+  pusherIndicator: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pusherText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
   },
 });
 

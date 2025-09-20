@@ -15,6 +15,7 @@ import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "../Theme/ThemeProvider";
 import { StatusBar } from "react-native";
 import { authStorage, authService, buildStorageUrl } from "../services/api";
+import { setOneSignalUserId, sendCurrentOneSignalIdsToBackend } from "./_layout";
 
 const MainHomepage = () => {
   const insets = useSafeAreaInsets();
@@ -34,10 +35,18 @@ const MainHomepage = () => {
   useEffect(() => {
     (async () => {
       const { user: cachedUser } = await authStorage.load();
-      if (cachedUser) setUser(cachedUser);
+      if (cachedUser) {
+        setUser(cachedUser);
+        // Set OneSignal external user ID for push notifications
+        await setOneSignalUserId(cachedUser.id);
+      }
       try {
         const fresh = await authService.getProfileCached();
         setUser(fresh);
+        // Set OneSignal external user ID for push notifications
+        await setOneSignalUserId(fresh?.id);
+        // Also try to send current OneSignal IDs to backend
+        await sendCurrentOneSignalIdsToBackend();
         await authStorage.save({ token: null, user: fresh });
       } catch (_) {}
     })();

@@ -18,6 +18,7 @@ import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 
 import { OneSignal, LogLevel } from "react-native-onesignal";
+import pusherService from "../services/optimizedPusherService";
 
 //
 // ---------------------------
@@ -38,7 +39,6 @@ function useExpoNotifications() {
   useEffect(() => {
   const notificationListener = Notifications.addNotificationReceivedListener(
     (notification) => {
-      console.log("📲 Expo Foreground notification:", notification);
       Vibration.vibrate(1000);
       Alert.alert("New Expo Alert", notification.request.content.body || "Message!");
     }
@@ -46,7 +46,6 @@ function useExpoNotifications() {
 
   const responseListener = Notifications.addNotificationResponseReceivedListener(
     (response) => {
-      console.log("📲 Expo Notification tapped:", response);
       Vibration.vibrate(1000);
       Alert.alert(
         "Opened Expo Notification",
@@ -79,7 +78,6 @@ function useOneSignalNotifications() {
   OneSignal.User.pushSubscription.optIn();
 
   const openedListener = OneSignal.Notifications.addEventListener("click", (event) => {
-    console.log("📩 OneSignal notification clicked:", event);
     Vibration.vibrate(1000);
     const url = event.notification.additionalData?.url;
     if (url) {
@@ -89,12 +87,126 @@ function useOneSignalNotifications() {
     }
   });
 
+  // Listen for push subscription changes to get OneSignal IDs
+  const subscriptionListener = OneSignal.User.pushSubscription.addEventListener("change", (event) => {
+    // Get OneSignal user ID and external user ID
+    OneSignal.User.getOnesignalId().then((oneSignalUserId) => {
+      OneSignal.User.getExternalId().then((externalUserId) => {
+        if (oneSignalUserId && externalUserId) {
+          // Try to send OneSignal IDs to backend if user is logged in
+          sendOneSignalIdsToBackend(externalUserId, oneSignalUserId);
+        }
+      });
+    });
+  });
+
   return () => {
     openedListener.remove();
+    subscriptionListener.remove();
   };
 }, []);
 
 }
+
+// Function to set OneSignal external user ID and get OneSignal user ID
+export const setOneSignalUserId = async (userId) => {
+  try {
+    if (userId) {
+      OneSignal.login(userId.toString());
+      
+      // Wait longer for OneSignal to initialize and generate user ID
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Try to get OneSignal user ID with a few attempts
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      const tryGetOneSignalId = () => {
+        attempts++;
+        OneSignal.User.getOnesignalId().then((oneSignalUserId) => {
+          if (oneSignalUserId) {
+            sendOneSignalIdsToBackend(userId.toString(), oneSignalUserId);
+          } else if (attempts < maxAttempts) {
+            setTimeout(tryGetOneSignalId, 2000);
+          }
+        }).catch((error) => {
+          // Error getting OneSignal user ID
+        });
+      };
+      
+      tryGetOneSignalId();
+    } else {
+      OneSignal.logout();
+    }
+  } catch (error) {
+    // Error setting OneSignal user ID
+  }
+};
+
+// Function to send OneSignal IDs to backend
+const sendOneSignalIdsToBackend = async (externalId, oneSignalUserId) => {
+  try {
+    const { authService } = await import('../services/api');
+    const result = await authService.updateOneSignalIds(externalId, oneSignalUserId);
+  } catch (error) {
+    if (error.response?.status === 401) {
+      // User not authenticated, will retry when user logs in
+    } else {
+      // Error sending OneSignal IDs to backend
+    }
+  }
+};
+
+// Function to send current OneSignal IDs to backend (for when user is already authenticated)
+export const sendCurrentOneSignalIdsToBackend = async () => {
+  try {
+    // Wait for OneSignal to be ready
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    OneSignal.User.getOnesignalId().then((oneSignalUserId) => {
+      OneSignal.User.getExternalId().then((externalUserId) => {
+        if (oneSignalUserId && externalUserId) {
+          sendOneSignalIdsToBackend(externalUserId, oneSignalUserId);
+        } else {
+          // Try one more time after a delay
+          setTimeout(() => {
+            OneSignal.User.getOnesignalId().then((retryOneSignalUserId) => {
+              OneSignal.User.getExternalId().then((retryExternalUserId) => {
+                if (retryOneSignalUserId && retryExternalUserId) {
+                  sendOneSignalIdsToBackend(retryExternalUserId, retryOneSignalUserId);
+                }
+              });
+            });
+          }, 3000);
+        }
+      }).catch((error) => {
+        // Error getting external user ID
+      });
+    }).catch((error) => {
+      // Error getting OneSignal user ID
+    });
+  } catch (error) {
+    // Error getting current OneSignal IDs
+  }
+};
+
+// Function to manually force getting and sending OneSignal IDs
+export const forceGetOneSignalIds = async () => {
+  try {
+    // Wait for OneSignal to be ready
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    OneSignal.User.getOnesignalId().then((oneSignalUserId) => {
+      OneSignal.User.getExternalId().then((externalUserId) => {
+        if (oneSignalUserId && externalUserId) {
+          sendOneSignalIdsToBackend(externalUserId, oneSignalUserId);
+        }
+      });
+    });
+  } catch (error) {
+    // Error forcing OneSignal IDs
+  }
+};
 
 //
 // ---------------------------
@@ -106,6 +218,15 @@ function AppLayout() {
 
   useExpoNotifications(); // Expo push
   useOneSignalNotifications(); // OneSignal push
+  
+  // Initialize Pusher for real-time messaging
+  useEffect(() => {
+    pusherService.initialize();
+    
+    return () => {
+      pusherService.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     if (Platform.OS === "android") {

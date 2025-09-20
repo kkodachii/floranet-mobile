@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Logo from "../assets/floranet.png";
 import { useTheme } from "../Theme/ThemeProvider";
 import { authService, setAuthToken } from "../services/api";
+import { setOneSignalUserId, sendCurrentOneSignalIdsToBackend } from "./_layout";
 
 const Index = () => {
   const router = useRouter();
@@ -40,6 +41,17 @@ const Index = () => {
       const result = await authService.login({ email, password });
       if (result?.token) {
         setAuthToken(result.token);
+        
+        // Reinitialize pusher service after successful login
+        const pusherService = (await import('../services/optimizedPusherService')).default;
+        pusherService.reconnect();
+        
+        // Set OneSignal external user ID for push notifications
+        if (result?.user?.id) {
+          await setOneSignalUserId(result.user.id);
+          // Also try to send current OneSignal IDs to backend
+          await sendCurrentOneSignalIdsToBackend();
+        }
         // no persistent save; rely on in-memory token and profile cache
       }
       router.replace("/MainHomepage");
