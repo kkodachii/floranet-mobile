@@ -258,8 +258,8 @@ const ChatHomepage = () => {
     } else {
       const filtered = conversations.filter(
         (chat) =>
-          chat.title.toLowerCase().includes(query.toLowerCase()) ||
-          chat.participants.some(p => p.name.toLowerCase().includes(query.toLowerCase()))
+          (chat.title || '').toLowerCase().includes(query.toLowerCase()) ||
+          (chat.participants || []).some(p => (p.name || '').toLowerCase().includes(query.toLowerCase()))
       );
       setFilteredChats(filtered);
     }
@@ -267,8 +267,8 @@ const ChatHomepage = () => {
 
   // Filter users in modal based on search query
   const filterUsers = (query) => {
-    setUserSearch(query);
-    setSearchingState(query.trim() !== ""); // Set searching state based on whether user is typing
+    setUserSearch(query || '');
+    setSearchingState((query || '').trim() !== ""); // Set searching state based on whether user is typing
   };
 
   useEffect(() => {
@@ -464,10 +464,10 @@ const ChatHomepage = () => {
   };
 
   // --- New Chat Modal ---
-  const filteredUsers = userSearch.trim() === ""
+  const filteredUsers = (userSearch || '').trim() === ""
     ? availableUsers
     : availableUsers.filter(u => {
-        const searchTerm = userSearch.toLowerCase();
+        const searchTerm = (userSearch || '').toLowerCase();
         const userName = (u.name || '').toLowerCase();
         const businessName = (u.vendor?.business_name || '').toLowerCase();
         return userName.includes(searchTerm) || businessName.includes(searchTerm);
