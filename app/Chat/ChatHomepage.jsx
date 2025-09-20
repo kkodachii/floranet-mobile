@@ -26,6 +26,7 @@ import { buildStorageUrl } from "../../services/api";
 import { useFocusEffect } from "@react-navigation/native";
 import { AppState } from "react-native";
 import pusherService from "../../services/optimizedPusherService";
+import { useScreenContext } from "../../services/ScreenContext";
 
 const sampleUsers = [
   { id: "1", name: "John Smith", role: "Admin", avatar: null },
@@ -43,6 +44,7 @@ const ChatHomepage = () => {
   const insets = useSafeAreaInsets();
   const { colors, theme } = useTheme();
   const router = useRouter();
+  const { setModalState, setSearchingState } = useScreenContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredChats, setFilteredChats] = useState([]);
   const [conversations, setConversations] = useState([]);
@@ -132,14 +134,11 @@ const ChatHomepage = () => {
     },
   ];
 
-  // Load conversations and available users
+  // Load conversations only
   const loadData = async () => {
     try {
       setLoading(true);
-      const [conversationsResponse, usersResponse] = await Promise.all([
-        messagingService.getConversations(),
-        messagingService.getAvailableUsers(),
-      ]);
+      const conversationsResponse = await messagingService.getConversations();
 
       if (conversationsResponse.success) {
         // Filter out conversations with no messages
@@ -148,23 +147,6 @@ const ChatHomepage = () => {
         );
         setConversations(conversationsWithMessages);
         setFilteredChats(conversationsWithMessages);
-      }
-
-      if (usersResponse.success) {
-        setAvailableUsers(usersResponse.data);
-      } else {
-        // Set fallback users even if API fails
-        const fallbackUsers = [
-          { id: "1", name: "John Smith", resident_id: null, isAccepted: true, profile_picture: null },
-          { id: "2", name: "Sarah Johnson", resident_id: "R001", isAccepted: true, profile_picture: null },
-          { id: "3", name: "Mike's Plumbing", resident_id: "R002", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
-          { id: "4", name: "Emma Davis", resident_id: "R003", isAccepted: true, profile_picture: null },
-          { id: "5", name: "Alex Lee", resident_id: "R005", isAccepted: true, profile_picture: null },
-          { id: "6", name: "Maria Garcia", resident_id: "R006", isAccepted: true, profile_picture: null },
-          { id: "7", name: "Green Thumb Landscaping", resident_id: "R004", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
-          { id: "8", name: "Vendor Express", resident_id: "R007", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
-        ];
-        setAvailableUsers(fallbackUsers);
       }
     } catch (error) {
       // For testing purposes, add some sample conversations
@@ -231,6 +213,43 @@ const ChatHomepage = () => {
     }
   };
 
+  // Load available users only when modal is opened
+  const loadAvailableUsers = async () => {
+    try {
+      const usersResponse = await messagingService.getAvailableUsers();
+      
+      if (usersResponse.success) {
+        setAvailableUsers(usersResponse.data);
+      } else {
+        // Set fallback users even if API fails
+        const fallbackUsers = [
+          { id: "1", name: "John Smith", resident_id: null, isAccepted: true, profile_picture: null },
+          { id: "2", name: "Sarah Johnson", resident_id: "R001", isAccepted: true, profile_picture: null },
+          { id: "3", name: "Mike's Plumbing", resident_id: "R002", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
+          { id: "4", name: "Emma Davis", resident_id: "R003", isAccepted: true, profile_picture: null },
+          { id: "5", name: "Alex Lee", resident_id: "R005", isAccepted: true, profile_picture: null },
+          { id: "6", name: "Maria Garcia", resident_id: "R006", isAccepted: true, profile_picture: null },
+          { id: "7", name: "Green Thumb Landscaping", resident_id: "R004", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
+          { id: "8", name: "Vendor Express", resident_id: "R007", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
+        ];
+        setAvailableUsers(fallbackUsers);
+      }
+    } catch (error) {
+      // Set fallback users on error
+      const fallbackUsers = [
+        { id: "1", name: "John Smith", resident_id: null, isAccepted: true, profile_picture: null },
+        { id: "2", name: "Sarah Johnson", resident_id: "R001", isAccepted: true, profile_picture: null },
+        { id: "3", name: "Mike's Plumbing", resident_id: "R002", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
+        { id: "4", name: "Emma Davis", resident_id: "R003", isAccepted: true, profile_picture: null },
+        { id: "5", name: "Alex Lee", resident_id: "R005", isAccepted: true, profile_picture: null },
+        { id: "6", name: "Maria Garcia", resident_id: "R006", isAccepted: true, profile_picture: null },
+        { id: "7", name: "Green Thumb Landscaping", resident_id: "R004", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
+        { id: "8", name: "Vendor Express", resident_id: "R007", vendor: { isAccepted: true }, isAccepted: true, profile_picture: null },
+      ];
+      setAvailableUsers(fallbackUsers);
+    }
+  };
+
   // Filter chats based on search query
   const filterChats = (query) => {
     setSearchQuery(query);
@@ -244,6 +263,12 @@ const ChatHomepage = () => {
       );
       setFilteredChats(filtered);
     }
+  };
+
+  // Filter users in modal based on search query
+  const filterUsers = (query) => {
+    setUserSearch(query);
+    setSearchingState(query.trim() !== ""); // Set searching state based on whether user is typing
   };
 
   useEffect(() => {
@@ -261,27 +286,10 @@ const ChatHomepage = () => {
   useEffect(() => {
     const initializePusher = () => {
       try {
-        // Initialize Pusher connection
-        pusherService.initialize();
-        
-        // Check connection status
-        const checkConnection = () => {
-          const status = pusherService.getConnectionState();
-          setPusherConnected(status === 'connected');
-        };
-        
-        // Check connection status periodically
-        const connectionInterval = setInterval(checkConnection, 1000);
-        
         // Subscribe to general message updates
         pusherService.subscribeToNotifications((data) => {
           loadData(); // Refresh conversation list
         });
-        
-        // Cleanup interval on unmount
-        return () => {
-          clearInterval(connectionInterval);
-        };
       } catch (error) {
         console.error('Failed to initialize Pusher:', error);
       }
@@ -472,7 +480,9 @@ const ChatHomepage = () => {
       onPress={async () => {
         try {
           setModalVisible(false);
+          setModalState(false); // Notify screen context that modal is closed
           setUserSearch("");
+          setSearchingState(false); // Reset searching state
           
           // Create conversation with this user
           const response = await messagingService.createConversation(item.id);
@@ -578,7 +588,11 @@ const ChatHomepage = () => {
           />
           <TouchableOpacity
             style={styles.fab}
-            onPress={() => setModalVisible(true)}
+            onPress={() => {
+              setModalVisible(true);
+              setModalState(true); // Notify screen context that modal is open
+              loadAvailableUsers(); // Load users when modal opens
+            }}
             activeOpacity={0.85}
           >
             <Ionicons name="chatbubble-outline" size={28} color="#fff" />
@@ -606,22 +620,12 @@ const ChatHomepage = () => {
             <View style={[styles.modalContent, { backgroundColor: cardBg }] }>
               <View style={styles.modalHeader}>
                 <Text style={[styles.modalTitle, { color: textColor }]}>Start New Chat</Text>
-                <View style={styles.modalHeaderButtons}>
-                  <TouchableOpacity 
-                    onPress={loadData} 
-                    style={styles.refreshButton}
-                    disabled={loading}
-                  >
-                    <Ionicons 
-                      name="refresh" 
-                      size={20} 
-                      color={loading ? timeColor : colors.primary} 
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setModalVisible(false)}>
-                    <Ionicons name="close" size={24} color={timeColor} />
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity onPress={() => {
+                  setModalVisible(false);
+                  setModalState(false); // Notify screen context that modal is closed
+                }}>
+                  <Ionicons name="close" size={24} color={timeColor} />
+                </TouchableOpacity>
               </View>
               <View style={styles.modalSearchBar}>
                 <Ionicons name="search" size={20} color={timeColor} style={{ marginRight: 8 }} />
@@ -630,7 +634,7 @@ const ChatHomepage = () => {
                   placeholder="Search resident, vendor, admin..."
                   placeholderTextColor={timeColor}
                   value={userSearch}
-                  onChangeText={setUserSearch}
+                  onChangeText={filterUsers}
                   autoFocus
                 />
               </View>
@@ -889,14 +893,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
-  },
-  modalHeaderButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  refreshButton: {
-    padding: 4,
   },
   modalTitle: {
     fontSize: 18,

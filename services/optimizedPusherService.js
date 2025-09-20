@@ -10,11 +10,13 @@ class OptimizedPusherService {
     this.isAppInBackground = false;
     this.pollingFrequency = 1000; // 2 seconds - faster than before
     this.connectionStatus = 'disconnected';
+    this.screenContext = null; // Will be set by the service
   }
 
   // Initialize the service
-  initialize() {
+  initialize(screenContext = null) {
     this.connectionStatus = 'connected';
+    this.screenContext = screenContext;
     return true;
   }
 
@@ -53,6 +55,11 @@ class OptimizedPusherService {
   startSmartPolling(conversationId, onMessage) {
     const pollInterval = setInterval(async () => {
       if (this.isAppInBackground) return; // Don't poll if app is in background
+
+      // Only poll messages when on ChatScreen, not on ChatHomepage
+      if (this.screenContext && !this.screenContext.isChatScreenOnly()) {
+        return; // Don't poll messages if not on ChatScreen
+      }
 
       // Check if user is still authenticated
       const isAuthenticated = await this.isUserAuthenticated();
@@ -136,6 +143,11 @@ class OptimizedPusherService {
   startConversationListPolling(onNotification) {
     const pollInterval = setInterval(async () => {
       if (this.isAppInBackground) return;
+
+      // Only poll conversation list when on ChatHomepage AND modal is not open AND not searching
+      if (this.screenContext && !this.screenContext.shouldPollConversations()) {
+        return; // Don't poll conversation list if conditions are not met
+      }
 
       // Check if user is still authenticated
       const isAuthenticated = await this.isUserAuthenticated();
@@ -229,6 +241,11 @@ class OptimizedPusherService {
   // Set polling frequency (useful for battery optimization)
   setPollingFrequency(frequency) {
     this.pollingFrequency = frequency;
+  }
+
+  // Update screen context
+  updateScreenContext(screenContext) {
+    this.screenContext = screenContext;
   }
 }
 

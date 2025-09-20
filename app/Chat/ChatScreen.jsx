@@ -176,12 +176,8 @@ const ChatScreen = () => {
     // Refresh when component mounts or conversation changes
     handleFocus();
 
-    // Set up periodic refresh every 10 seconds
-    const interval = setInterval(refreshReadStatus, 10000);
-
-    return () => {
-      clearInterval(interval);
-    };
+    // Note: Periodic refresh is now handled by the pusher service
+    // which only polls when on chat screens
   }, [conversationId]);
 
   // Auto-scroll to bottom when messages change
