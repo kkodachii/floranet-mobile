@@ -46,6 +46,7 @@ const RegisterScreen = () => {
   const streetOptions = [
     "Adelfa",
     "Bougainvillea",
+    "Camia",
     "Champaca",
     "Dahlia",
     "Gumamela",
