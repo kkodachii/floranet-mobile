@@ -1,10 +1,10 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-const DEFAULT_PROD_API = 'https://api.floranet.online/api';
+const DEFAULT_PROD_API = 'http://192.168.254.105:8000/api';
 
 // const DEFAULT_DEV_API = 'http://192.168.254.107:8000/api';
-const DEFAULT_DEV_API = 'https://api.floranet.online/api';
+const DEFAULT_DEV_API = 'http://192.168.254.105:8000/api';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || (__DEV__ ? DEFAULT_DEV_API : DEFAULT_PROD_API);
 export const API_ORIGIN = API_BASE_URL.replace(/\/?api$/, '');
@@ -526,3 +526,14 @@ export const vendorService = {
     return response.data; // { success, data: { has_request, status, business_name } }
   }
 }; 
+
+export const onesignalService = {
+  register: async ({ external_id, onesignal_user_id }) => {
+    // adjust endpoint path to your backend route
+    const response = await api.post('/onesignal/register', {
+      external_id,
+      onesignal_user_id,
+    });
+    return response.data;
+  },
+};

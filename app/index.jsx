@@ -15,6 +15,8 @@ import { Ionicons } from "@expo/vector-icons";
 import Logo from "../assets/floranet.png";
 import { useTheme } from "../Theme/ThemeProvider";
 import { authService, setAuthToken } from "../services/api";
+import { OneSignal, LogLevel } from "react-native-onesignal";
+import { onesignalService } from "../services/api";
 
 const Index = () => {
   const router = useRouter();
@@ -25,40 +27,75 @@ const Index = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPendingModal, setShowPendingModal] = useState(false);
+  
 
   const handleLogin = async () => {
-    setError("");
-    // Backend requires email + password for /api/user/login
-    const email = identifier.trim();
-    if (!email || !password) {
-      setError("Please enter email and password.");
-      return;
-    }
+      setError("");
 
-    try {
-      setLoading(true);
-      const result = await authService.login({ email, password });
-      if (result?.token) {
-        setAuthToken(result.token);
-        // no persistent save; rely on in-memory token and profile cache
-      }
+  const email = identifier.trim();
+  if (!email || !password) {
+    setError("Please enter email and password.");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    const result = await authService.login({ email, password });
+
+    if (result?.token && result?.user) {
+      // Save token / user as you currently do in api.js / authStorage
+      setAuthToken(result.token);
+
+      // Now do OneSignal setup
+
+      const externalId = String(result.user.id);
+
+      // Set external id
+      await OneSignal.login(externalId);
+
+      // Optionally add tags
+      await OneSignal.User.addTags({
+        user_id: externalId,
+        // any other tags you want
+      });
+
+      // Get OneSignal internal ID
+      const onesignalId = await OneSignal.User.getOnesignalId();
+
+      // If you want, get external id back (to double check)
+      // const ext = await OneSignal.User.getExternalId();
+
+      // Send to your backend to store external_id + onesignal_user_id
+      await onesignalService.register({
+        external_id: externalId,
+        onesignal_user_id: onesignalId,
+      });
+
+      // move to home / main page
       router.replace("/MainHomepage");
-    } catch (e) {
-      const message = e?.response?.data?.message
-        || (e?.response?.data?.errors && Object.values(e.response.data.errors).flat().join("\n"))
-        || "Login failed. Please check your credentials.";
-      
-      // Check if it's a pending account error
-      if (message.includes("pending approval") || message.includes("not accepted")) {
-        setShowPendingModal(true);
-      } else {
-        setError(message);
-      }
-    } finally {
-      setLoading(false);
+    } else {
+      // if no token or no user in the result
+      throw new Error("Login did not return user or token");
     }
-  };
 
+  } catch (e) {
+    console.error("Login error:", e);
+
+    const message = e?.response?.data?.message
+      || (e?.response?.data?.errors && Object.values(e.response.data.errors).flat().join("\n"))
+      || "Login failed. Please check your credentials.";
+
+    if (message.includes("pending approval") || message.includes("not accepted")) {
+      setShowPendingModal(true);
+    } else {
+      setError(message);
+    }
+
+  } finally {
+    setLoading(false);
+  }
+};
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
 
   return (

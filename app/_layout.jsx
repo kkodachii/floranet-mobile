@@ -1,4 +1,5 @@
 // app/_layout.jsx
+
 import { Stack, useRouter } from "expo-router";
 import {
   View,
@@ -9,103 +10,76 @@ import {
   Vibration,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import * as NavigationBar from "expo-navigation-bar";
 import { ThemeProvider, useTheme } from "../Theme/ThemeProvider";
 import { NotificationProvider } from "../services/NotificationContext";
-
-import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
-
 import { OneSignal, LogLevel } from "react-native-onesignal";
 
-//
-// ---------------------------
-// EXPO NOTIFICATIONS SETUP
-// ---------------------------
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+import { authStorage, setAuthToken } from "../services/api";
+import { onesignalService } from "../services/api";
 
-function useExpoNotifications() {
-  const notificationListener = useRef();
-  const responseListener = useRef();
-
-  useEffect(() => {
-  const notificationListener = Notifications.addNotificationReceivedListener(
-    (notification) => {
-      console.log("📲 Expo Foreground notification:", notification);
-      Vibration.vibrate(1000);
-      Alert.alert("New Expo Alert", notification.request.content.body || "Message!");
-    }
-  );
-
-  const responseListener = Notifications.addNotificationResponseReceivedListener(
-    (response) => {
-      console.log("📲 Expo Notification tapped:", response);
-      Vibration.vibrate(1000);
-      Alert.alert(
-        "Opened Expo Notification",
-        response.notification.request.content.body || "You tapped a message!"
-      );
-    }
-  );
-
-  return () => {
-    // ✅ New cleanup method
-    notificationListener.remove();
-    responseListener.remove();
-  };
-}, []);
-
-}
-
-//
-// ---------------------------
-// ONESIGNAL SETUP
-// ---------------------------
-function useOneSignalNotifications() {
+function useOneSignalNotifications(storedUser) {
   const router = useRouter();
 
- useEffect(() => {
-  OneSignal.Debug.setLogLevel(LogLevel.Verbose); // remove in prod
-  OneSignal.initialize("4df5f254-b383-4ac7-80f4-8b3c1afacb06");
+  useEffect(() => {
+    OneSignal.Debug.setLogLevel(LogLevel.Verbose);
+    OneSignal.initialize("4df5f254-b383-4ac7-80f4-8b3c1afacb06");
+    OneSignal.Notifications.requestPermission(true);
+    OneSignal.User.pushSubscription.optIn();
 
-  OneSignal.Notifications.requestPermission(true);
-  OneSignal.User.pushSubscription.optIn();
+    const openedListener = OneSignal.Notifications.addEventListener("click", (event) => {
+      Vibration.vibrate(1000);
+      const url = event.notification.additionalData?.url;
+      if (url) {
+        router.push(url);
+      } else {
+        Alert.alert("Notification", event.notification.body || "You got a message!");
+      }
+    });
 
-  const openedListener = OneSignal.Notifications.addEventListener("click", (event) => {
-    console.log("📩 OneSignal notification clicked:", event);
-    Vibration.vibrate(1000);
-    const url = event.notification.additionalData?.url;
-    if (url) {
-      router.push(url);
+    return () => {
+      openedListener.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (storedUser && storedUser.id) {
+      (async () => {
+        try {
+          const externalId = String(storedUser.id);
+
+          await OneSignal.login(externalId);
+          await OneSignal.User.addTags({ user_id: externalId });
+
+          
+          const onesignalUserId = await OneSignal.User.getOnesignalId();  // check that this exists
+
+          // Only call backend if you got an ID (optional check)
+          if (onesignalUserId) {
+            await onesignalService.register({
+              external_id: externalId,
+              onesignal_user_id: onesignalUserId,
+            });
+          }
+        } catch (err) {
+          console.error("OneSignal registration error:", err);
+        }
+      })();
     } else {
-      Alert.alert("OneSignal Alert", event.notification.body || "You got a message!");
+      // no user, maybe logged out
+      OneSignal.logout();
     }
-  });
-
-  return () => {
-    openedListener.remove();
-  };
-}, []);
-
+  }, [storedUser]);
 }
 
-//
-// ---------------------------
-// MAIN APP LAYOUT
-// ---------------------------
 function AppLayout() {
   const { colors, theme } = useTheme();
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [storedUser, setStoredUser] = useState(null);
+  const [tokenLoaded, setTokenLoaded] = useState(false);
 
-  useExpoNotifications(); // Expo push
-  useOneSignalNotifications(); // OneSignal push
+  useOneSignalNotifications(storedUser);
 
   useEffect(() => {
     if (Platform.OS === "android") {
@@ -114,12 +88,22 @@ function AppLayout() {
     }
   }, [theme, colors]);
 
-  // Fake auth check loader
   useEffect(() => {
     (async () => {
       try {
-        // placeholder
-      } catch (_) {}
+        const { token, user } = await authStorage.load();
+        if (token) {
+          setAuthToken(token);
+        }
+        if (user && user.id) {
+          setStoredUser(user);
+        } else {
+          setStoredUser(null);
+        }
+      } catch (err) {
+        console.error("Error loading auth storage:", err);
+        setStoredUser(null);
+      }
       setCheckingAuth(false);
     })();
   }, []);
@@ -129,11 +113,7 @@ function AppLayout() {
       <View
         style={[
           styles.container,
-          {
-            backgroundColor: colors.background,
-            alignItems: "center",
-            justifyContent: "center",
-          },
+          { backgroundColor: colors.background, alignItems: "center", justifyContent: "center" },
         ]}
       >
         <ActivityIndicator size="large" color="#28942c" />
@@ -143,10 +123,7 @@ function AppLayout() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar
-        style={theme === "dark" ? "light" : "dark"}
-        backgroundColor={colors.background}
-      />
+      <StatusBar style={theme === "dark" ? "light" : "dark"} backgroundColor={colors.background} />
       <Stack
         initialRouteName="index"
         screenOptions={{
