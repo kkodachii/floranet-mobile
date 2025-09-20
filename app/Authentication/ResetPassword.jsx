@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,43 +11,81 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Modal,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { authService } from "../../services/api";
 
-const ForgotPassword = () => {
+const ResetPassword = () => {
   const router = useRouter();
   const { colors, theme } = useTheme();
-  const [email, setEmail] = useState("");
+  const { email, token } = useLocalSearchParams();
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  useEffect(() => {
+    if (!email || !token) {
+      Alert.alert(
+        "Invalid Link",
+        "This password reset link is invalid or incomplete.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace("/Authentication/ForgotPassword")
+          }
+        ]
+      );
+    }
+  }, [email, token]);
 
   const handleResetPassword = async () => {
-    if (email.trim() === "") {
-      Alert.alert("Error", "Please enter your email.");
+    if (password.trim() === "") {
+      Alert.alert("Error", "Please enter a new password.");
       return;
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Alert.alert("Error", "Please enter a valid email address.");
+    if (password.length < 8) {
+      Alert.alert("Error", "Password must be at least 8 characters long.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match.");
       return;
     }
 
     setIsLoading(true);
-    
-    // Always show success modal since email is working
-    await authService.forgotPassword(email);
-    setShowSuccessModal(true);
-    setIsLoading(false);
+    try {
+      const response = await authService.resetPassword(email, token, password, confirmPassword);
+      Alert.alert(
+        "Success", 
+        response.message || "Your password has been reset successfully.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace("/Authentication/Login")
+          }
+        ]
+      );
+    } catch (error) {
+      console.error("Reset password error:", error);
+      const errorMessage = error.response?.data?.message || "Failed to reset password. Please try again.";
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
+
+  if (!email || !token) {
+    return null; // Will redirect via useEffect
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -68,7 +106,6 @@ const ForgotPassword = () => {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.keyboardView}
         >
-          {/* Main Content */}
           <ScrollView 
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
@@ -80,17 +117,17 @@ const ForgotPassword = () => {
                   colors={["#28942c", "#2d9d31"]}
                   style={styles.iconGradient}
                 >
-                  <Ionicons name="lock-open-outline" size={32} color="#fff" />
+                  <Ionicons name="key-outline" size={32} color="#fff" />
                 </LinearGradient>
               </View>
 
-              <Text style={[styles.title, { color: colors.text }]}>Forgot Password?</Text>
+              <Text style={[styles.title, { color: colors.text }]}>Reset Password</Text>
               <Text style={[styles.subtitle, { color: colors.text }]}>
-                Don't worry! It happens. Please enter the email address associated with your account.
+                Enter your new password below.
               </Text>
 
               <View style={styles.inputContainer}>
-                <Text style={[styles.label, { color: colors.text }]}>Email Address</Text>
+                <Text style={[styles.label, { color: colors.text }]}>New Password</Text>
                 <View style={[styles.inputWrapper, { 
                   backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
                   borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
@@ -101,20 +138,69 @@ const ForgotPassword = () => {
                   elevation: theme === "light" ? 2 : 0,
                 }]}>
                   <Ionicons 
-                    name="mail-outline" 
+                    name="lock-closed-outline" 
                     size={20} 
                     color={colors.text + "80"} 
                     style={styles.inputIcon}
                   />
                   <TextInput
                     style={[styles.input, { color: colors.text }]}
-                    placeholder="Enter your email address"
+                    placeholder="Enter new password"
                     placeholderTextColor={colors.text + "60"}
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
                     autoCapitalize="none"
                   />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeIcon}
+                  >
+                    <Ionicons 
+                      name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                      size={20} 
+                      color={colors.text + "80"} 
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: colors.text }]}>Confirm Password</Text>
+                <View style={[styles.inputWrapper, { 
+                  backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
+                  borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+                  shadowColor: theme === "light" ? "#000" : "transparent",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: theme === "light" ? 0.1 : 0,
+                  shadowRadius: theme === "light" ? 4 : 0,
+                  elevation: theme === "light" ? 2 : 0,
+                }]}>
+                  <Ionicons 
+                    name="lock-closed-outline" 
+                    size={20} 
+                    color={colors.text + "80"} 
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={[styles.input, { color: colors.text }]}
+                    placeholder="Confirm new password"
+                    placeholderTextColor={colors.text + "60"}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={styles.eyeIcon}
+                  >
+                    <Ionicons 
+                      name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} 
+                      size={20} 
+                      color={colors.text + "80"} 
+                    />
+                  </TouchableOpacity>
                 </View>
               </View>
 
@@ -131,19 +217,19 @@ const ForgotPassword = () => {
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
                     <>
-                      <Text style={styles.buttonText}>Send Reset Link</Text>
-                      <Ionicons name="mail" size={20} color="#fff" />
+                      <Text style={styles.buttonText}>Reset Password</Text>
+                      <Ionicons name="checkmark" size={20} color="#fff" />
                     </>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
 
-              {/* Sign In Link */}
+              {/* Back to Login Link */}
               <View style={styles.signInContainer}>
                 <Text style={[styles.signInText, { color: colors.text }]}>
                   Remember your password?{" "}
                 </Text>
-                <TouchableOpacity onPress={() => router.back()}>
+                <TouchableOpacity onPress={() => router.replace("/Authentication/Login")}>
                   <Text style={[styles.signInLink, { color: "#28942c" }]}>
                     Sign In
                   </Text>
@@ -153,71 +239,11 @@ const ForgotPassword = () => {
           </ScrollView>
         </KeyboardAvoidingView>
       </LinearGradient>
-
-      {/* Success Modal */}
-      <Modal
-        visible={showSuccessModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowSuccessModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
-            <View style={styles.modalContent}>
-              {/* Success Icon */}
-              <View style={styles.successIconContainer}>
-                <LinearGradient
-                  colors={["#28942c", "#2d9d31", "#32a636"]}
-                  style={styles.successIconGradient}
-                >
-                  <Ionicons name="checkmark" size={40} color="#fff" />
-                </LinearGradient>
-              </View>
-
-              {/* Success Title */}
-              <Text style={[styles.modalTitle, { color: colors.text }]}>
-                Email Sent Successfully!
-              </Text>
-
-              {/* Success Message */}
-              <Text style={[styles.modalMessage, { color: colors.text }]}>
-                We've sent password reset instructions to your email address. Please check your inbox and follow the link to reset your password.
-              </Text>
-
-              {/* Additional Info */}
-              <View style={styles.modalInfo}>
-                <Ionicons name="mail-outline" size={16} color={colors.text + "80"} />
-                <Text style={[styles.modalInfoText, { color: colors.text + "80" }]}>
-                  Check your spam folder if you don't see the email
-                </Text>
-              </View>
-
-              {/* Action Buttons */}
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={styles.modalButton}
-                  onPress={() => {
-                    setShowSuccessModal(false);
-                    router.back();
-                  }}
-                >
-                  <LinearGradient
-                    colors={["#28942c", "#2d9d31", "#32a636"]}
-                    style={styles.modalButtonGradient}
-                  >
-                    <Text style={styles.modalButtonText}>Got it!</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };
 
-export default ForgotPassword;
+export default ResetPassword;
 
 const styles = StyleSheet.create({
   container: {
@@ -272,7 +298,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   inputContainer: {
-    marginBottom: 32,
+    marginBottom: 24,
   },
   label: {
     fontSize: 16,
@@ -294,6 +320,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     paddingVertical: 16,
+  },
+  eyeIcon: {
+    padding: 8,
   },
   resetButton: {
     marginBottom: 24,
@@ -335,100 +364,5 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.6,
-  },
-  // Success Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContainer: {
-    borderRadius: 20,
-    padding: 0,
-    width: '100%',
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  modalContent: {
-    padding: 30,
-    alignItems: 'center',
-  },
-  successIconContainer: {
-    marginBottom: 20,
-  },
-  successIconGradient: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#28942c',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  modalMessage: {
-    fontSize: 16,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 20,
-    opacity: 0.8,
-  },
-  modalInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 30,
-    paddingHorizontal: 20,
-  },
-  modalInfoText: {
-    fontSize: 14,
-    marginLeft: 8,
-    textAlign: 'center',
-    flex: 1,
-  },
-  modalButtons: {
-    width: '100%',
-  },
-  modalButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#28942c',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  modalButtonGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
   },
 });

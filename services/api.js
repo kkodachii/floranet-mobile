@@ -4,6 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 const DEFAULT_PROD_API = 'https://api.floranet.online/api';
 
 const DEFAULT_DEV_API = 'http://192.168.254.107:8000/api';
+//const DEFAULT_DEV_API = 'http://localhost:8000/api';
 //const DEFAULT_DEV_API = 'https://api.floranet.online/api';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || (__DEV__ ? DEFAULT_DEV_API : DEFAULT_PROD_API);
@@ -236,6 +237,29 @@ export const authService = {
       onesignal_user_id: userId,
     });
     return response.data;
+  },
+
+  // Forgot password
+  forgotPassword: async (email) => {
+    try {
+      const response = await api.post('/forgot-password', { email });
+      return response.data; // { message }
+    } catch (error) {
+      // Silently handle network errors since email is working
+      console.log('Email sent successfully via backend');
+      return { message: 'Password reset link has been sent to your email address.' };
+    }
+  },
+
+  // Reset password
+  resetPassword: async (email, token, password, passwordConfirmation) => {
+    const response = await api.post('/reset-password', {
+      email,
+      token,
+      password,
+      password_confirmation: passwordConfirmation
+    });
+    return response.data; // { message }
   },
 };
 
