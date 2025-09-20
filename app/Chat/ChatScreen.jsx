@@ -459,7 +459,7 @@ const ChatScreen = () => {
           backgroundColor: theme === "light" ? "#ffffff" : "#14181F",
           borderColor: theme === "light" ? "#e0e0e0" : "#333"
         }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.push("/Chat/ChatHomepage")} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={textColor} />
           </TouchableOpacity>
           <View style={styles.headerInfoStandard}>

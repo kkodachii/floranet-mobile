@@ -6,7 +6,6 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
-  Vibration,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState, useRef } from "react";
@@ -23,35 +22,90 @@ import pusherService from "../services/optimizedPusherService";
 
 //
 // ---------------------------
+// NOTIFICATION NAVIGATION HANDLER
+// ---------------------------
+const handleNotificationNavigation = (notification, router) => {
+  try {
+    console.log('Handling notification navigation:', notification);
+    
+    // Handle different notification formats (Expo vs OneSignal)
+    let data = null;
+    
+    if (notification.request?.content?.data) {
+      // Expo notification format
+      data = notification.request.content.data;
+    } else if (notification.additionalData) {
+      // OneSignal notification format
+      data = notification.additionalData;
+    } else if (notification.data) {
+      // Alternative data format
+      data = notification.data;
+    }
+    
+    console.log('Extracted data:', data);
+    
+    // Check if it's a chat notification
+    if (data?.type === 'message' || data?.type === 'chat' || data?.conversation_id) {
+      // Navigate to ChatScreen with the conversation ID
+      const conversationId = data.conversation_id || data.conversationId;
+      if (conversationId) {
+        console.log('Navigating to conversation:', conversationId);
+        router.push({
+          pathname: "/Chat/ChatScreen",
+          params: { conversationId: conversationId.toString() }
+        });
+        return;
+      }
+    }
+    
+    // Check for direct URL navigation
+    const url = data?.url || data?.route;
+    if (url) {
+      console.log('Navigating to URL:', url);
+      router.push(url);
+      return;
+    }
+    
+    // Default fallback - navigate to ChatHomepage
+    console.log('Navigating to ChatHomepage (fallback)');
+    router.push("/Chat/ChatHomepage");
+  } catch (error) {
+    console.error('Error handling notification navigation:', error);
+    // Fallback to ChatHomepage on error
+    router.push("/Chat/ChatHomepage");
+  }
+};
+
+//
+// ---------------------------
 // EXPO NOTIFICATIONS SETUP
 // ---------------------------
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowAlert: false, // Disable popup alerts
     shouldPlaySound: false,
     shouldSetBadge: false,
   }),
 });
 
 function useExpoNotifications() {
+  const router = useRouter();
   const notificationListener = useRef();
   const responseListener = useRef();
 
   useEffect(() => {
   const notificationListener = Notifications.addNotificationReceivedListener(
     (notification) => {
-      Vibration.vibrate(1000);
-      Alert.alert("New Expo Alert", notification.request.content.body || "Message!");
+      // No vibration or alert - just handle silently
+      console.log('Expo notification received:', notification);
     }
   );
 
   const responseListener = Notifications.addNotificationResponseReceivedListener(
     (response) => {
-      Vibration.vibrate(1000);
-      Alert.alert(
-        "Opened Expo Notification",
-        response.notification.request.content.body || "You tapped a message!"
-      );
+      // No vibration or alert - navigate to chat
+      console.log('Expo notification tapped:', response);
+      handleNotificationNavigation(response.notification, router);
     }
   );
 
@@ -79,13 +133,9 @@ function useOneSignalNotifications() {
   OneSignal.User.pushSubscription.optIn();
 
   const openedListener = OneSignal.Notifications.addEventListener("click", (event) => {
-    Vibration.vibrate(1000);
-    const url = event.notification.additionalData?.url;
-    if (url) {
-      router.push(url);
-    } else {
-      Alert.alert("OneSignal Alert", event.notification.body || "You got a message!");
-    }
+    // No vibration or alert - navigate to chat
+    console.log('OneSignal notification tapped:', event);
+    handleNotificationNavigation(event.notification, router);
   });
 
   // Listen for push subscription changes to get OneSignal IDs
