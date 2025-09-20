@@ -57,6 +57,7 @@ const EditProfile = () => {
   const streetOptions = [
     "Adelfa",
     "Bougainvillea",
+    "Camia",
     "Champaca",
     "Dahlia",
     "Gumamela",
