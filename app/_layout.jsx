@@ -14,9 +14,6 @@ import { ThemeProvider, useTheme } from "../Theme/ThemeProvider";
 import { NotificationProvider } from "../services/NotificationContext";
 import { ScreenProvider, useScreenContext } from "../services/ScreenContext";
 
-import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
-
 import { OneSignal, LogLevel } from "react-native-onesignal";
 import pusherService from "../services/optimizedPusherService";
 
@@ -26,11 +23,11 @@ import pusherService from "../services/optimizedPusherService";
 // ---------------------------
 const handleNotificationNavigation = (notification, router) => {
   try {
-    console.log('Handling notification navigation:', notification);
-    
+    console.log("Handling notification navigation:", notification);
+
     // Handle different notification formats (Expo vs OneSignal)
     let data = null;
-    
+
     if (notification.request?.content?.data) {
       // Expo notification format
       data = notification.request.content.data;
@@ -41,36 +38,40 @@ const handleNotificationNavigation = (notification, router) => {
       // Alternative data format
       data = notification.data;
     }
-    
-    console.log('Extracted data:', data);
-    
+
+    console.log("Extracted data:", data);
+
     // Check if it's a chat notification
-    if (data?.type === 'message' || data?.type === 'chat' || data?.conversation_id) {
+    if (
+      data?.type === "message" ||
+      data?.type === "chat" ||
+      data?.conversation_id
+    ) {
       // Navigate to ChatScreen with the conversation ID
       const conversationId = data.conversation_id || data.conversationId;
       if (conversationId) {
-        console.log('Navigating to conversation:', conversationId);
+        console.log("Navigating to conversation:", conversationId);
         router.push({
           pathname: "/Chat/ChatScreen",
-          params: { conversationId: conversationId.toString() }
+          params: { conversationId: conversationId.toString() },
         });
         return;
       }
     }
-    
+
     // Check for direct URL navigation
     const url = data?.url || data?.route;
     if (url) {
-      console.log('Navigating to URL:', url);
+      console.log("Navigating to URL:", url);
       router.push(url);
       return;
     }
-    
+
     // Default fallback - navigate to ChatHomepage
-    console.log('Navigating to ChatHomepage (fallback)');
+    console.log("Navigating to ChatHomepage (fallback)");
     router.push("/Chat/ChatHomepage");
   } catch (error) {
-    console.error('Error handling notification navigation:', error);
+    console.error("Error handling notification navigation:", error);
     // Fallback to ChatHomepage on error
     router.push("/Chat/ChatHomepage");
   }
@@ -94,28 +95,26 @@ function useExpoNotifications() {
   const responseListener = useRef();
 
   useEffect(() => {
-  const notificationListener = Notifications.addNotificationReceivedListener(
-    (notification) => {
-      // No vibration or alert - just handle silently
-      console.log('Expo notification received:', notification);
-    }
-  );
+    const notificationListener = Notifications.addNotificationReceivedListener(
+      (notification) => {
+        // No vibration or alert - just handle silently
+        console.log("Expo notification received:", notification);
+      }
+    );
 
-  const responseListener = Notifications.addNotificationResponseReceivedListener(
-    (response) => {
-      // No vibration or alert - navigate to chat
-      console.log('Expo notification tapped:', response);
-      handleNotificationNavigation(response.notification, router);
-    }
-  );
+    const responseListener =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        // No vibration or alert - navigate to chat
+        console.log("Expo notification tapped:", response);
+        handleNotificationNavigation(response.notification, router);
+      });
 
-  return () => {
-    // ✅ New cleanup method
-    notificationListener.remove();
-    responseListener.remove();
-  };
-}, []);
-
+    return () => {
+      // ✅ New cleanup method
+      notificationListener.remove();
+      responseListener.remove();
+    };
+  }, []);
 }
 
 //
@@ -125,38 +124,41 @@ function useExpoNotifications() {
 function useOneSignalNotifications() {
   const router = useRouter();
 
- useEffect(() => {
-  OneSignal.Debug.setLogLevel(LogLevel.Verbose); // remove in prod
-  OneSignal.initialize("4df5f254-b383-4ac7-80f4-8b3c1afacb06");
+  useEffect(() => {
+    OneSignal.Debug.setLogLevel(LogLevel.Verbose); // remove in prod
+    OneSignal.initialize("4df5f254-b383-4ac7-80f4-8b3c1afacb06");
 
-  OneSignal.Notifications.requestPermission(true);
-  OneSignal.User.pushSubscription.optIn();
+    OneSignal.Notifications.requestPermission(true);
+    OneSignal.User.pushSubscription.optIn();
 
-  const openedListener = OneSignal.Notifications.addEventListener("click", (event) => {
-    // No vibration or alert - navigate to chat
-    console.log('OneSignal notification tapped:', event);
-    handleNotificationNavigation(event.notification, router);
-  });
+    const openedListener = OneSignal.Notifications.addEventListener(
+      "click",
+      (event) => {
+        // No vibration or alert - navigate to chat
+        console.log("OneSignal notification tapped:", event);
+        handleNotificationNavigation(event.notification, router);
+      }
+    );
 
-  // Listen for push subscription changes to get OneSignal IDs
-  const subscriptionListener = OneSignal.User.pushSubscription.addEventListener("change", (event) => {
-    // Get OneSignal user ID and external user ID
-    OneSignal.User.getOnesignalId().then((oneSignalUserId) => {
-      OneSignal.User.getExternalId().then((externalUserId) => {
-        if (oneSignalUserId && externalUserId) {
-          // Try to send OneSignal IDs to backend if user is logged in
-          sendOneSignalIdsToBackend(externalUserId, oneSignalUserId);
-        }
+    // Listen for push subscription changes to get OneSignal IDs
+    const subscriptionListener =
+      OneSignal.User.pushSubscription.addEventListener("change", (event) => {
+        // Get OneSignal user ID and external user ID
+        OneSignal.User.getOnesignalId().then((oneSignalUserId) => {
+          OneSignal.User.getExternalId().then((externalUserId) => {
+            if (oneSignalUserId && externalUserId) {
+              // Try to send OneSignal IDs to backend if user is logged in
+              sendOneSignalIdsToBackend(externalUserId, oneSignalUserId);
+            }
+          });
+        });
       });
-    });
-  });
 
-  return () => {
-    openedListener.remove();
-    subscriptionListener.remove();
-  };
-}, []);
-
+    return () => {
+      openedListener.remove();
+      subscriptionListener.remove();
+    };
+  }, []);
 }
 
 // Function to set OneSignal external user ID and get OneSignal user ID
@@ -164,27 +166,29 @@ export const setOneSignalUserId = async (userId) => {
   try {
     if (userId) {
       OneSignal.login(userId.toString());
-      
+
       // Wait longer for OneSignal to initialize and generate user ID
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
       // Try to get OneSignal user ID with a few attempts
       let attempts = 0;
       const maxAttempts = 3;
-      
+
       const tryGetOneSignalId = () => {
         attempts++;
-        OneSignal.User.getOnesignalId().then((oneSignalUserId) => {
-          if (oneSignalUserId) {
-            sendOneSignalIdsToBackend(userId.toString(), oneSignalUserId);
-          } else if (attempts < maxAttempts) {
-            setTimeout(tryGetOneSignalId, 2000);
-          }
-        }).catch((error) => {
-          // Error getting OneSignal user ID
-        });
+        OneSignal.User.getOnesignalId()
+          .then((oneSignalUserId) => {
+            if (oneSignalUserId) {
+              sendOneSignalIdsToBackend(userId.toString(), oneSignalUserId);
+            } else if (attempts < maxAttempts) {
+              setTimeout(tryGetOneSignalId, 2000);
+            }
+          })
+          .catch((error) => {
+            // Error getting OneSignal user ID
+          });
       };
-      
+
       tryGetOneSignalId();
     } else {
       OneSignal.logout();
@@ -197,8 +201,11 @@ export const setOneSignalUserId = async (userId) => {
 // Function to send OneSignal IDs to backend
 const sendOneSignalIdsToBackend = async (externalId, oneSignalUserId) => {
   try {
-    const { authService } = await import('../services/api');
-    const result = await authService.updateOneSignalIds(externalId, oneSignalUserId);
+    const { authService } = await import("../services/api");
+    const result = await authService.updateOneSignalIds(
+      externalId,
+      oneSignalUserId
+    );
   } catch (error) {
     if (error.response?.status === 401) {
       // User not authenticated, will retry when user logs in
@@ -212,30 +219,37 @@ const sendOneSignalIdsToBackend = async (externalId, oneSignalUserId) => {
 export const sendCurrentOneSignalIdsToBackend = async () => {
   try {
     // Wait for OneSignal to be ready
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    OneSignal.User.getOnesignalId().then((oneSignalUserId) => {
-      OneSignal.User.getExternalId().then((externalUserId) => {
-        if (oneSignalUserId && externalUserId) {
-          sendOneSignalIdsToBackend(externalUserId, oneSignalUserId);
-        } else {
-          // Try one more time after a delay
-          setTimeout(() => {
-            OneSignal.User.getOnesignalId().then((retryOneSignalUserId) => {
-              OneSignal.User.getExternalId().then((retryExternalUserId) => {
-                if (retryOneSignalUserId && retryExternalUserId) {
-                  sendOneSignalIdsToBackend(retryExternalUserId, retryOneSignalUserId);
-                }
-              });
-            });
-          }, 3000);
-        }
-      }).catch((error) => {
-        // Error getting external user ID
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    OneSignal.User.getOnesignalId()
+      .then((oneSignalUserId) => {
+        OneSignal.User.getExternalId()
+          .then((externalUserId) => {
+            if (oneSignalUserId && externalUserId) {
+              sendOneSignalIdsToBackend(externalUserId, oneSignalUserId);
+            } else {
+              // Try one more time after a delay
+              setTimeout(() => {
+                OneSignal.User.getOnesignalId().then((retryOneSignalUserId) => {
+                  OneSignal.User.getExternalId().then((retryExternalUserId) => {
+                    if (retryOneSignalUserId && retryExternalUserId) {
+                      sendOneSignalIdsToBackend(
+                        retryExternalUserId,
+                        retryOneSignalUserId
+                      );
+                    }
+                  });
+                });
+              }, 3000);
+            }
+          })
+          .catch((error) => {
+            // Error getting external user ID
+          });
+      })
+      .catch((error) => {
+        // Error getting OneSignal user ID
       });
-    }).catch((error) => {
-      // Error getting OneSignal user ID
-    });
   } catch (error) {
     // Error getting current OneSignal IDs
   }
@@ -245,8 +259,8 @@ export const sendCurrentOneSignalIdsToBackend = async () => {
 export const forceGetOneSignalIds = async () => {
   try {
     // Wait for OneSignal to be ready
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     OneSignal.User.getOnesignalId().then((oneSignalUserId) => {
       OneSignal.User.getExternalId().then((externalUserId) => {
         if (oneSignalUserId && externalUserId) {
@@ -268,13 +282,12 @@ function AppLayout() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const screenContext = useScreenContext();
 
-  useExpoNotifications(); // Expo push
   useOneSignalNotifications(); // OneSignal push
-  
+
   // Initialize Pusher for real-time messaging
   useEffect(() => {
     pusherService.initialize(screenContext);
-    
+
     return () => {
       pusherService.disconnect();
     };
