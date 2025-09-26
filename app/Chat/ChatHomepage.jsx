@@ -443,7 +443,7 @@ const ChatHomepage = () => {
               )}
               {otherParticipant?.vendor?.isAccepted && (
                 <View style={[styles.roleBadge, { backgroundColor: "#ff8c00", marginLeft: 4 }]}>
-                  <Text style={styles.roleText}>Vendor</Text>
+                  <Text style={styles.roleText}>{otherParticipant?.vendor?.business_name || 'Vendor'}</Text>
                 </View>
               )}
               {!otherParticipant?.resident_id && !otherParticipant?.vendor?.isAccepted && (
@@ -518,7 +518,7 @@ const ChatHomepage = () => {
           )}
           {item.vendor?.isAccepted && (
             <View style={[styles.roleBadge, { backgroundColor: "#ff8c00", marginLeft: 4 }]}>
-              <Text style={styles.roleText}>Vendor</Text>
+              <Text style={styles.roleText}>{item.vendor?.business_name || 'Vendor'}</Text>
             </View>
           )}
           {!item.resident_id && !item.vendor?.isAccepted && (

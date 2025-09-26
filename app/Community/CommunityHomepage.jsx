@@ -23,6 +23,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { communityService, buildStorageUrl, authService } from "../../services/api";
+import { messagingService } from "../../services/messagingService";
 
 import Navbar from "../../components/Navbar";
 import Header from "../../components/Header";
@@ -390,7 +391,29 @@ const CommunityHomepage = () => {
     }
   };
 
-  const handleChatPress = () => router.push("/Chat/ChatHomepage");
+  const handleChatPress = async (postUserId = null) => {
+    if (postUserId) {
+      try {
+        // Create or get conversation with specific user
+        const response = await messagingService.createConversation(postUserId);
+        if (response.success) {
+          // Navigate to ChatScreen with conversation ID
+          router.push({
+            pathname: "/Chat/ChatScreen",
+            params: { conversationId: response.data.id }
+          });
+        } else {
+          Alert.alert("Error", "Failed to start conversation. Please try again.");
+        }
+      } catch (error) {
+        console.error("Error creating conversation:", error);
+        Alert.alert("Error", "Failed to start conversation. Please try again.");
+      }
+    } else {
+      // Navigate to general chat homepage
+      router.push("/Chat/ChatHomepage");
+    }
+  };
   const goToCreatePost = () => router.push("/Community/CreatePost");
   const goToSearch = () => router.push("/Community/Search");
   
@@ -677,7 +700,7 @@ const CommunityHomepage = () => {
           </TouchableOpacity>
         )}
 
-        {isVendorOrBusiness && (
+        {isVendorOrBusiness && currentUser && parseInt(currentUser.id) !== parseInt(post.user?.id) && (
           <View style={{ marginTop: 4, marginBottom: 12 }}>
             <View
               style={{
@@ -687,7 +710,7 @@ const CommunityHomepage = () => {
               }}
             >
               <TouchableOpacity
-                onPress={handleChatPress}
+                onPress={() => handleChatPress(post.user?.id)}
                 style={{
                   backgroundColor: "transparent",
                   paddingVertical: 6,

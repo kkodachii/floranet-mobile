@@ -490,7 +490,7 @@ const ChatScreen = () => {
                       )}
                       {otherParticipant?.vendor?.isAccepted && (
                         <View style={[styles.roleBadge, { backgroundColor: "#ff8c00", marginLeft: 4 }]}>
-                          <Text style={styles.roleText}>Vendor</Text>
+                          <Text style={styles.roleText}>{otherParticipant?.vendor?.business_name || 'Vendor'}</Text>
                         </View>
                       )}
                       {!otherParticipant?.resident_id && !otherParticipant?.vendor?.isAccepted && (
