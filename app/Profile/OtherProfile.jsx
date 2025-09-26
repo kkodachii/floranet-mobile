@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { authStorage, authService, buildStorageUrl, communityService } from "../../services/api";
+import { messagingService } from "../../services/messagingService";
 import CommentSection from "../Community/CommentSection";
 import { useFocusEffect } from "@react-navigation/native";
 
@@ -492,7 +493,24 @@ const OtherProfile = () => {
           <View style={styles.profileActions}>
             <TouchableOpacity
               style={[styles.actionButton, { borderColor: textColor }]}
-              onPress={() => router.push("/Chat/ChatHomepage")}
+              onPress={async () => {
+                try {
+                  // Create or get conversation with this user
+                  const response = await messagingService.createConversation(user?.id);
+                  if (response.success) {
+                    // Navigate to ChatScreen with conversation ID
+                    router.push({
+                      pathname: "/Chat/ChatScreen",
+                      params: { conversationId: response.data.id }
+                    });
+                  } else {
+                    Alert.alert("Error", "Failed to start conversation. Please try again.");
+                  }
+                } catch (error) {
+                  console.error("Error creating conversation:", error);
+                  Alert.alert("Error", "Failed to start conversation. Please try again.");
+                }
+              }}
             >
               <Ionicons name="chatbubble-outline" size={14} color={textColor} style={{ marginRight: 6 }} />
               <Text style={[styles.buttonText, { color: textColor }]}>

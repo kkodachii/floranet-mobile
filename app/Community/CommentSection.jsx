@@ -46,7 +46,9 @@ const CommentSection = ({ comments = [], onCommentAdd, postId }) => {
       </View>
       <View style={styles.commentContent}>
         <View style={[styles.commentBubble, { backgroundColor: buttonBackground }]}>
-          <Text style={[styles.commentAuthor, { color: textColor }]}>{item.user?.name || item.author || 'Unknown User'}</Text>
+          <Text style={[styles.commentAuthor, { color: textColor }]}>
+            {item.user?.is_admin ? 'Administrator' : (item.user?.name || item.author || 'Unknown User')}
+          </Text>
           <Text style={[styles.commentText, { color: textColor }]}>{item.content}</Text>
         </View>
         <View style={styles.commentActions}>
