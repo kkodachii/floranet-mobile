@@ -1,23 +1,51 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../Theme/ThemeProvider";
 import { useRouter } from "expo-router";
-import { useNotifications } from "../services/NotificationContext";
+import { authStorage, authService } from "../services/api";
 
 const Header = () => {
   const { theme, colors } = useTheme();
   const router = useRouter();
-  
-  // Make notifications optional to prevent crashes
-  let unreadCount = 0;
-  try {
-    const notifications = useNotifications();
-    unreadCount = notifications.unreadCount;
-  } catch (error) {
-    // If NotificationProvider is not available, just continue without notifications
-    console.warn("NotificationProvider not available:", error.message);
-  }
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadUnread = async () => {
+      try {
+        // load cached auth (same pattern as your EditProfile)
+        const { user } = await authStorage.load();
+        if (!user?.id) {
+          if (mounted) setUnreadCount(0);
+          return;
+        }
+
+        // call authService.getNotifications(user.id)
+        const res = await authService.getNotifications(user.id);
+
+        // support both axios-like responses and direct arrays
+        const items = res?.data ?? res ?? [];
+
+        // determine unread: handle both "read_at" (timestamp) or "read" (boolean)
+        const unread = Array.isArray(items)
+          ? items.filter((n) => !(n?.read_at || n?.read)).length
+          : 0;
+
+        if (mounted) setUnreadCount(unread);
+      } catch (err) {
+        console.warn("Failed to load notifications:", err?.message ?? err);
+        if (mounted) setUnreadCount(0);
+      }
+    };
+
+    loadUnread();
+
+    return () => {
+      mounted = false;
+    };
+  }, []); // runs once on mount; add dependencies if you want auto-refresh
 
   const isDarkMode = theme === "dark";
 
@@ -41,10 +69,16 @@ const Header = () => {
         onPress={() => router.push("/Settings/Notifications")}
       >
         <View>
-          <Ionicons name="notifications-outline" size={28} color={colors.text} />
+          <Ionicons
+            name="notifications-outline"
+            size={28}
+            color={colors.text}
+          />
           {unreadCount > 0 && (
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              <Text style={styles.badgeText}>
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </Text>
             </View>
           )}
         </View>
