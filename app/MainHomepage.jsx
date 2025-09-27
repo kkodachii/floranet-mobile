@@ -14,13 +14,15 @@ import Header from "../components/Header";
 import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "../Theme/ThemeProvider";
 import { StatusBar } from "react-native";
-import { authStorage, authService, buildStorageUrl } from "../services/api";
+import { useAuth } from "../services/AuthContext";
+import { buildStorageUrl } from "../services/api";
 import { setOneSignalUserId, sendCurrentOneSignalIdsToBackend } from "./_layout";
 
 const MainHomepage = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, theme } = useTheme();
+  const { user, refreshUser } = useAuth();
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
@@ -30,27 +32,16 @@ const MainHomepage = () => {
   const subtextColor = theme === "light" ? "#6B7280" : "#9CA3AF";
   const textColor = colors.text;
 
-  const [user, setUser] = useState(null);
-
   useEffect(() => {
     (async () => {
-      const { user: cachedUser } = await authStorage.load();
-      if (cachedUser) {
-        setUser(cachedUser);
+      if (user?.id) {
         // Set OneSignal external user ID for push notifications
-        await setOneSignalUserId(cachedUser.id);
-      }
-      try {
-        const fresh = await authService.getProfileCached();
-        setUser(fresh);
-        // Set OneSignal external user ID for push notifications
-        await setOneSignalUserId(fresh?.id);
+        await setOneSignalUserId(user.id);
         // Also try to send current OneSignal IDs to backend
         await sendCurrentOneSignalIdsToBackend();
-        await authStorage.save({ token: null, user: fresh });
-      } catch (_) {}
+      }
     })();
-  }, []);
+  }, [user]);
 
   const displayName = user?.name || "Resident";
   const houseNumber = user?.house?.house_number || "-";

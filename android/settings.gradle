@@ -31,7 +31,7 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 }
 expoAutolinking.useExpoModules()
 
-rootProject.name = 'floranet-mobile'
+rootProject.name = 'Floranet'
 
 expoAutolinking.useExpoVersionCatalog()
 
