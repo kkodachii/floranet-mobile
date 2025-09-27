@@ -13,6 +13,7 @@ import * as NavigationBar from "expo-navigation-bar";
 import { ThemeProvider, useTheme } from "../Theme/ThemeProvider";
 import { NotificationProvider } from "../services/NotificationContext";
 import { ScreenProvider, useScreenContext } from "../services/ScreenContext";
+import { AuthProvider, useAuth } from "../services/AuthContext";
 
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
@@ -265,8 +266,9 @@ export const forceGetOneSignalIds = async () => {
 // ---------------------------
 function AppLayout() {
   const { colors, theme } = useTheme();
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const { isAuthenticated, isLoading } = useAuth();
   const screenContext = useScreenContext();
+  const router = useRouter();
 
   useExpoNotifications(); // Expo push
   useOneSignalNotifications(); // OneSignal push
@@ -292,17 +294,18 @@ function AppLayout() {
     }
   }, [theme, colors]);
 
-  // Fake auth check loader
+  // Handle navigation based on authentication status
   useEffect(() => {
-    (async () => {
-      try {
-        // placeholder
-      } catch (_) {}
-      setCheckingAuth(false);
-    })();
-  }, []);
+    if (!isLoading) {
+      if (isAuthenticated) {
+        router.replace('/MainHomepage');
+      } else {
+        router.replace('/');
+      }
+    }
+  }, [isAuthenticated, isLoading]);
 
-  if (checkingAuth) {
+  if (isLoading) {
     return (
       <View
         style={[
@@ -341,9 +344,11 @@ export default function LayoutWrapper() {
   return (
     <ThemeProvider>
       <ScreenProvider>
-        <NotificationProvider>
-          <AppLayout />
-        </NotificationProvider>
+        <AuthProvider>
+          <NotificationProvider>
+            <AppLayout />
+          </NotificationProvider>
+        </AuthProvider>
       </ScreenProvider>
     </ThemeProvider>
   );

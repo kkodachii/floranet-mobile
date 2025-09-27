@@ -16,8 +16,7 @@ import { useTheme } from "../../Theme/ThemeProvider";
 import { Feather } from "@expo/vector-icons";
 import Navbar from "../../components/Navbar";
 import Header from "../../components/HeaderBack";
-import { authService } from "../../services/api";
-import { setOneSignalUserId } from "../_layout";
+import { useAuth } from "../../services/AuthContext";
 
 const SettingItem = ({ icon, label, onPress, textColor, disabled }) => (
   <TouchableOpacity style={styles.settingItem} onPress={onPress} disabled={disabled}>
@@ -31,6 +30,7 @@ const Option = () => {
   const router = useRouter();
   const { residentName = "Juan Dela Cruz" } = useLocalSearchParams();
   const { theme, colors } = useTheme();
+  const { logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
@@ -44,21 +44,12 @@ const Option = () => {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
     try {
-      // Disconnect pusher service to stop pooling
-      const pusherService = (await import('../../services/optimizedPusherService')).default;
-      pusherService.disconnect();
-      
-      await authService.logout();
-      // Clear OneSignal external user ID
-      await setOneSignalUserId(null);
+      await logout();
     } catch (_) {
       // ignore
     }
     setShowLogoutModal(false);
-    setTimeout(() => {
-      router.replace("/");
-      setIsLoggingOut(false);
-    }, 50);
+    setIsLoggingOut(false);
   };
 
   return (
