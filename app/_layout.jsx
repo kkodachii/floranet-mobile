@@ -42,6 +42,34 @@ const handleNotificationNavigation = (notification, router) => {
 
     console.log("Extracted data:", data);
 
+    // Check if it's an alert notification
+    if (data?.type === "alert") {
+      console.log("Navigating to Alert page for alert:", data.alert_id);
+      router.push("/Emergency/Alert/Alert");
+      return;
+    }
+
+    // Check if it's a complaint notification
+    if (data?.type === "complaint") {
+      console.log("Navigating to Complaint page for complaint:", data.complaint_id);
+      router.push("/Emergency/Complaint/Complaint");
+      return;
+    }
+
+    // Check if it's a CCTV notification
+    if (data?.type === "cctv") {
+      console.log("Navigating to CCTV page for request:", data.cctv_request_id);
+      router.push("/Emergency/CCTV/CCTV");
+      return;
+    }
+
+    // Check if it's a test notification
+    if (data?.type === "test") {
+      console.log("Test notification received, navigating to MainHomepage");
+      router.push("/MainHomepage");
+      return;
+    }
+
     // Check if it's a chat notification
     if (
       data?.type === "message" ||
@@ -68,13 +96,13 @@ const handleNotificationNavigation = (notification, router) => {
       return;
     }
 
-    // Default fallback - navigate to ChatHomepage
-    console.log("Navigating to ChatHomepage (fallback)");
-    router.push("/Chat/ChatHomepage");
+    // Default fallback - navigate to MainHomepage
+    console.log("Navigating to MainHomepage (fallback)");
+    router.push("/MainHomepage");
   } catch (error) {
     console.error("Error handling notification navigation:", error);
-    // Fallback to ChatHomepage on error
-    router.push("/Chat/ChatHomepage");
+    // Fallback to MainHomepage on error
+    router.push("/MainHomepage");
   }
 };
 

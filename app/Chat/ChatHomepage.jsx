@@ -627,7 +627,7 @@ const ChatHomepage = () => {
                   <Ionicons name="close" size={24} color={timeColor} />
                 </TouchableOpacity>
               </View>
-              <View style={styles.modalSearchBar}>
+              <View style={[styles.modalSearchBar, { backgroundColor: chatBg, borderColor: borderColor }]}>
                 <Ionicons name="search" size={20} color={timeColor} style={{ marginRight: 8 }} />
                 <TextInput
                   style={[styles.modalSearchInput, { color: textColor }]}
@@ -901,8 +901,8 @@ const styles = StyleSheet.create({
   modalSearchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Platform.OS === 'ios' ? '#f1f1f1' : '#f6f6f6',
     borderRadius: 10,
+    borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 8,
     marginBottom: 12,

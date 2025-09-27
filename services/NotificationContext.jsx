@@ -1,10 +1,9 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
-import mockNotifications, { generateMockNotification } from "./mockNotifications";
 
 const NotificationContext = createContext(null);
 
 export function NotificationProvider({ children }) {
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const [notifications, setNotifications] = useState([]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.read).length,
@@ -15,9 +14,6 @@ export function NotificationProvider({ children }) {
     setNotifications((prev) => [{ ...notification }, ...prev]);
   }, []);
 
-  const addMock = useCallback((type = "general") => {
-    addNotification(generateMockNotification(type));
-  }, [addNotification]);
 
   const markAsRead = useCallback((id) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
@@ -36,8 +32,8 @@ export function NotificationProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ notifications, unreadCount, addNotification, addMock, markAsRead, markAllAsRead, clearAll, removeNotification }),
-    [notifications, unreadCount, addNotification, addMock, markAsRead, markAllAsRead, clearAll, removeNotification]
+    () => ({ notifications, unreadCount, addNotification, markAsRead, markAllAsRead, clearAll, removeNotification }),
+    [notifications, unreadCount, addNotification, markAsRead, markAllAsRead, clearAll, removeNotification]
   );
 
   return (
