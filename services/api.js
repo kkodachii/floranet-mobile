@@ -1,38 +1,40 @@
-import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import axios from "axios";
+import * as SecureStore from "expo-secure-store";
 
-const DEFAULT_PROD_API = 'https://api.floranet.online/api';
+const DEFAULT_PROD_API = "https://api.floranet.online/api";
 
 //const DEFAULT_DEV_API = 'http://192.168.254.107:8000/api';
 //const DEFAULT_DEV_API = 'http://localhost:8000/api';
 const DEFAULT_DEV_API = 'https://api.floranet.online/api';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || (__DEV__ ? DEFAULT_DEV_API : DEFAULT_PROD_API);
-export const API_ORIGIN = API_BASE_URL.replace(/\/?api$/, '');
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ||
+  (__DEV__ ? DEFAULT_DEV_API : DEFAULT_PROD_API);
+export const API_ORIGIN = API_BASE_URL.replace(/\/?api$/, "");
 export const buildStorageUrl = (path) => {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
-  const normalized = path.startsWith('storage/') ? path : `storage/${path}`;
-  return `${API_ORIGIN.replace(/\/$/, '')}/${normalized}`;
+  const normalized = path.startsWith("storage/") ? path : `storage/${path}`;
+  return `${API_ORIGIN.replace(/\/$/, "")}/${normalized}`;
 };
 
-const TOKEN_KEY = 'floranet_token';
-const USER_KEY = 'floranet_user';
+const TOKEN_KEY = "floranet_token";
+const USER_KEY = "floranet_user";
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    "Content-Type": "application/json",
+    Accept: "application/json",
   },
   timeout: 15000,
 });
 
 export const setAuthToken = (token) => {
   if (token) {
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
   } else {
-    delete api.defaults.headers.common['Authorization'];
+    delete api.defaults.headers.common["Authorization"];
   }
 };
 
@@ -47,7 +49,7 @@ export const authStorage = {
         await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
       }
     } catch (error) {
-      console.error('Error saving auth data:', error);
+      console.error("Error saving auth data:", error);
     }
   },
   load: async () => {
@@ -56,15 +58,15 @@ export const authStorage = {
         SecureStore.getItemAsync(TOKEN_KEY),
         SecureStore.getItemAsync(USER_KEY),
       ]);
-      
+
       const user = userStr ? JSON.parse(userStr) : null;
       if (token) {
         setAuthToken(token);
       }
-      
+
       return { token, user };
     } catch (error) {
-      console.error('Error loading auth data:', error);
+      console.error("Error loading auth data:", error);
       return { token: null, user: null };
     }
   },
@@ -76,7 +78,7 @@ export const authStorage = {
       ]);
       setAuthToken(null);
     } catch (error) {
-      console.error('Error clearing auth data:', error);
+      console.error("Error clearing auth data:", error);
     }
   },
 };
@@ -96,37 +98,51 @@ const ERROR_BACKOFF_MS = 10 * 1000; // wait 10s after an error before trying aga
 export const authService = {
   // User registration
   register: async (userData) => {
-    const response = await api.post('/register', userData);
+    const response = await api.post("/register", userData);
     return response.data; // { user, token, message }
   },
-  
+
   // Get next resident ID
   getNextResidentId: async () => {
-    const response = await api.get('/next-resident-id');
+    const response = await api.get("/next-resident-id");
     return response.data; // { next_resident_id }
   },
-  
+
   // User login (non-admin)
   login: async ({ email, password }) => {
-    const response = await api.post('/user/login', { email, password });
-    const result = { ...response.data, type: 'user' }; // { user, token, type: 'user' }
-    
+    const response = await api.post("/user/login", { email, password });
+    const result = { ...response.data, type: "user" }; // { user, token, type: 'user' }
+
     // Save auth data to secure storage
     if (result.token && result.user) {
       await authStorage.save({ token: result.token, user: result.user });
     }
-    
+
     return result;
   },
   // Optional admin login if needed later
   adminLogin: async ({ email, password }) => {
-    const response = await api.post('/admin/login', { email, password });
-    return {...response.data, type:'user'}; // { user, token, type: 'admin' }
+    const response = await api.post("/admin/login", { email, password });
+    return { ...response.data, type: "user" }; // { user, token, type: 'admin' }
   },
+
+  getNotifications: async (userId) => {
+    const response = await api.get(`/user/notifications/${userId}`);
+    return response.data;
+  },
+
+  markAsRead: async (id) => {
+    await api.post(`/user/notifications/read/${id}`);
+  },
+
+  markAllAsRead: async (userId) => {
+    await api.post(`/user/notifications/read-all/${userId}`);
+  },
+
   // Logout using API and clear storage
   logout: async () => {
     try {
-      await api.post('/user/logout');
+      await api.post("/user/logout");
     } catch (_) {
       // ignore
     }
@@ -140,7 +156,7 @@ export const authService = {
   },
   // Get current user profile (with house)
   getProfile: async () => {
-    const response = await api.get('/user/profile');
+    const response = await api.get("/user/profile");
     return response.data;
   },
   // Cached profile getter with TTL, throttle, error backoff, and request dedupe
@@ -148,7 +164,7 @@ export const authService = {
     const now = Date.now();
 
     // If we don't have an auth token set, avoid network and return best-known user
-    const hasAuthHeader = Boolean(api.defaults.headers.common['Authorization']);
+    const hasAuthHeader = Boolean(api.defaults.headers.common["Authorization"]);
     if (!hasAuthHeader) {
       if (profileCache) return profileCache;
       return null;
@@ -160,12 +176,12 @@ export const authService = {
     }
 
     // Return fresh-enough cache
-    if (!force && profileCache && (now - profileCachedAt) < PROFILE_TTL_MS) {
+    if (!force && profileCache && now - profileCachedAt < PROFILE_TTL_MS) {
       return profileCache;
     }
 
     // Throttle frequent calls
-    if (!force && (now - lastProfileFetchMs) < MIN_FETCH_GAP_MS && profileCache) {
+    if (!force && now - lastProfileFetchMs < MIN_FETCH_GAP_MS && profileCache) {
       return profileCache;
     }
 
@@ -209,18 +225,18 @@ export const authService = {
   },
   // Update profile (name, email, contact_no, optional password with current_password)
   updateProfile: async (payload) => {
-    const response = await api.put('/user/profile', payload);
+    const response = await api.put("/user/profile", payload);
     await authService.getProfileCached({ force: true });
     return response.data;
   },
   // Upload profile picture (multipart)
   uploadProfilePicture: async (uri) => {
     const formData = new FormData();
-    const filename = uri.split('/').pop() || `profile_${Date.now()}.jpg`;
-    const file = { uri, name: filename, type: 'image/jpeg' };
-    formData.append('profile_picture', file);
-    const response = await api.post('/user/profile/picture', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    const filename = uri.split("/").pop() || `profile_${Date.now()}.jpg`;
+    const file = { uri, name: filename, type: "image/jpeg" };
+    formData.append("profile_picture", file);
+    const response = await api.post("/user/profile/picture", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
     await authService.getProfileCached({ force: true });
     return response.data;
@@ -232,7 +248,7 @@ export const authService = {
   },
   // Update OneSignal external ID and user ID
   updateOneSignalIds: async (externalId, userId) => {
-    const response = await api.post('/user/onesignal-ids', {
+    const response = await api.post("/user/onesignal-ids", {
       onesignal_external_id: externalId,
       onesignal_user_id: userId,
     });
@@ -242,22 +258,24 @@ export const authService = {
   // Forgot password
   forgotPassword: async (email) => {
     try {
-      const response = await api.post('/forgot-password', { email });
+      const response = await api.post("/forgot-password", { email });
       return response.data; // { message }
     } catch (error) {
       // Silently handle network errors since email is working
-      console.log('Email sent successfully via backend');
-      return { message: 'Password reset link has been sent to your email address.' };
+      console.log("Email sent successfully via backend");
+      return {
+        message: "Password reset link has been sent to your email address.",
+      };
     }
   },
 
   // Reset password
   resetPassword: async (email, token, password, passwordConfirmation) => {
-    const response = await api.post('/reset-password', {
+    const response = await api.post("/reset-password", {
       email,
       token,
       password,
-      password_confirmation: passwordConfirmation
+      password_confirmation: passwordConfirmation,
     });
     return response.data; // { message }
   },
@@ -265,25 +283,28 @@ export const authService = {
 
 export const complaintsService = {
   list: async ({ page = 1 } = {}) => {
-    const response = await api.get('/user/complaints', { params: { page } });
+    const response = await api.get("/user/complaints", { params: { page } });
     return response.data; // Laravel resource collection with data, links, meta
   },
   create: async (payload) => {
-    const response = await api.post('/user/complaints', payload);
+    const response = await api.post("/user/complaints", payload);
     return response.data; // Complaint resource object
   },
   addFollowup: async (complaintId, message) => {
-    const response = await api.patch(`/user/complaints/${complaintId}/followups`, { followups: message });
+    const response = await api.patch(
+      `/user/complaints/${complaintId}/followups`,
+      { followups: message }
+    );
     return response.data;
   },
   getNextId: async () => {
     // Authorized user route preferred
     try {
-      const response = await api.get('/user/complaints-next-id');
+      const response = await api.get("/user/complaints-next-id");
       return response.data?.next_log_id;
     } catch (_) {
       // Fallback to public route if authorized fails
-      const response = await api.get('/complaints-next-id');
+      const response = await api.get("/complaints-next-id");
       return response.data?.next_log_id;
     }
   },
@@ -294,24 +315,37 @@ export const alertsService = {
     const params = { page };
     if (type) params.type = type;
     if (status) params.status = status;
-    const response = await api.get('/user/alerts', { params });
+    const response = await api.get("/user/alerts", { params });
     return response.data; // { success, data: ResourceCollection, pagination }
   },
   create: async (payload) => {
-    const response = await api.post('/user/alerts', payload);
+    const response = await api.post("/user/alerts", payload);
     return response.data; // { success, message, data: Resource }
   },
-}; 
+};
 
 export const cctvService = {
   list: async ({ page = 1 } = {}) => {
-    const response = await api.get('/user/cctv-requests', { params: { page } });
+    const response = await api.get("/user/cctv-requests", { params: { page } });
     return response.data; // Laravel resource collection
   },
-  create: async ({ resident_id, reason, date_of_incident, time_of_incident, location, status }) => {
-    const payload = { resident_id, reason, date_of_incident, time_of_incident, location };
+  create: async ({
+    resident_id,
+    reason,
+    date_of_incident,
+    time_of_incident,
+    location,
+    status,
+  }) => {
+    const payload = {
+      resident_id,
+      reason,
+      date_of_incident,
+      time_of_incident,
+      location,
+    };
     if (status) payload.status = status;
-    const response = await api.post('/user/cctv-requests', payload);
+    const response = await api.post("/user/cctv-requests", payload);
     return response.data; // CctvRequest resource
   },
   show: async (id) => {
@@ -319,7 +353,9 @@ export const cctvService = {
     return response.data; // CctvRequest resource
   },
   updateFollowups: async (id, followups) => {
-    const response = await api.patch(`/user/cctv-requests/${id}/followups`, { followups });
+    const response = await api.patch(`/user/cctv-requests/${id}/followups`, {
+      followups,
+    });
     return response.data; // CctvRequest resource
   },
   // Convenience: extract footage list from show()
@@ -328,29 +364,33 @@ export const cctvService = {
     const req = data?.data || data;
     return Array.isArray(req?.footage) ? req.footage : [];
   },
-  downloadFootageUrl: (requestId, footageId) => `${API_BASE_URL.replace(/\/$/, '')}/user/cctv-requests/${requestId}/footage/${footageId}/download`,
+  downloadFootageUrl: (requestId, footageId) =>
+    `${API_BASE_URL.replace(
+      /\/$/,
+      ""
+    )}/user/cctv-requests/${requestId}/footage/${footageId}/download`,
 };
 
 export const adminService = {
   getAdminContact: async () => {
     try {
-      const resp = await api.get('/user/admin-contact');
+      const resp = await api.get("/user/admin-contact");
       return resp.data?.phone || null;
     } catch (_) {
       try {
-        const resp = await api.get('/admin-contact');
+        const resp = await api.get("/admin-contact");
         return resp.data?.phone || null;
       } catch (_) {
         return null;
       }
     }
-  }
-}; 
+  },
+};
 
 export const financeService = {
   // Get current month's due for authenticated user
   getCurrentMonthDue: async () => {
-    const response = await api.get('/user/monthly-dues/current');
+    const response = await api.get("/user/monthly-dues/current");
     return response.data; // { success, data: MonthlyDueResource or null, message }
   },
 
@@ -358,7 +398,7 @@ export const financeService = {
   getAllMonthsStatus: async ({ year } = {}) => {
     const params = {};
     if (year) params.year = year;
-    const response = await api.get('/user/monthly-dues/all-months', { params });
+    const response = await api.get("/user/monthly-dues/all-months", { params });
     return response.data; // { success, data: { months: [], summary: {} } }
   },
 
@@ -366,19 +406,19 @@ export const financeService = {
   getMonthlyDues: async ({ page = 1, year } = {}) => {
     const params = { page };
     if (year) params.year = year;
-    const response = await api.get('/user/monthly-dues', { params });
+    const response = await api.get("/user/monthly-dues", { params });
     return response.data; // Laravel resource collection
   },
 
   // Get payment history for authenticated user
   getPaymentHistory: async ({ page = 1 } = {}) => {
-    const response = await api.get('/user/payments', { params: { page } });
+    const response = await api.get("/user/payments", { params: { page } });
     return response.data; // Laravel resource collection
   },
 
   // Create a payment record
   createPayment: async (paymentData) => {
-    const response = await api.post('/user/payments', paymentData);
+    const response = await api.post("/user/payments", paymentData);
     return response.data; // Payment resource
   },
 
@@ -387,11 +427,13 @@ export const financeService = {
     try {
       const user = await authService.getProfileCached();
       if (!user?.resident_id) return [];
-      
-      const response = await api.get(`/admin/residents/${user.resident_id}/monthly-dues/years`);
+
+      const response = await api.get(
+        `/admin/residents/${user.resident_id}/monthly-dues/years`
+      );
       return response.data?.data || [];
     } catch (error) {
-      console.error('Error fetching available years:', error);
+      console.error("Error fetching available years:", error);
       return [];
     }
   },
@@ -401,21 +443,32 @@ export const financeService = {
     try {
       const user = await authService.getProfileCached();
       if (!user?.resident_id) return [];
-      
-      const response = await api.get(`/admin/residents/${user.resident_id}/monthly-dues/history`, {
-        params: { year }
-      });
+
+      const response = await api.get(
+        `/admin/residents/${user.resident_id}/monthly-dues/history`,
+        {
+          params: { year },
+        }
+      );
       return response.data?.data || [];
     } catch (error) {
-      console.error('Error fetching year history:', error);
+      console.error("Error fetching year history:", error);
       return [];
     }
-  }
+  },
 };
 
 export const communityService = {
   // Get all community posts with filters
-  getPosts: async ({ page = 1, category, visibility, admin_only, resident_only, search, user_id } = {}) => {
+  getPosts: async ({
+    page = 1,
+    category,
+    visibility,
+    admin_only,
+    resident_only,
+    search,
+    user_id,
+  } = {}) => {
     const params = { page };
     if (category) params.category = category;
     if (visibility) params.visibility = visibility;
@@ -423,8 +476,8 @@ export const communityService = {
     if (resident_only) params.resident_only = resident_only;
     if (search) params.search = search;
     if (user_id) params.user_id = user_id;
-    
-    const response = await api.get('/user/community-posts', { params });
+
+    const response = await api.get("/user/community-posts", { params });
     return response.data; // { success, data: paginated posts, message }
   },
 
@@ -437,29 +490,29 @@ export const communityService = {
   // Create a new post
   createPost: async (postData) => {
     const formData = new FormData();
-    
+
     // Add basic fields
-    formData.append('type', postData.type || 'text');
-    formData.append('category', postData.category);
-    formData.append('visibility', postData.visibility || 'public');
-    
+    formData.append("type", postData.type || "text");
+    formData.append("category", postData.category);
+    formData.append("visibility", postData.visibility || "public");
+
     if (postData.content) {
-      formData.append('content', postData.content);
+      formData.append("content", postData.content);
     }
-    
+
     // Add images if provided
     if (postData.images && postData.images.length > 0) {
       postData.images.forEach((image, index) => {
-        formData.append('images[]', {
+        formData.append("images[]", {
           uri: image.uri,
           name: image.name || `image_${index}.jpg`,
-          type: image.type || 'image/jpeg'
+          type: image.type || "image/jpeg",
         });
       });
     }
-    
-    const response = await api.post('/user/community-posts', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+
+    const response = await api.post("/user/community-posts", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data; // { success, data: post, message }
   },
@@ -467,36 +520,37 @@ export const communityService = {
   // Update a post
   updatePost: async (id, postData) => {
     const formData = new FormData();
-    
+
     // Add basic fields
-    if (postData.type) formData.append('type', postData.type);
-    if (postData.category) formData.append('category', postData.category);
-    if (postData.visibility) formData.append('visibility', postData.visibility);
-    if (postData.content !== undefined) formData.append('content', postData.content);
-    
+    if (postData.type) formData.append("type", postData.type);
+    if (postData.category) formData.append("category", postData.category);
+    if (postData.visibility) formData.append("visibility", postData.visibility);
+    if (postData.content !== undefined)
+      formData.append("content", postData.content);
+
     // Add existing images to keep
     if (postData.existing_images) {
-      postData.existing_images.forEach(image => {
-        formData.append('existing_images[]', image);
+      postData.existing_images.forEach((image) => {
+        formData.append("existing_images[]", image);
       });
     }
-    
+
     // Add new images
     if (postData.images && postData.images.length > 0) {
       postData.images.forEach((image, index) => {
-        formData.append('images[]', {
+        formData.append("images[]", {
           uri: image.uri,
           name: image.name || `image_${index}.jpg`,
-          type: image.type || 'image/jpeg'
+          type: image.type || "image/jpeg",
         });
       });
     }
-    
+
     const response = await api.post(`/user/community-posts/${id}`, formData, {
-      headers: { 
-        'Content-Type': 'multipart/form-data',
-        'X-HTTP-Method-Override': 'PUT'
-      }
+      headers: {
+        "Content-Type": "multipart/form-data",
+        "X-HTTP-Method-Override": "PUT",
+      },
     });
     return response.data; // { success, data: post, message }
   },
@@ -508,16 +562,18 @@ export const communityService = {
   },
 
   // Toggle like on a post
-  toggleLike: async (id, reaction = 'like') => {
-    const response = await api.post(`/user/community-posts/${id}/like`, { reaction });
+  toggleLike: async (id, reaction = "like") => {
+    const response = await api.post(`/user/community-posts/${id}/like`, {
+      reaction,
+    });
     return response.data; // { success, data: { likes_count, user_reaction, is_liked }, message }
   },
 
   // Add a comment to a post
   addComment: async (id, content, parentId = null) => {
-    const response = await api.post(`/user/community-posts/${id}/comment`, { 
-      content, 
-      parent_id: parentId 
+    const response = await api.post(`/user/community-posts/${id}/comment`, {
+      content,
+      parent_id: parentId,
     });
     return response.data; // { success, data: comment, message }
   },
@@ -530,31 +586,33 @@ export const communityService = {
 
   // Delete a comment
   deleteComment: async (postId, commentId) => {
-    const response = await api.delete(`/user/community-posts/${postId}/comments/${commentId}`);
+    const response = await api.delete(
+      `/user/community-posts/${postId}/comments/${commentId}`
+    );
     return response.data; // { success, message }
-  }
+  },
 };
 
 export const vendorService = {
   // Create vendor request
   createVendorRequest: async (businessName) => {
-    const response = await api.post('/user/vendor-request', {
-      business_name: businessName
+    const response = await api.post("/user/vendor-request", {
+      business_name: businessName,
     });
     return response.data; // { success, message, data }
   },
 
   // Update vendor profile
   updateVendorProfile: async (businessName) => {
-    const response = await api.put('/user/vendor-profile', {
-      business_name: businessName
+    const response = await api.put("/user/vendor-profile", {
+      business_name: businessName,
     });
     return response.data; // { success, message, data }
   },
 
   // Check vendor request status
   checkVendorRequestStatus: async () => {
-    const response = await api.get('/user/vendor-request-status');
+    const response = await api.get("/user/vendor-request-status");
     return response.data; // { success, data: { has_request, status, business_name } }
-  }
-}; 
+  },
+};
