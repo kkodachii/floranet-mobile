@@ -79,46 +79,6 @@ const handleNotificationNavigation = (notification, router) => {
 
 //
 // ---------------------------
-// EXPO NOTIFICATIONS SETUP
-// ---------------------------
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: false, // Disable popup alerts
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
-
-function useExpoNotifications() {
-  const router = useRouter();
-  const notificationListener = useRef();
-  const responseListener = useRef();
-
-  useEffect(() => {
-    const notificationListener = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        // No vibration or alert - just handle silently
-        console.log("Expo notification received:", notification);
-      }
-    );
-
-    const responseListener =
-      Notifications.addNotificationResponseReceivedListener((response) => {
-        // No vibration or alert - navigate to chat
-        console.log("Expo notification tapped:", response);
-        handleNotificationNavigation(response.notification, router);
-      });
-
-    return () => {
-      // ✅ New cleanup method
-      notificationListener.remove();
-      responseListener.remove();
-    };
-  }, []);
-}
-
-//
-// ---------------------------
 // ONESIGNAL SETUP
 // ---------------------------
 function useOneSignalNotifications() {
