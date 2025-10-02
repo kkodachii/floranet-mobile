@@ -57,7 +57,7 @@ const RegisterScreen = () => {
     "Rosal",
     "Sampaguita",
     "Santan",
-    "Waling-waling"
+    "Waling-waling",
   ];
 
   // Get next resident ID when component mounts
@@ -72,14 +72,17 @@ const RegisterScreen = () => {
         setResidentId("MHH0001");
       }
     };
-    
+
     getNextResidentId();
   }, []);
 
   const nextStep = () => {
     if (step === 1) {
       if (!homeownerName || !residentName || !residentId) {
-        Alert.alert("Error", "Please wait for Resident ID to load and fill in all fields before proceeding.");
+        Alert.alert(
+          "Error",
+          "Please wait for Resident ID to load and fill in all fields before proceeding."
+        );
         return;
       }
     } else if (step === 2) {
@@ -90,7 +93,7 @@ const RegisterScreen = () => {
     }
     setStep((prev) => prev + 1);
   };
-  
+
   const prevStep = () => setStep((prev) => prev - 1);
 
   const handleRegister = async () => {
@@ -109,36 +112,36 @@ const RegisterScreen = () => {
       Alert.alert("Error", "Please fill in all fields.");
       return;
     }
-    
+
     if (street === "") {
       Alert.alert("Error", "Please select a street.");
       return;
     }
-    
+
     // Validate block and lot format
     if (!block.trim()) {
       Alert.alert("Error", "Please enter a valid block.");
       return;
     }
-    
+
     if (!lot.trim()) {
       Alert.alert("Error", "Please enter a valid lot.");
       return;
     }
-    
+
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       Alert.alert("Error", "Please enter a valid email address.");
       return;
     }
-    
+
     // Password length validation
     if (password.length < 8) {
       Alert.alert("Error", "Password must be at least 8 characters long.");
       return;
     }
-    
+
     if (password !== confirmPassword) {
       Alert.alert("Error", "Passwords do not match.");
       return;
@@ -166,12 +169,12 @@ const RegisterScreen = () => {
       };
 
       const response = await authService.register(userData);
-      
+
       setShowSuccessModal(true);
     } catch (error) {
       console.error("Registration error:", error);
       let errorMessage = "Registration failed. Please try again.";
-      
+
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.response?.data?.errors) {
@@ -179,7 +182,7 @@ const RegisterScreen = () => {
         const firstError = Object.values(errors)[0];
         errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
       }
-      
+
       Alert.alert("Registration Error", errorMessage);
     } finally {
       setIsLoading(false);
@@ -189,7 +192,7 @@ const RegisterScreen = () => {
   const renderProgressBar = () => {
     const steps = 3;
     const progress = (step / steps) * 100;
-    
+
     return (
       <View style={styles.progressContainer}>
         <View style={styles.progressBar}>
@@ -209,25 +212,42 @@ const RegisterScreen = () => {
     <View style={styles.stepContainer}>
       <View style={styles.stepHeader}>
         <Ionicons name="person-circle-outline" size={32} color="#28942c" />
-        <Text style={[styles.stepTitle, { color: colors.text }]}>Personal Information</Text>
+        <Text style={[styles.stepTitle, { color: colors.text }]}>
+          Personal Information
+        </Text>
         <Text style={[styles.stepSubtitle, { color: colors.text }]}>
           Tell us about yourself and your household
         </Text>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Homeowner Name</Text>
-        <View style={[styles.inputWrapper, { 
-          backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
-          borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
-          shadowColor: theme === "light" ? "#000" : "transparent",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: theme === "light" ? 0.1 : 0,
-          shadowRadius: theme === "light" ? 4 : 0,
-          elevation: theme === "light" ? 2 : 0,
-        }]}>
-          <Ionicons name="person-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
+        <Text style={[styles.label, { color: colors.text }]}>
+          Homeowner Name
+        </Text>
+        <View
+          style={[
+            styles.inputWrapper,
+            {
+              backgroundColor:
+                theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
+              borderColor:
+                theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+              shadowColor: theme === "light" ? "#000" : "transparent",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: theme === "light" ? 0.1 : 0,
+              shadowRadius: theme === "light" ? 4 : 0,
+              elevation: theme === "light" ? 2 : 0,
+            },
+          ]}
+        >
+          <Ionicons
+            name="person-outline"
+            size={20}
+            color={colors.text + "80"}
+            style={styles.inputIcon}
+          />
           <TextInput
+            autoCapitalize="words"
             placeholder="Enter Homeowner Name"
             placeholderTextColor={colors.text + "60"}
             style={[styles.input, { color: colors.text }]}
@@ -238,18 +258,33 @@ const RegisterScreen = () => {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Resident Name</Text>
-        <View style={[styles.inputWrapper, { 
-          backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
-          borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
-          shadowColor: theme === "light" ? "#000" : "transparent",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: theme === "light" ? 0.1 : 0,
-          shadowRadius: theme === "light" ? 4 : 0,
-          elevation: theme === "light" ? 2 : 0,
-        }]}>
-          <Ionicons name="person-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
+        <Text style={[styles.label, { color: colors.text }]}>
+          Resident Name
+        </Text>
+        <View
+          style={[
+            styles.inputWrapper,
+            {
+              backgroundColor:
+                theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
+              borderColor:
+                theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+              shadowColor: theme === "light" ? "#000" : "transparent",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: theme === "light" ? 0.1 : 0,
+              shadowRadius: theme === "light" ? 4 : 0,
+              elevation: theme === "light" ? 2 : 0,
+            },
+          ]}
+        >
+          <Ionicons
+            name="person-outline"
+            size={20}
+            color={colors.text + "80"}
+            style={styles.inputIcon}
+          />
           <TextInput
+            autoCapitalize="words"
             placeholder="Enter Resident Name"
             placeholderTextColor={colors.text + "60"}
             style={[styles.input, { color: colors.text }]}
@@ -261,11 +296,23 @@ const RegisterScreen = () => {
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>Resident ID</Text>
-        <View style={[styles.residentIdContainer, { 
-          backgroundColor: theme === "light" ? "#f8f9fa" : "rgba(255, 255, 255, 0.05)",
-          borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
-        }]}>
-          <Ionicons name="card-outline" size={20} color="#28942c" style={styles.inputIcon} />
+        <View
+          style={[
+            styles.residentIdContainer,
+            {
+              backgroundColor:
+                theme === "light" ? "#f8f9fa" : "rgba(255, 255, 255, 0.05)",
+              borderColor:
+                theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+            },
+          ]}
+        >
+          <Ionicons
+            name="card-outline"
+            size={20}
+            color="#28942c"
+            style={styles.inputIcon}
+          />
           <Text style={[styles.residentIdText, { color: "#28942c" }]}>
             {residentId || "Loading..."}
           </Text>
@@ -275,9 +322,12 @@ const RegisterScreen = () => {
         </Text>
       </View>
 
-
       {/* Navigation Button */}
-      <TouchableOpacity style={styles.nextButton} onPress={nextStep} activeOpacity={1.0}>
+      <TouchableOpacity
+        style={styles.nextButton}
+        onPress={nextStep}
+        activeOpacity={1.0}
+      >
         <LinearGradient
           colors={["#28942c", "#2d9d31", "#32a636"]}
           style={styles.gradientButton}
@@ -293,7 +343,9 @@ const RegisterScreen = () => {
     <View style={styles.stepContainer}>
       <View style={styles.stepHeader}>
         <Ionicons name="home-outline" size={32} color="#28942c" />
-        <Text style={[styles.stepTitle, { color: colors.text }]}>Address Information</Text>
+        <Text style={[styles.stepTitle, { color: colors.text }]}>
+          Address Information
+        </Text>
         <Text style={[styles.stepSubtitle, { color: colors.text }]}>
           Provide your residential details
         </Text>
@@ -301,21 +353,34 @@ const RegisterScreen = () => {
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>Block</Text>
-        <View style={[styles.inputWrapper, { 
-          backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
-          borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
-          shadowColor: theme === "light" ? "#000" : "transparent",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: theme === "light" ? 0.1 : 0,
-          shadowRadius: theme === "light" ? 4 : 0,
-          elevation: theme === "light" ? 2 : 0,
-        }]}>
-          <Ionicons name="business-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
+        <View
+          style={[
+            styles.inputWrapper,
+            {
+              backgroundColor:
+                theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
+              borderColor:
+                theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+              shadowColor: theme === "light" ? "#000" : "transparent",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: theme === "light" ? 0.1 : 0,
+              shadowRadius: theme === "light" ? 4 : 0,
+              elevation: theme === "light" ? 2 : 0,
+            },
+          ]}
+        >
+          <Ionicons
+            name="business-outline"
+            size={20}
+            color={colors.text + "80"}
+            style={styles.inputIcon}
+          />
           <TextInput
             placeholder="e.g. A3B"
             placeholderTextColor={colors.text + "60"}
             style={[styles.input, { color: colors.text }]}
             value={block}
+            autoCapitalize="characters"
             onChangeText={setBlock}
           />
         </View>
@@ -323,21 +388,34 @@ const RegisterScreen = () => {
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>Lot</Text>
-        <View style={[styles.inputWrapper, { 
-          backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
-          borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
-          shadowColor: theme === "light" ? "#000" : "transparent",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: theme === "light" ? 0.1 : 0,
-          shadowRadius: theme === "light" ? 4 : 0,
-          elevation: theme === "light" ? 2 : 0,
-        }]}>
-          <Ionicons name="home-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
+        <View
+          style={[
+            styles.inputWrapper,
+            {
+              backgroundColor:
+                theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
+              borderColor:
+                theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+              shadowColor: theme === "light" ? "#000" : "transparent",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: theme === "light" ? 0.1 : 0,
+              shadowRadius: theme === "light" ? 4 : 0,
+              elevation: theme === "light" ? 2 : 0,
+            },
+          ]}
+        >
+          <Ionicons
+            name="home-outline"
+            size={20}
+            color={colors.text + "80"}
+            style={styles.inputIcon}
+          />
           <TextInput
             placeholder="e.g. L32"
             placeholderTextColor={colors.text + "60"}
             style={[styles.input, { color: colors.text }]}
             value={lot}
+            autoCapitalize="characters"
             onChangeText={setLot}
           />
         </View>
@@ -345,16 +423,28 @@ const RegisterScreen = () => {
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>Street</Text>
-        <View style={[styles.pickerWrapper, { 
-          backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
-          borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
-          shadowColor: theme === "light" ? "#000" : "transparent",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: theme === "light" ? 0.1 : 0,
-          shadowRadius: theme === "light" ? 4 : 0,
-          elevation: theme === "light" ? 2 : 0,
-        }]}>
-          <Ionicons name="location-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
+        <View
+          style={[
+            styles.pickerWrapper,
+            {
+              backgroundColor:
+                theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
+              borderColor:
+                theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+              shadowColor: theme === "light" ? "#000" : "transparent",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: theme === "light" ? 0.1 : 0,
+              shadowRadius: theme === "light" ? 4 : 0,
+              elevation: theme === "light" ? 2 : 0,
+            },
+          ]}
+        >
+          <Ionicons
+            name="location-outline"
+            size={20}
+            color={colors.text + "80"}
+            style={styles.inputIcon}
+          />
           <Picker
             style={[styles.picker, { color: colors.text }]}
             selectedValue={street}
@@ -370,17 +460,31 @@ const RegisterScreen = () => {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Contact Number</Text>
-        <View style={[styles.inputWrapper, { 
-          backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
-          borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
-          shadowColor: theme === "light" ? "#000" : "transparent",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: theme === "light" ? 0.1 : 0,
-          shadowRadius: theme === "light" ? 4 : 0,
-          elevation: theme === "light" ? 2 : 0,
-        }]}>
-          <Ionicons name="call-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
+        <Text style={[styles.label, { color: colors.text }]}>
+          Contact Number
+        </Text>
+        <View
+          style={[
+            styles.inputWrapper,
+            {
+              backgroundColor:
+                theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
+              borderColor:
+                theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+              shadowColor: theme === "light" ? "#000" : "transparent",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: theme === "light" ? 0.1 : 0,
+              shadowRadius: theme === "light" ? 4 : 0,
+              elevation: theme === "light" ? 2 : 0,
+            },
+          ]}
+        >
+          <Ionicons
+            name="call-outline"
+            size={20}
+            color={colors.text + "80"}
+            style={styles.inputIcon}
+          />
           <TextInput
             placeholder="Enter Contact Number"
             placeholderTextColor={colors.text + "60"}
@@ -394,12 +498,22 @@ const RegisterScreen = () => {
 
       {/* Navigation Buttons */}
       <View style={styles.navigationButtons}>
-        <TouchableOpacity style={styles.prevButton} onPress={prevStep} activeOpacity={1.0}>
+        <TouchableOpacity
+          style={styles.prevButton}
+          onPress={prevStep}
+          activeOpacity={1.0}
+        >
           <Ionicons name="arrow-back" size={20} color={colors.text} />
-          <Text style={[styles.navButtonText, { color: colors.text }]}>Previous</Text>
+          <Text style={[styles.navButtonText, { color: colors.text }]}>
+            Previous
+          </Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.nextButton} onPress={nextStep} activeOpacity={1.0}>
+
+        <TouchableOpacity
+          style={styles.nextButton}
+          onPress={nextStep}
+          activeOpacity={1.0}
+        >
           <LinearGradient
             colors={["#28942c", "#2d9d31", "#32a636"]}
             style={styles.gradientButton}
@@ -416,24 +530,40 @@ const RegisterScreen = () => {
     <View style={styles.stepContainer}>
       <View style={styles.stepHeader}>
         <Ionicons name="shield-checkmark-outline" size={32} color="#28942c" />
-        <Text style={[styles.stepTitle, { color: colors.text }]}>Account Security</Text>
+        <Text style={[styles.stepTitle, { color: colors.text }]}>
+          Account Security
+        </Text>
         <Text style={[styles.stepSubtitle, { color: colors.text }]}>
           Create your account credentials
         </Text>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Email Address</Text>
-        <View style={[styles.inputWrapper, { 
-          backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
-          borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
-          shadowColor: theme === "light" ? "#000" : "transparent",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: theme === "light" ? 0.1 : 0,
-          shadowRadius: theme === "light" ? 4 : 0,
-          elevation: theme === "light" ? 2 : 0,
-        }]}>
-          <Ionicons name="mail-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
+        <Text style={[styles.label, { color: colors.text }]}>
+          Email Address
+        </Text>
+        <View
+          style={[
+            styles.inputWrapper,
+            {
+              backgroundColor:
+                theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
+              borderColor:
+                theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+              shadowColor: theme === "light" ? "#000" : "transparent",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: theme === "light" ? 0.1 : 0,
+              shadowRadius: theme === "light" ? 4 : 0,
+              elevation: theme === "light" ? 2 : 0,
+            },
+          ]}
+        >
+          <Ionicons
+            name="mail-outline"
+            size={20}
+            color={colors.text + "80"}
+            style={styles.inputIcon}
+          />
           <TextInput
             placeholder="Enter Email Address"
             placeholderTextColor={colors.text + "60"}
@@ -448,16 +578,28 @@ const RegisterScreen = () => {
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>Password</Text>
-        <View style={[styles.inputWrapper, { 
-          backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
-          borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
-          shadowColor: theme === "light" ? "#000" : "transparent",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: theme === "light" ? 0.1 : 0,
-          shadowRadius: theme === "light" ? 4 : 0,
-          elevation: theme === "light" ? 2 : 0,
-        }]}>
-          <Ionicons name="lock-closed-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
+        <View
+          style={[
+            styles.inputWrapper,
+            {
+              backgroundColor:
+                theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
+              borderColor:
+                theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+              shadowColor: theme === "light" ? "#000" : "transparent",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: theme === "light" ? 0.1 : 0,
+              shadowRadius: theme === "light" ? 4 : 0,
+              elevation: theme === "light" ? 2 : 0,
+            },
+          ]}
+        >
+          <Ionicons
+            name="lock-closed-outline"
+            size={20}
+            color={colors.text + "80"}
+            style={styles.inputIcon}
+          />
           <TextInput
             placeholder="Enter Password"
             placeholderTextColor={colors.text + "60"}
@@ -466,24 +608,46 @@ const RegisterScreen = () => {
             value={password}
             onChangeText={setPassword}
           />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon} activeOpacity={1.0}>
-            <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color={colors.text + "80"} />
+          <TouchableOpacity
+            onPress={() => setShowPassword(!showPassword)}
+            style={styles.eyeIcon}
+            activeOpacity={1.0}
+          >
+            <Ionicons
+              name={showPassword ? "eye-outline" : "eye-off-outline"}
+              size={20}
+              color={colors.text + "80"}
+            />
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Confirm Password</Text>
-        <View style={[styles.inputWrapper, { 
-          backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
-          borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
-          shadowColor: theme === "light" ? "#000" : "transparent",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: theme === "light" ? 0.1 : 0,
-          shadowRadius: theme === "light" ? 4 : 0,
-          elevation: theme === "light" ? 2 : 0,
-        }]}>
-          <Ionicons name="lock-closed-outline" size={20} color={colors.text + "80"} style={styles.inputIcon} />
+        <Text style={[styles.label, { color: colors.text }]}>
+          Confirm Password
+        </Text>
+        <View
+          style={[
+            styles.inputWrapper,
+            {
+              backgroundColor:
+                theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
+              borderColor:
+                theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+              shadowColor: theme === "light" ? "#000" : "transparent",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: theme === "light" ? 0.1 : 0,
+              shadowRadius: theme === "light" ? 4 : 0,
+              elevation: theme === "light" ? 2 : 0,
+            },
+          ]}
+        >
+          <Ionicons
+            name="lock-closed-outline"
+            size={20}
+            color={colors.text + "80"}
+            style={styles.inputIcon}
+          />
           <TextInput
             placeholder="Confirm Password"
             placeholderTextColor={colors.text + "60"}
@@ -492,8 +656,16 @@ const RegisterScreen = () => {
             value={confirmPassword}
             onChangeText={setConfirmPassword}
           />
-          <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon} activeOpacity={1.0}>
-            <Ionicons name={showConfirmPassword ? "eye-outline" : "eye-off-outline"} size={20} color={colors.text + "80"} />
+          <TouchableOpacity
+            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            style={styles.eyeIcon}
+            activeOpacity={1.0}
+          >
+            <Ionicons
+              name={showConfirmPassword ? "eye-outline" : "eye-off-outline"}
+              size={20}
+              color={colors.text + "80"}
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -504,12 +676,19 @@ const RegisterScreen = () => {
           onPress={() => setAcceptedTerms(!acceptedTerms)}
           activeOpacity={1.0}
         >
-          <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
-            {acceptedTerms && <Ionicons name="checkmark" size={16} color="#fff" />}
+          <View
+            style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}
+          >
+            {acceptedTerms && (
+              <Ionicons name="checkmark" size={16} color="#fff" />
+            )}
           </View>
           <Text style={[styles.termsText, { color: colors.text }]}>
             I agree to the{" "}
-            <Text style={styles.termsLink} onPress={() => router.push("/Authentication/TermsCondition")}>
+            <Text
+              style={styles.termsLink}
+              onPress={() => router.push("/Authentication/TermsCondition")}
+            >
               Terms and Conditions
             </Text>
           </Text>
@@ -518,14 +697,20 @@ const RegisterScreen = () => {
 
       {/* Navigation Buttons */}
       <View style={styles.navigationButtons}>
-        <TouchableOpacity style={styles.prevButton} onPress={prevStep} activeOpacity={1.0}>
+        <TouchableOpacity
+          style={styles.prevButton}
+          onPress={prevStep}
+          activeOpacity={1.0}
+        >
           <Ionicons name="arrow-back" size={20} color={colors.text} />
-          <Text style={[styles.navButtonText, { color: colors.text }]}>Previous</Text>
+          <Text style={[styles.navButtonText, { color: colors.text }]}>
+            Previous
+          </Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.registerButton} 
-          onPress={handleRegister} 
+
+        <TouchableOpacity
+          style={styles.registerButton}
+          onPress={handleRegister}
           activeOpacity={1.0}
           disabled={isLoading}
         >
@@ -556,22 +741,23 @@ const RegisterScreen = () => {
         barStyle={theme === "light" ? "dark-content" : "light-content"}
         translucent={false}
       />
-      
+
       <LinearGradient
-        colors={theme === "light" 
-          ? ["#ffffff", "#f8f9fa", "#e9ecef"] 
-          : ["#14181F", "#1F2633", "#27313F"]
+        colors={
+          theme === "light"
+            ? ["#ffffff", "#f8f9fa", "#e9ecef"]
+            : ["#14181F", "#1F2633", "#27313F"]
         }
         style={styles.gradient}
       >
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.keyboardView}
         >
           {renderProgressBar()}
 
           {/* Content Area */}
-          <ScrollView 
+          <ScrollView
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
@@ -587,10 +773,16 @@ const RegisterScreen = () => {
       {/* Success Modal */}
       {showSuccessModal && (
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, { 
-            backgroundColor: theme === "light" ? "#ffffff" : "#1F2633",
-            borderColor: theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
-          }]}>
+          <View
+            style={[
+              styles.modalContainer,
+              {
+                backgroundColor: theme === "light" ? "#ffffff" : "#1F2633",
+                borderColor:
+                  theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+              },
+            ]}
+          >
             <View style={styles.modalContent}>
               <View style={styles.successIconContainer}>
                 <LinearGradient
@@ -600,17 +792,18 @@ const RegisterScreen = () => {
                   <Ionicons name="checkmark" size={40} color="#fff" />
                 </LinearGradient>
               </View>
-              
+
               <Text style={[styles.modalTitle, { color: colors.text }]}>
                 Registration Successful!
               </Text>
-              
+
               <Text style={[styles.modalMessage, { color: colors.text }]}>
-                Your account has been created successfully. Please wait for admin approval before you can log in.
+                Your account has been created successfully. Please wait for
+                admin approval before you can log in.
               </Text>
-              
-              <TouchableOpacity 
-                style={styles.modalButton} 
+
+              <TouchableOpacity
+                style={styles.modalButton}
                 onPress={() => {
                   setShowSuccessModal(false);
                   router.replace("/");
@@ -831,22 +1024,22 @@ const styles = StyleSheet.create({
   },
   // Modal Styles
   modalOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
     zIndex: 1000,
   },
   modalContainer: {
-    width: '85%',
+    width: "85%",
     maxWidth: 350,
     borderRadius: 20,
     borderWidth: 1,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 10,
@@ -857,7 +1050,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     padding: 30,
-    alignItems: 'center',
+    alignItems: "center",
   },
   successIconContainer: {
     marginBottom: 20,
@@ -866,9 +1059,9 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#28942c',
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#28942c",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -879,25 +1072,25 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 15,
   },
   modalMessage: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 22,
     marginBottom: 25,
     opacity: 0.8,
   },
   modalButton: {
-    width: '100%',
+    width: "100%",
   },
   modalButtonGradient: {
     paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#28942c',
+    alignItems: "center",
+    shadowColor: "#28942c",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -907,8 +1100,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   modalButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
 });

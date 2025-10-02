@@ -795,23 +795,6 @@ const CommunityHomepage = () => {
               <Text style={[styles.title, { color: textColor }]}>
                 Community Hub
               </Text>
-              <View style={styles.iconGroup}>
-                <TouchableOpacity onPress={goToSearch}>
-                  <Ionicons
-                    name="search-outline"
-                    size={24}
-                    color={textColor}
-                    style={{ marginRight: 16 }}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleChatPress}>
-                  <Ionicons
-                    name="chatbubble-outline"
-                    size={24}
-                    color={textColor}
-                  />
-                </TouchableOpacity>
-              </View>
             </View>
 
             {/* Chips */}
