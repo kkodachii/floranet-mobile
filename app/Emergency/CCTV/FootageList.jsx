@@ -124,18 +124,6 @@ const FootageList = () => {
 						<Footage src={src} />
 					) : null}
 				</View>
-
-				{/* Card Footer */}
-				<View style={styles.cardFooter}>
-					<TouchableOpacity
-						onPress={() => openDownload(f.id)}
-						style={styles.downloadButton}
-						activeOpacity={0.7}
-					>
-						<Ionicons name="download-outline" size={16} color="#28942c" />
-						<Text style={styles.downloadButtonText}>Download</Text>
-					</TouchableOpacity>
-				</View>
 			</View>
 		);
 	};

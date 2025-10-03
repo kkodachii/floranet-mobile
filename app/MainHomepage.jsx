@@ -6,6 +6,8 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Image,
+  RefreshControl,
+  ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -23,6 +25,7 @@ const MainHomepage = () => {
   const router = useRouter();
   const { colors, theme } = useTheme();
   const { user, refreshUser } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
@@ -35,13 +38,22 @@ const MainHomepage = () => {
   useEffect(() => {
     (async () => {
       if (user?.id) {
-        // Set OneSignal external user ID for push notifications
         await setOneSignalUserId(user.id);
-        // Also try to send current OneSignal IDs to backend
         await sendCurrentOneSignalIdsToBackend();
       }
     })();
   }, [user]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshUser();
+    } catch (error) {
+      console.error("Error refreshing user data:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const displayName = user?.name || "Resident";
   const houseNumber = user?.house?.house_number || "-";
@@ -62,7 +74,17 @@ const MainHomepage = () => {
       />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Header />
-        <View style={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary || textColor}
+              colors={[colors.primary || textColor]}
+            />
+          }
+        >
           <AccountDetails
             residentName={displayName}
             HouseNumber={houseNumber}
@@ -105,7 +127,7 @@ const MainHomepage = () => {
               fullWidth
             />
           </View>
-        </View>
+        </ScrollView>
 
         <View
           style={[
@@ -198,7 +220,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
     gap: 16,

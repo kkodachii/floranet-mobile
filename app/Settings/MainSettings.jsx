@@ -127,15 +127,6 @@ const Settings = () => {
                     textColor={textColor}
                   />
                 )}
-                {filterMatch("Manage Posts") && (
-                  <SettingItem
-                    icon={<Feather name="file-text" size={24} color={textColor} />}
-                    label="Manage Posts"
-                    onPress={() => router.push("Profile/ManagePost")}
-                    textColor={textColor}
-                  />
-                )}
-
               </View>
             )}
 
@@ -208,23 +199,6 @@ const Settings = () => {
                 textColor={textColor}
               />
             )}
-            {filterMatch("Report a problem") && (
-              <SettingItem
-                icon={<Feather name="alert-circle" size={24} color={textColor} />}
-                label="Report a problem"
-                onPress={() => Alert.alert("Report a Problem", "Functionality coming soon.")}
-                textColor={textColor}
-              />
-            )}
-            {filterMatch("About") && (
-              <SettingItem
-                icon={<Feather name="info" size={24} color={textColor} />}
-                label="About"
-                onPress={() => Alert.alert("About", "App version 1.0.0\nDeveloped by YourName")}
-                textColor={textColor}
-              />
-            )}
-
             {/* Logout */}
             {filterMatch("Logout") && (
               <TouchableOpacity
