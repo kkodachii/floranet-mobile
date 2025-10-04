@@ -252,7 +252,12 @@ const RegisterScreen = () => {
             placeholderTextColor={colors.text + "60"}
             style={[styles.input, { color: colors.text }]}
             value={homeownerName}
-            onChangeText={setHomeownerName}
+            onChangeText={(text) => {
+              const titleCase = text
+                .toLowerCase()
+                .replace(/\b\w/g, (char) => char.toUpperCase());
+              setHomeownerName(titleCase);
+            }}
           />
         </View>
       </View>
@@ -289,7 +294,12 @@ const RegisterScreen = () => {
             placeholderTextColor={colors.text + "60"}
             style={[styles.input, { color: colors.text }]}
             value={residentName}
-            onChangeText={setResidentName}
+            onChangeText={(text) => {
+              const titleCase = text
+                .toLowerCase()
+                .replace(/\b\w/g, (char) => char.toUpperCase());
+              setResidentName(titleCase);
+            }}
           />
         </View>
       </View>
@@ -380,8 +390,7 @@ const RegisterScreen = () => {
             placeholderTextColor={colors.text + "60"}
             style={[styles.input, { color: colors.text }]}
             value={block}
-            autoCapitalize="characters"
-            onChangeText={setBlock}
+            onChangeText={(text) => setBlock(text.toUpperCase())}
           />
         </View>
       </View>
@@ -415,8 +424,7 @@ const RegisterScreen = () => {
             placeholderTextColor={colors.text + "60"}
             style={[styles.input, { color: colors.text }]}
             value={lot}
-            autoCapitalize="characters"
-            onChangeText={setLot}
+            onChangeText={(text) => setLot(text.toUpperCase())}
           />
         </View>
       </View>
