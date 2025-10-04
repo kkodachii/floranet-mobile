@@ -141,10 +141,12 @@ const ChatHomepage = () => {
       const conversationsResponse = await messagingService.getConversations();
 
       if (conversationsResponse.success) {
-        // Filter out conversations with no messages
-        const conversationsWithMessages = conversationsResponse.data.filter(conv => 
-          conv.last_message && conv.last_message.content
-        );
+        // Filter out conversations with no messages and invalid participant data
+        const conversationsWithMessages = conversationsResponse.data.filter(conv => {
+          const hasValidMessage = conv.last_message && conv.last_message.content;
+          const hasValidParticipant = conv.other_participant?.name || (conv.participants && conv.participants.length > 0 && conv.participants[0]?.name);
+          return hasValidMessage && hasValidParticipant;
+        });
         setConversations(conversationsWithMessages);
         setFilteredChats(conversationsWithMessages);
       }
@@ -401,7 +403,7 @@ const ChatHomepage = () => {
     const otherParticipant = item.other_participant || item.participants?.[0] || {};
     const lastMessage = item.last_message;
     
-    // Skip rendering if no valid participant (deleted user)
+    // Skip rendering if no valid participant data
     if (!otherParticipant || !otherParticipant.name) {
       return null;
     }

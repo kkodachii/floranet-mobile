@@ -62,16 +62,8 @@ const ChatScreen = () => {
       if (response.success) {
         // Check if conversation has valid participants
         if (!response.data.participants || response.data.participants.length === 0) {
-          Alert.alert(
-            'Conversation Not Available',
-            'This conversation is no longer available. The other participant may have been removed.',
-            [
-              {
-                text: 'OK',
-                onPress: () => router.push('/Chat/ChatHomepage')
-              }
-            ]
-          );
+          // Conversation was deleted or has no participants
+          router.replace("/Chat/ChatHomepage");
           return;
         }
         
@@ -83,20 +75,15 @@ const ChatScreen = () => {
         
         // Refresh conversation list to update unread counts
         // This will be handled by the parent component (ChatHomepage)
-      } else {
-        // Handle API error response
-        Alert.alert(
-          'Conversation Not Available',
-          response.message || 'This conversation is no longer available.',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.push('/Chat/ChatHomepage')
-            }
-          ]
-        );
       }
     } catch (error) {
+      console.error('Error loading conversation:', error);
+      // If conversation doesn't exist or was deleted, redirect to chat homepage
+      if (error.response?.status === 404 || error.message?.includes('not found')) {
+        router.replace("/Chat/ChatHomepage");
+        return;
+      }
+      
       // For testing purposes, add some sample messages with read status
       const sampleMessages = [
         {
@@ -493,6 +480,28 @@ const ChatScreen = () => {
             {(() => {
               // Get the other participant (not the current user)
               const otherParticipant = conversation?.participants?.find(p => p.id !== currentUser?.id) || conversation?.participants?.[0];
+              
+              // If no valid participant found, show a fallback
+              if (!otherParticipant || !otherParticipant.name) {
+                return (
+                  <>
+                    <View style={[styles.avatarCircle, { backgroundColor: "#95a5a6" }] }>
+                      <Ionicons name="person" size={20} color="#fff" />
+                    </View>
+                    <View style={{ marginLeft: 10 }}>
+                      <Text style={[styles.headerName, { color: textColor }]}>
+                        Chat
+                      </Text>
+                      <View style={styles.badgeContainer}>
+                        <View style={[styles.roleBadge, { backgroundColor: "#95a5a6" }]}>
+                          <Text style={styles.roleText}>Unknown</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </>
+                );
+              }
+              
               return (
                 <>
                   {otherParticipant?.profile_picture ? (
