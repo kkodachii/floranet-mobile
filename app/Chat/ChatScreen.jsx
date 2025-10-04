@@ -60,6 +60,21 @@ const ChatScreen = () => {
       const response = await messagingService.getConversation(conversationId);
       
       if (response.success) {
+        // Check if conversation has valid participants
+        if (!response.data.participants || response.data.participants.length === 0) {
+          Alert.alert(
+            'Conversation Not Available',
+            'This conversation is no longer available. The other participant may have been removed.',
+            [
+              {
+                text: 'OK',
+                onPress: () => router.push('/Chat/ChatHomepage')
+              }
+            ]
+          );
+          return;
+        }
+        
         setConversation(response.data);
         setMessages(response.data.messages || []);
         
@@ -68,6 +83,18 @@ const ChatScreen = () => {
         
         // Refresh conversation list to update unread counts
         // This will be handled by the parent component (ChatHomepage)
+      } else {
+        // Handle API error response
+        Alert.alert(
+          'Conversation Not Available',
+          response.message || 'This conversation is no longer available.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.push('/Chat/ChatHomepage')
+            }
+          ]
+        );
       }
     } catch (error) {
       // For testing purposes, add some sample messages with read status

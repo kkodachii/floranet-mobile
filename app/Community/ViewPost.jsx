@@ -131,6 +131,8 @@ const ViewPost = () => {
   const [comments, setComments] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [adminAccessDeniedModal, setAdminAccessDeniedModal] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
 
   // Load post data
   useEffect(() => {
@@ -139,19 +141,21 @@ const ViewPost = () => {
         setLoading(true);
         const postId = params.postId;
         
-        if (params.postData) {
-          // If post data was passed as JSON string
-          const parsedData = JSON.parse(params.postData);
-          setPostData(parsedData);
-        } else if (postId) {
-          // Load post from API
+        if (postId) {
+          // Always load fresh post data from API to get latest likes/comments
           const response = await communityService.getPost(postId);
           if (response.success) {
             setPostData(response.data);
+            // Set like status and count from API response
+            setIsLiked(response.data.is_liked || false);
+            setLikesCount(response.data.likes_count || 0);
           } else {
             Alert.alert("Error", "Failed to load post");
             router.back();
           }
+        } else {
+          Alert.alert("Error", "Post ID not found");
+          router.back();
         }
       } catch (error) {
         console.error("Error loading post:", error);
@@ -164,7 +168,7 @@ const ViewPost = () => {
 
     loadPost();
     loadCurrentUser();
-  }, [params.postId, params.postData]);
+  }, [params.postId]);
 
   // Load current user data
   const loadCurrentUser = async () => {
@@ -226,6 +230,21 @@ const ViewPost = () => {
     }));
   };
 
+  const togglePostLike = async () => {
+    if (!postData?.id) return;
+    
+    try {
+      const response = await communityService.toggleLike(postData.id);
+      if (response.success) {
+        setIsLiked(response.data.is_liked);
+        setLikesCount(response.data.likes_count);
+      }
+    } catch (error) {
+      console.error("Error toggling like:", error);
+      Alert.alert("Error", "Failed to update like. Please try again.");
+    }
+  };
+
 
   // Handle profile navigation
   const handleProfilePress = (postUserId, isAdmin = false) => {
@@ -277,15 +296,15 @@ const ViewPost = () => {
               <View style={styles.imageActionsRow}>
                 <TouchableOpacity
                   style={styles.imageActionRowItem}
-                  onPress={() => toggleImageLike(index)}
+                  onPress={togglePostLike}
                 >
                   <Ionicons
-                    name={isImageLiked ? "heart" : "heart-outline"}
+                    name={isLiked ? "heart" : "heart-outline"}
                     size={22}
-                    color={isImageLiked ? "#28942c" : textColor}
+                    color={isLiked ? "#28942c" : textColor}
                   />
                   <Text style={[styles.imageActionText, { color: textColor }]}>
-                    {isImageLiked ? 1 : 0}
+                    {likesCount}
                   </Text>
                 </TouchableOpacity>
 
@@ -299,7 +318,7 @@ const ViewPost = () => {
                     color={textColor}
                   />
                   <Text style={[styles.imageActionText, { color: textColor }]}>
-                    {comments.length}
+                    {postData?.comments_count || 0}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -476,6 +495,39 @@ const ViewPost = () => {
         {/* Image Gallery - Vertical */}
         {renderImageGallery()}
 
+        {/* Like and Comment buttons for posts without images */}
+        {(!postData?.images || postData.images.length === 0) && (
+          <View style={[styles.postActions, { backgroundColor: cardBackground, borderColor: borderColor }]}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={togglePostLike}
+            >
+              <Ionicons
+                name={isLiked ? "heart" : "heart-outline"}
+                size={20}
+                color={isLiked ? "#28942c" : textColor}
+              />
+              <Text style={[styles.actionText, { color: textColor }]}>
+                {likesCount} {likesCount === 1 ? 'Like' : 'Likes'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={openCommentSheet}
+            >
+              <Ionicons
+                name="chatbubble-outline"
+                size={20}
+                color={textColor}
+              />
+              <Text style={[styles.actionText, { color: textColor }]}>
+                {postData?.comments_count || 0} {postData?.comments_count === 1 ? 'Comment' : 'Comments'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
       </ScrollView>
 
       {/* Comments Bottom Sheet */}
@@ -485,21 +537,21 @@ const ViewPost = () => {
         visible={isCommentSheetVisible}
         onRequestClose={closeCommentSheet}
       >
-        <KeyboardAvoidingView
-          style={styles.bottomSheetOverlay}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
+        <View style={styles.bottomSheetOverlay}>
           <TouchableOpacity
             style={styles.bottomSheetOverlay}
             activeOpacity={1}
             onPress={closeCommentSheet}
+          />
+          <KeyboardAvoidingView
+            style={styles.commentBottomSheetContainer}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
           >
-            <TouchableOpacity
+            <View
               style={[
                 styles.commentBottomSheet,
                 { backgroundColor: cardBackground },
               ]}
-              activeOpacity={1}
             >
               <View style={styles.bottomSheetHeader}>
                 <Text style={[styles.bottomSheetTitle, { color: textColor }]}>
@@ -515,9 +567,9 @@ const ViewPost = () => {
                 onCommentAdd={handleCommentAdded}
                 postId={postData.id}
               />
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </KeyboardAvoidingView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* Admin Access Denied Modal */}
@@ -685,10 +737,13 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
+  commentBottomSheetContainer: {
+    height: "80%",
+  },
   commentBottomSheet: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    height: "80%",
+    flex: 1,
     paddingTop: 20,
   },
   bottomSheetHeader: {
@@ -758,5 +813,25 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  postActions: {
+    marginHorizontal: 16,
+    marginVertical: 8,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  actionText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

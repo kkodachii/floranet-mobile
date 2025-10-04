@@ -133,6 +133,12 @@ const CreatePost = () => {
       return;
     }
 
+    // For events, require an event banner
+    if (selectedCategory === "events" && images.length === 0) {
+      Alert.alert("Event Banner Required", "Please add an event banner to create an event post.");
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -362,9 +368,16 @@ const CreatePost = () => {
           {/* Image Picker */}
           <TouchableOpacity style={styles.uploadBtn} onPress={pickImages}>
             <Text style={styles.uploadBtnText}>
-              {selectedCategory === "events" ? "Add Event Banner" : "Add Photos"}
+              {selectedCategory === "events" ? "Add Event Banner (Required)" : "Add Photos"}
             </Text>
           </TouchableOpacity>
+
+          {/* Event Banner Requirement Notice */}
+          {selectedCategory === "events" && images.length === 0 && (
+            <Text style={[styles.requirementNotice, { color: '#ff6b6b' }]}>
+              ⚠️ Event banner is required to create an event post
+            </Text>
+          )}
 
           {/* Image Preview */}
           <View style={styles.imagePreviewContainer}>
@@ -378,16 +391,16 @@ const CreatePost = () => {
             style={[
               styles.button, 
               { 
-                opacity: (loading || !selectedCategory || (!caption.trim() && images.length === 0)) ? 0.6 : 1,
-                backgroundColor: (loading || !selectedCategory || (!caption.trim() && images.length === 0)) ? '#ccc' : '#28942c'
+                opacity: (loading || !selectedCategory || (!caption.trim() && images.length === 0) || (selectedCategory === "events" && images.length === 0)) ? 0.6 : 1,
+                backgroundColor: (loading || !selectedCategory || (!caption.trim() && images.length === 0) || (selectedCategory === "events" && images.length === 0)) ? '#ccc' : '#28942c'
               }
             ]} 
             onPress={handleSubmit}
-            disabled={loading || !selectedCategory || (!caption.trim() && images.length === 0)}
+            disabled={loading || !selectedCategory || (!caption.trim() && images.length === 0) || (selectedCategory === "events" && images.length === 0)}
           >
             <Text style={[
               styles.buttonText,
-              { color: (loading || !selectedCategory || (!caption.trim() && images.length === 0)) ? '#666' : '#fff' }
+              { color: (loading || !selectedCategory || (!caption.trim() && images.length === 0) || (selectedCategory === "events" && images.length === 0)) ? '#666' : '#fff' }
             ]}>
               {loading ? "Creating Post..." : "Submit Post"}
             </Text>
@@ -561,6 +574,13 @@ const styles = StyleSheet.create({
   uploadBtnText: {
     color: "#000",
     fontWeight: "500",
+  },
+  requirementNotice: {
+    fontSize: 12,
+    fontWeight: "500",
+    textAlign: "center",
+    marginTop: 8,
+    marginBottom: 8,
   },
   imagePreviewContainer: {
     flexDirection: "row",

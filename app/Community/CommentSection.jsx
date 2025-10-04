@@ -80,9 +80,11 @@ const CommentSection = ({ comments = [], onCommentAdd, postId }) => {
         renderItem={renderComment}
         keyExtractor={(item) => item.id.toString()}
         style={styles.commentsList}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         ListEmptyComponent={renderEmptyState}
-        contentContainerStyle={comments.length === 0 ? styles.emptyListContainer : null}
+        contentContainerStyle={comments.length === 0 ? styles.emptyListContainer : styles.commentsListContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
       />
       
       {/* Comment Input */}
@@ -132,6 +134,9 @@ const styles = StyleSheet.create({
   commentsList: {
     flex: 1,
     paddingHorizontal: 20,
+  },
+  commentsListContent: {
+    paddingBottom: 10,
   },
   emptyListContainer: {
     flex: 1,

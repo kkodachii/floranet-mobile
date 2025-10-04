@@ -439,12 +439,11 @@ const CommunityHomepage = () => {
     }
   };
   const goToViewPost = (postData) => {
-    // Navigate to ViewPost page with post data
+    // Navigate to ViewPost page with post ID only
     router.push({
       pathname: "/Community/ViewPost",
       params: {
         postId: postData.id.toString(),
-        postData: JSON.stringify(postData),
       },
     });
   };
@@ -894,55 +893,55 @@ const CommunityHomepage = () => {
           </View>
         </ScrollView>
 
-        {/* Comments Bottom Sheet Modal */}
-        <Modal
-          animationType="slide"
-          transparent
-          visible={isCommentSheetVisible}
-          onRequestClose={closeCommentSheet}
-        >
-          <KeyboardAvoidingView
-            style={styles.bottomSheetOverlay}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-          >
-            <TouchableOpacity
-              style={styles.bottomSheetOverlay}
-              activeOpacity={1}
-              onPress={closeCommentSheet}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.commentBottomSheet,
-                  { backgroundColor: cardBackground },
-                ]}
-                activeOpacity={1}
-              >
-                <View style={styles.bottomSheetHeader}>
-                  <Text style={[styles.bottomSheetTitle, { color: textColor }]}>
-                    Comments (
-                    {selectedPostIndex !== null
-                      ? (comments[selectedPostIndex] || []).length
-                      : 0}
-                    )
-                  </Text>
-                  <TouchableOpacity onPress={closeCommentSheet}>
-                    <Ionicons name="close" size={28} color={textColor} />
-                  </TouchableOpacity>
-                </View>
+         {/* Comments Bottom Sheet Modal */}
+         <Modal
+           animationType="slide"
+           transparent
+           visible={isCommentSheetVisible}
+           onRequestClose={closeCommentSheet}
+         >
+           <View style={styles.bottomSheetOverlay}>
+             <TouchableOpacity
+               style={styles.bottomSheetOverlay}
+               activeOpacity={1}
+               onPress={closeCommentSheet}
+             />
+             <KeyboardAvoidingView
+               style={styles.commentBottomSheetContainer}
+               behavior={Platform.OS === "ios" ? "padding" : "height"}
+             >
+               <View
+                 style={[
+                   styles.commentBottomSheet,
+                   { backgroundColor: cardBackground },
+                 ]}
+               >
+                 <View style={styles.bottomSheetHeader}>
+                   <Text style={[styles.bottomSheetTitle, { color: textColor }]}>
+                     Comments (
+                     {selectedPostIndex !== null
+                       ? (comments[selectedPostIndex] || []).length
+                       : 0}
+                     )
+                   </Text>
+                   <TouchableOpacity onPress={closeCommentSheet}>
+                     <Ionicons name="close" size={28} color={textColor} />
+                   </TouchableOpacity>
+                 </View>
 
-                <CommentSection
-                  comments={
-                    selectedPostIndex !== null
-                      ? comments[selectedPostIndex] || []
-                      : []
-                  }
-                  onCommentAdd={handleCommentAdded}
-                  postId={selectedPostIndex}
-                />
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </KeyboardAvoidingView>
-        </Modal>
+                 <CommentSection
+                   comments={
+                     selectedPostIndex !== null
+                       ? comments[selectedPostIndex] || []
+                       : []
+                   }
+                   onCommentAdd={handleCommentAdded}
+                   postId={selectedPostIndex}
+                 />
+               </View>
+             </KeyboardAvoidingView>
+           </View>
+         </Modal>
 
         {/* Navbar */}
         <View
@@ -1196,18 +1195,21 @@ const styles = StyleSheet.create({
 
   iconGroup: { flexDirection: "row", alignItems: "center" },
 
-  bottomSheetOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
-  commentBottomSheet: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: "80%",
-    paddingTop: 20,
-  },
+   bottomSheetOverlay: {
+     flex: 1,
+     backgroundColor: "rgba(0,0,0,0.5)",
+     justifyContent: "flex-end",
+   },
+   commentBottomSheetContainer: {
+     height: "80%",
+   },
+   commentBottomSheet: {
+     backgroundColor: "#fff",
+     borderTopLeftRadius: 20,
+     borderTopRightRadius: 20,
+     flex: 1,
+     paddingTop: 20,
+   },
   bottomSheetHeader: {
     flexDirection: "row",
     justifyContent: "space-between",

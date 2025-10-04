@@ -19,7 +19,6 @@ const categories = [
   { key: "all", label: "All" },
   { key: "unread", label: "Unread" },
   { key: "general", label: "General" },
-  { key: "emergency", label: "Emergency" },
   { key: "waste", label: "Waste" },
 ];
 
@@ -87,13 +86,35 @@ export default function Notifications() {
     }
   };
 
-  const clearAll = () => setNotifications([]);
-
   // 🔹 Filter tabs
   const filtered = useMemo(() => {
     if (active === "all") return notifications;
     if (active === "unread") return notifications.filter((n) => !n.read_at);
-    return notifications.filter((n) => n.type === active);
+    
+    // Filter by notification type
+    return notifications.filter((n) => {
+      const notificationType = n.data?.type;
+      
+      if (active === "waste") {
+        // Check for waste-related notifications
+        return notificationType === "waste" || 
+               notificationType === "garbage" ||
+               n.data?.title?.toLowerCase().includes("waste") ||
+               n.data?.title?.toLowerCase().includes("garbage") ||
+               n.data?.message?.toLowerCase().includes("waste") ||
+               n.data?.message?.toLowerCase().includes("garbage");
+      } else if (active === "general") {
+        // All other notifications go to general
+        return notificationType !== "waste" && 
+               notificationType !== "garbage" &&
+               !n.data?.title?.toLowerCase().includes("waste") &&
+               !n.data?.title?.toLowerCase().includes("garbage") &&
+               !n.data?.message?.toLowerCase().includes("waste") &&
+               !n.data?.message?.toLowerCase().includes("garbage");
+      }
+      
+      return false;
+    });
   }, [notifications, active]);
 
   // 🔹 Render item
@@ -168,18 +189,6 @@ export default function Notifications() {
               <Ionicons name="checkmark-done" size={16} color="#28942c" />
               <Text style={[styles.actionLabel, { color: colors.text }]}>
                 Mark all read
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={clearAll}
-              style={[
-                styles.actionBtn,
-                { backgroundColor: theme === "light" ? "#f1f3f5" : "#1F2633" },
-              ]}
-            >
-              <Ionicons name="trash-outline" size={16} color="#E53935" />
-              <Text style={[styles.actionLabel, { color: colors.text }]}>
-                Clear
               </Text>
             </TouchableOpacity>
           </View>

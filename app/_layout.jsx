@@ -80,10 +80,18 @@ const handleNotificationNavigation = (notification, router) => {
       const conversationId = data.conversation_id || data.conversationId;
       if (conversationId) {
         console.log("Navigating to conversation:", conversationId);
+        // Navigate to ChatHomepage first, then to the specific conversation
+        // This allows the app to handle invalid conversations gracefully
         router.push({
-          pathname: "/Chat/ChatScreen",
-          params: { conversationId: conversationId.toString() },
+          pathname: "/Chat/ChatHomepage",
         });
+        // Small delay to ensure navigation completes before second navigation
+        setTimeout(() => {
+          router.push({
+            pathname: "/Chat/ChatScreen",
+            params: { conversationId: conversationId.toString() },
+          });
+        }, 100);
         return;
       }
     }

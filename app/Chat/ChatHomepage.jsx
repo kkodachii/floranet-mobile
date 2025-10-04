@@ -401,6 +401,11 @@ const ChatHomepage = () => {
     const otherParticipant = item.other_participant || item.participants?.[0] || {};
     const lastMessage = item.last_message;
     
+    // Skip rendering if no valid participant (deleted user)
+    if (!otherParticipant || !otherParticipant.name) {
+      return null;
+    }
+    
     return (
       <TouchableOpacity
         style={[styles.chatItem, { backgroundColor: cardBg, borderColor: borderColor }]}
