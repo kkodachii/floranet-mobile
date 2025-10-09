@@ -506,9 +506,9 @@ const ChatScreen = () => {
               );
             })()}
           </View>
-          <TouchableOpacity style={styles.moreButton}>
+          {/* <TouchableOpacity style={styles.moreButton}>
             <Ionicons name="ellipsis-vertical" size={22} color={textColor} />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         {/* Messages */}
@@ -535,9 +535,9 @@ const ChatScreen = () => {
           ]}
         >
           <View style={styles.inputRow}>
-            <TouchableOpacity style={styles.attachButton}>
+            {/* <TouchableOpacity style={styles.attachButton}>
               <Ionicons name="add" size={24} color={timeColor} />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             <View style={[styles.inputWrapper, { backgroundColor: chatBg, borderColor: borderColor }] }>
               <TextInput
                 style={[styles.textInput, { color: textColor }]}
