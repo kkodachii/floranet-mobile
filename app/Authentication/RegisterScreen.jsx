@@ -498,7 +498,21 @@ const RegisterScreen = () => {
             placeholderTextColor={colors.text + "60"}
             style={[styles.input, { color: colors.text }]}
             value={contactNumber}
-            onChangeText={setContactNumber}
+            onChangeText={(text) => {
+              const digitsOnly = text.replace(/[^0-9]/g, "");
+
+              if (digitsOnly.length > 11) return;
+
+              if (digitsOnly.length >= 2 && !digitsOnly.startsWith("09")) {
+                Alert.alert(
+                  "Invalid Number",
+                  "Please enter a valid Philippine mobile number."
+                );
+                return;
+              }
+
+              setContactNumber(digitsOnly);
+            }}
             keyboardType="phone-pad"
           />
         </View>
