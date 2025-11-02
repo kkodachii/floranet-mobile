@@ -58,7 +58,7 @@ const encodeBase64 = (str) => {
 };
 
 // Generate QR Ph code
-export const generateQRPhCode = async (amount, description = 'Payment', referenceNumber) => {
+export const generateQRPhCode = async (amount, description = 'Monthly Collection', referenceNumber) => {
   try {
     const response = await fetch('https://api.paymongo.com/v1/qrph/generate', {
       method: 'POST',
@@ -109,7 +109,7 @@ export const generateQRPhCode = async (amount, description = 'Payment', referenc
 };
 
 // Create a Payment Intent (amount in pesos)
-export const createPaymentIntent = async (amount, description = 'Payment') => {
+export const createPaymentIntent = async (amount, description = 'Monthly Collection') => {
   try {
     const response = await fetch('https://api.paymongo.com/v1/payment_intents', {
       method: 'POST',
