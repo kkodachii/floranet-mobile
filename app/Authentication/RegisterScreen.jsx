@@ -18,6 +18,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { authService } from "../../services/api";
+import { useFocusEffect } from "@react-navigation/native";
 
 const RegisterScreen = () => {
   const router = useRouter();
@@ -43,6 +44,7 @@ const RegisterScreen = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [residentId, setResidentId] = useState("");
+  const [hasViewedTerms, setHasViewedTerms] = useState(false);
 
   // Street options
   const streetOptions = [
@@ -438,6 +440,17 @@ const RegisterScreen = () => {
     </View>
   );
 
+  useFocusEffect(
+    React.useCallback(() => {
+      // Check if user accepted terms from the Terms screen
+      if (global.termsAccepted) {
+        setAcceptedTerms(true);
+        setHasViewedTerms(true);
+        global.termsAccepted = false; // Reset the flag
+      }
+    }, [])
+  );
+
   const renderStep2 = () => (
     <View style={styles.stepContainer}>
       <View style={styles.stepHeader}>
@@ -784,11 +797,19 @@ const RegisterScreen = () => {
       <View style={styles.termsContainer}>
         <TouchableOpacity
           style={styles.checkboxContainer}
-          onPress={() => setAcceptedTerms(!acceptedTerms)}
-          activeOpacity={1.0}
+          onPress={() => {
+            if (hasViewedTerms) {
+              setAcceptedTerms(!acceptedTerms);
+            }
+          }}
+          activeOpacity={hasViewedTerms ? 1.0 : 0.5}
         >
           <View
-            style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}
+            style={[
+              styles.checkbox,
+              acceptedTerms && styles.checkboxChecked,
+              !hasViewedTerms && { opacity: 0.5 }, // Visual indicator that it's disabled
+            ]}
           >
             {acceptedTerms && (
               <Ionicons name="checkmark" size={16} color="#fff" />
@@ -798,7 +819,13 @@ const RegisterScreen = () => {
             I agree to the{" "}
             <Text
               style={styles.termsLink}
-              onPress={() => router.push("/Authentication/TermsCondition")}
+              onPress={() => {
+                setHasViewedTerms(true);
+                router.push({
+                  pathname: "/Authentication/TermsCondition",
+                  params: { onAccept: "true" },
+                });
+              }}
             >
               Terms and Conditions
             </Text>

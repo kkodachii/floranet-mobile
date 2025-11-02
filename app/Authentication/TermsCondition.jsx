@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,16 +9,41 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../Theme/ThemeProvider";
 
 const TermsAndCondition = () => {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { colors, theme } = useTheme();
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
+
+  const handleScroll = (event) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const paddingToBottom = 20; // Threshold for detecting bottom
+    const isAtBottom =
+      layoutMeasurement.height + contentOffset.y >=
+      contentSize.height - paddingToBottom;
+
+    if (isAtBottom && !hasScrolledToBottom) {
+      setHasScrolledToBottom(true);
+    }
+  };
+
+  const handleUnderstandPress = () => {
+    if (hasScrolledToBottom) {
+      // Call the onAccept callback if provided (from registration screen)
+      if (params.onAccept) {
+        // Store that user accepted terms
+        global.termsAccepted = true;
+      }
+      router.back();
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -27,24 +52,27 @@ const TermsAndCondition = () => {
         barStyle={theme === "light" ? "dark-content" : "light-content"}
         translucent={false}
       />
-      
+
       <LinearGradient
-        colors={theme === "light" 
-          ? ["#ffffff", "#f8f9fa", "#e9ecef"] 
-          : ["#14181F", "#1F2633", "#27313F"]
+        colors={
+          theme === "light"
+            ? ["#ffffff", "#f8f9fa", "#e9ecef"]
+            : ["#14181F", "#1F2633", "#27313F"]
         }
         style={styles.gradient}
       >
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.keyboardView}
         >
           {/* Content */}
-          <ScrollView 
+          <ScrollView
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
           >
             {/* Icon */}
             <View style={styles.iconContainer}>
@@ -56,20 +84,28 @@ const TermsAndCondition = () => {
               </LinearGradient>
             </View>
 
-            <Text style={[styles.title, { color: colors.text }]}>Terms and Agreement</Text>
+            <Text style={[styles.title, { color: colors.text }]}>
+              Terms and Agreement
+            </Text>
             <Text style={[styles.subtitle, { color: colors.text }]}>
-              By using the FloraNet system, you agree to the following terms and conditions
+              By using the FloraNet system, you agree to the following terms and
+              conditions
             </Text>
 
             {/* Terms Content */}
-            <View style={[styles.termsCard, { 
-              backgroundColor: theme === "light" ? "#ffffff" : "#1F2633",
-              shadowColor: theme === "light" ? "#000" : "transparent",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: theme === "light" ? 0.1 : 0.1,
-              shadowRadius: theme === "light" ? 8 : 8,
-              elevation: theme === "light" ? 8 : 8,
-            }]}>
+            <View
+              style={[
+                styles.termsCard,
+                {
+                  backgroundColor: theme === "light" ? "#ffffff" : "#1F2633",
+                  shadowColor: theme === "light" ? "#000" : "transparent",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: theme === "light" ? 0.1 : 0.1,
+                  shadowRadius: theme === "light" ? 8 : 8,
+                  elevation: theme === "light" ? 8 : 8,
+                },
+              ]}
+            >
               <Section
                 title="Use of Service"
                 content="FloraNet is intended for use by registered residents and administrators of the subdivision community. It must be used for lawful and authorized purposes only."
@@ -106,23 +142,46 @@ const TermsAndCondition = () => {
               />
 
               <View style={styles.finalNote}>
-                <Ionicons name="information-circle-outline" size={20} color="#28942c" />
+                <Ionicons
+                  name="information-circle-outline"
+                  size={20}
+                  color="#28942c"
+                />
                 <Text style={[styles.finalText, { color: colors.text }]}>
-                  If you do not agree with any part of these terms, please discontinue use of the FloraNet system.
+                  If you do not agree with any part of these terms, please
+                  discontinue use of the FloraNet system.
                 </Text>
               </View>
             </View>
+
+            {/* Scroll Indicator */}
+            {!hasScrolledToBottom && (
+              <View style={styles.scrollIndicator}>
+                <Ionicons name="arrow-down" size={20} color="#28942c" />
+                <Text style={[styles.scrollText, { color: colors.text }]}>
+                  Scroll down to continue
+                </Text>
+              </View>
+            )}
           </ScrollView>
 
           {/* Button */}
           <View style={styles.buttonContainer}>
             <TouchableOpacity
-              style={styles.backButtonStyle}
-              onPress={() => router.back()}
+              style={[
+                styles.backButtonStyle,
+                !hasScrolledToBottom && styles.disabledButton,
+              ]}
+              onPress={handleUnderstandPress}
+              disabled={!hasScrolledToBottom}
+              activeOpacity={hasScrolledToBottom ? 0.8 : 1}
             >
               <LinearGradient
                 colors={["#28942c", "#2d9d31", "#32a636"]}
-                style={styles.gradientButton}
+                style={[
+                  styles.gradientButton,
+                  !hasScrolledToBottom && { opacity: 0.4 },
+                ]}
               >
                 <Text style={styles.buttonText}>I Understand</Text>
                 <Ionicons name="checkmark-circle" size={20} color="#fff" />
@@ -138,7 +197,12 @@ const TermsAndCondition = () => {
 const Section = ({ title, content, color, icon }) => (
   <View style={styles.sectionContainer}>
     <View style={styles.sectionHeader}>
-      <Ionicons name={icon} size={20} color="#28942c" style={styles.sectionIcon} />
+      <Ionicons
+        name={icon}
+        size={20}
+        color="#28942c"
+        style={styles.sectionIcon}
+      />
       <Text style={[styles.sectionTitle, { color }]}>{title}</Text>
     </View>
     <Text style={[styles.sectionContent, { color }]}>{content}</Text>
@@ -236,10 +300,20 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontWeight: "500",
   },
+  scrollIndicator: {
+    alignItems: "center",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  scrollText: {
+    fontSize: 14,
+    marginTop: 4,
+    opacity: 0.6,
+  },
   buttonContainer: {
     paddingHorizontal: 20,
     paddingVertical: 20,
-    paddingBottom: 40, // Extra padding to avoid navigation bar
+    paddingBottom: 40,
   },
   backButtonStyle: {
     borderRadius: 12,
@@ -252,6 +326,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  disabledButton: {
+    shadowOpacity: 0.1,
+    elevation: 2,
   },
   gradientButton: {
     flexDirection: "row",
