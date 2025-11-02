@@ -30,7 +30,9 @@ const RegisterScreen = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const [homeownerName, setHomeownerName] = useState("");
-  const [residentName, setResidentName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [middleName, setMiddleName] = useState("");
   const [block, setBlock] = useState("");
   const [lot, setLot] = useState("");
   const [street, setStreet] = useState("");
@@ -78,10 +80,10 @@ const RegisterScreen = () => {
 
   const nextStep = () => {
     if (step === 1) {
-      if (!homeownerName || !residentName || !residentId) {
+      if (!homeownerName || !firstName || !lastName || !residentId) {
         Alert.alert(
           "Error",
-          "Please wait for Resident ID to load and fill in all fields before proceeding."
+          "Please wait for Resident ID to load and fill in all required fields before proceeding."
         );
         return;
       }
@@ -99,7 +101,8 @@ const RegisterScreen = () => {
   const handleRegister = async () => {
     if (
       !homeownerName ||
-      !residentName ||
+      !firstName ||
+      !lastName ||
       !residentId ||
       !block ||
       !lot ||
@@ -109,7 +112,7 @@ const RegisterScreen = () => {
       !password ||
       !confirmPassword
     ) {
-      Alert.alert("Error", "Please fill in all fields.");
+      Alert.alert("Error", "Please fill in all required fields.");
       return;
     }
 
@@ -155,7 +158,9 @@ const RegisterScreen = () => {
 
     try {
       const userData = {
-        name: residentName,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        middle_name: middleName.trim() || null,
         email: email,
         password: password,
         password_confirmation: confirmPassword,
@@ -222,7 +227,7 @@ const RegisterScreen = () => {
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>
-          Homeowner Name
+          Homeowner Name <Text style={{ color: "#FF0000" }}>*</Text>
         </Text>
         <View
           style={[
@@ -264,7 +269,7 @@ const RegisterScreen = () => {
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>
-          Resident Name
+          First Name <Text style={{ color: "#FF0000" }}>*</Text>
         </Text>
         <View
           style={[
@@ -290,15 +295,99 @@ const RegisterScreen = () => {
           />
           <TextInput
             autoCapitalize="words"
-            placeholder="Enter Resident Name"
+            placeholder="Enter First Name"
             placeholderTextColor={colors.text + "60"}
             style={[styles.input, { color: colors.text }]}
-            value={residentName}
+            value={firstName}
             onChangeText={(text) => {
               const titleCase = text
                 .toLowerCase()
                 .replace(/\b\w/g, (char) => char.toUpperCase());
-              setResidentName(titleCase);
+              setFirstName(titleCase);
+            }}
+          />
+        </View>
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={[styles.label, { color: colors.text }]}>
+          Last Name <Text style={{ color: "#FF0000" }}>*</Text>
+        </Text>
+        <View
+          style={[
+            styles.inputWrapper,
+            {
+              backgroundColor:
+                theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
+              borderColor:
+                theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+              shadowColor: theme === "light" ? "#000" : "transparent",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: theme === "light" ? 0.1 : 0,
+              shadowRadius: theme === "light" ? 4 : 0,
+              elevation: theme === "light" ? 2 : 0,
+            },
+          ]}
+        >
+          <Ionicons
+            name="person-outline"
+            size={20}
+            color={colors.text + "80"}
+            style={styles.inputIcon}
+          />
+          <TextInput
+            autoCapitalize="words"
+            placeholder="Enter Last Name"
+            placeholderTextColor={colors.text + "60"}
+            style={[styles.input, { color: colors.text }]}
+            value={lastName}
+            onChangeText={(text) => {
+              const titleCase = text
+                .toLowerCase()
+                .replace(/\b\w/g, (char) => char.toUpperCase());
+              setLastName(titleCase);
+            }}
+          />
+        </View>
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={[styles.label, { color: colors.text }]}>
+          Middle Name <Text style={{ color: colors.text + "80", fontSize: 12 }}>(Optional)</Text>
+        </Text>
+        <View
+          style={[
+            styles.inputWrapper,
+            {
+              backgroundColor:
+                theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.1)",
+              borderColor:
+                theme === "light" ? "#e1e5e9" : "rgba(255, 255, 255, 0.2)",
+              shadowColor: theme === "light" ? "#000" : "transparent",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: theme === "light" ? 0.1 : 0,
+              shadowRadius: theme === "light" ? 4 : 0,
+              elevation: theme === "light" ? 2 : 0,
+            },
+          ]}
+        >
+          <Ionicons
+            name="person-outline"
+            size={20}
+            color={colors.text + "80"}
+            style={styles.inputIcon}
+          />
+          <TextInput
+            autoCapitalize="words"
+            placeholder="Enter Middle Name (Optional)"
+            placeholderTextColor={colors.text + "60"}
+            style={[styles.input, { color: colors.text }]}
+            value={middleName}
+            onChangeText={(text) => {
+              const titleCase = text
+                .toLowerCase()
+                .replace(/\b\w/g, (char) => char.toUpperCase());
+              setMiddleName(titleCase);
             }}
           />
         </View>
@@ -362,7 +451,7 @@ const RegisterScreen = () => {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Block</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Block <Text style={{ color: "#FF0000" }}>*</Text></Text>
         <View
           style={[
             styles.inputWrapper,
@@ -396,7 +485,7 @@ const RegisterScreen = () => {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Lot</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Lot <Text style={{ color: "#FF0000" }}>*</Text></Text>
         <View
           style={[
             styles.inputWrapper,
@@ -430,7 +519,7 @@ const RegisterScreen = () => {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Street</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Street <Text style={{ color: "#FF0000" }}>*</Text></Text>
         <View
           style={[
             styles.pickerWrapper,
@@ -469,7 +558,7 @@ const RegisterScreen = () => {
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>
-          Contact Number
+          Contact Number <Text style={{ color: "#FF0000" }}>*</Text>
         </Text>
         <View
           style={[
@@ -562,7 +651,7 @@ const RegisterScreen = () => {
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>
-          Email Address
+          Email Address <Text style={{ color: "#FF0000" }}>*</Text>
         </Text>
         <View
           style={[
@@ -599,7 +688,7 @@ const RegisterScreen = () => {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>Password</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Password <Text style={{ color: "#FF0000" }}>*</Text></Text>
         <View
           style={[
             styles.inputWrapper,
@@ -646,7 +735,7 @@ const RegisterScreen = () => {
 
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.text }]}>
-          Confirm Password
+          Confirm Password <Text style={{ color: "#FF0000" }}>*</Text>
         </Text>
         <View
           style={[

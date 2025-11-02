@@ -55,8 +55,27 @@ const MainHomepage = () => {
     }
   };
 
-  const displayName = user?.name || "Resident";
+  // Format name as "lastname firstname middlename"
+  const formatDisplayName = (user) => {
+    // Use formatted_name from API if available
+    if (user?.formatted_name) {
+      return user.formatted_name;
+    }
+    // Otherwise format from individual fields
+    const parts = [];
+    if (user?.last_name) parts.push(user.last_name);
+    if (user?.first_name) parts.push(user.first_name);
+    if (user?.middle_name) parts.push(user.middle_name);
+    // Fallback to old name field
+    if (parts.length === 0 && user?.name) {
+      return user.name;
+    }
+    return parts.join(' ') || "Resident";
+  };
+
+  const displayName = formatDisplayName(user);
   const houseNumber = user?.house?.house_number || "-";
+  const street = user?.house?.street || "-";
   const avatarUri = user?.profile_picture
     ? buildStorageUrl(user.profile_picture)
     : null;
@@ -88,6 +107,7 @@ const MainHomepage = () => {
           <AccountDetails
             residentName={displayName}
             HouseNumber={houseNumber}
+            street={street}
             avatarUri={avatarUri}
             cardBackground={cardBackground}
             textColor={textColor}
@@ -147,6 +167,7 @@ const MainHomepage = () => {
 
 const AccountDetails = ({
   HouseNumber,
+  street,
   residentName,
   avatarUri,
   cardBackground,
@@ -174,6 +195,7 @@ const AccountDetails = ({
         {residentName}
       </Text>
       <Text style={styles.residentId}>House Number: {HouseNumber}</Text>
+      <Text style={styles.streetText}>Street: {street}</Text>
     </View>
   </View>
 );
@@ -275,6 +297,11 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   residentId: {
+    color: "#28942c",
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  streetText: {
     color: "#28942c",
     fontSize: 16,
     marginBottom: 15,

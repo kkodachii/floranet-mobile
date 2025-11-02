@@ -18,7 +18,6 @@ const Complaints = () => {
   const [complaintTitle, setComplaintTitle] = useState('');
   const [complaintDescription, setComplaintDescription] = useState('');
   const [complaintCategory, setComplaintCategory] = useState('');
-  const [complaintPriority, setComplaintPriority] = useState('');
   const [followUpMessage, setFollowUpMessage] = useState('');
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [selectedComplaintId, setSelectedComplaintId] = useState(null);
@@ -49,10 +48,9 @@ const Complaints = () => {
 
   const mapStatusToUi = (status) => {
     switch (status) {
-      case 'open': return 'pending';
+      case 'pending': return 'pending';
       case 'in_progress': return 'processing';
-      case 'resolved':
-      case 'closed': return 'completed';
+      case 'resolved': return 'completed';
       default: return 'pending';
     }
   };
@@ -155,7 +153,7 @@ const Complaints = () => {
   };
 
   const handleSubmitComplaint = async () => {
-    if (!complaintTitle.trim() || !complaintDescription.trim() || !complaintCategory || !complaintPriority || !currentUser?.id) {
+    if (!complaintTitle.trim() || !complaintDescription.trim() || !complaintCategory || !currentUser?.id) {
       return;
     }
 
@@ -168,9 +166,8 @@ const Complaints = () => {
         resident_id: currentUser.id,
         complained_at: new Date().toISOString(),
         complained_title: complaintTitle.trim(),
-        priority: complaintPriority.toLowerCase(),
         description: complaintDescription.trim(),
-        status: 'open',
+        status: 'pending',
       };
       const created = await complaintsService.create(payload);
       const mapped = mapComplaint(created?.data ? created.data : created);
@@ -178,7 +175,6 @@ const Complaints = () => {
       setComplaintTitle('');
       setComplaintDescription('');
       setComplaintCategory('');
-      setComplaintPriority('');
       setActiveTab('ongoing');
       setSuccessModalText('Your complaint has been submitted successfully.');
       setSuccessModalVisible(true);
@@ -190,7 +186,6 @@ const Complaints = () => {
       setComplaintTitle('');
       setComplaintDescription('');
       setComplaintCategory('');
-      setComplaintPriority('');
       setActiveTab('ongoing');
       setSuccessModalText('Your complaint has been submitted successfully.');
       setSuccessModalVisible(true);
@@ -342,32 +337,6 @@ const Complaints = () => {
                 </View>
 
                 <View style={styles.inputContainer}>
-                  <Text style={[styles.inputLabel, { color: textColor }]}>Priority</Text>
-                  <View style={styles.prioritiesContainer}>
-                    {priorities.map((priority) => (
-                      <TouchableOpacity
-                        key={priority.id}
-                        style={[
-                          styles.priorityButton,
-                          {
-                            backgroundColor: complaintPriority === priority.name ? priority.color : 'transparent',
-                            borderColor: complaintPriority === priority.name ? priority.color : priority.color,
-                          }
-                        ]}
-                        onPress={() => setComplaintPriority(priority.name)}
-                      >
-                        <Text style={[
-                          styles.priorityButtonText,
-                          { color: complaintPriority === priority.name ? '#fff' : priority.color }
-                        ]}>
-                          {priority.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                <View style={styles.inputContainer}>
                   <Text style={[styles.inputLabel, { color: textColor }]}>Description</Text>
                   <TextInput
                     style={[styles.textArea, { 
@@ -388,10 +357,10 @@ const Complaints = () => {
                 <TouchableOpacity
                   style={[
                     styles.submitButton,
-                    { opacity: complaintTitle && complaintDescription && complaintCategory && complaintPriority ? 1 : 0.5 }
+                    { opacity: complaintTitle && complaintDescription && complaintCategory ? 1 : 0.5 }
                   ]}
                   onPress={handleSubmitComplaint}
-                  disabled={!complaintTitle || !complaintDescription || !complaintCategory || !complaintPriority || isLoading}
+                  disabled={!complaintTitle || !complaintDescription || !complaintCategory || isLoading}
                 >
                   <Text style={styles.submitButtonText}>Submit Complaint</Text>
                 </TouchableOpacity>
@@ -403,7 +372,7 @@ const Complaints = () => {
                 </View>
                 <Text style={[styles.infoText, { color: theme === "light" ? '#555' : '#ccc' }]}>
                   • Provide a clear and specific title for your complaint{'\n'}
-                  • Choose the appropriate category and priority level{'\n'}
+                  • Choose the appropriate category{'\n'}
                   • Include relevant details and any supporting information{'\n'}
                   • Complaints are reviewed within 24-48 hours{'\n'}
                   • You will be notified of any updates or resolutions
@@ -437,10 +406,12 @@ const Complaints = () => {
                           <Text style={[styles.detailLabel, { color: theme === "light" ? '#666' : '#aaa' }]}>Category</Text>
                           <Text style={[styles.detailValue, { color: textColor }]}>{item.category}</Text>
                         </View>
-                        <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}>
-                          <Text style={[styles.detailLabel, { color: theme === "light" ? '#666' : '#aaa' }]}>Priority</Text>
-                          <Text style={[styles.detailValue, { color: getPriorityColor(item.priority) }]}>{item.priority}</Text>
-                        </View>
+                        {item.priority && item.priority.toLowerCase() !== 'none' && (
+                          <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}>
+                            <Text style={[styles.detailLabel, { color: theme === "light" ? '#666' : '#aaa' }]}>Priority</Text>
+                            <Text style={[styles.detailValue, { color: getPriorityColor(item.priority) }]}>{item.priority}</Text>
+                          </View>
+                        )}
                         <View style={[styles.detailItem, { backgroundColor: theme === "light" ? '#f8f9fa' : '#2A3441' }]}>
                           <Text style={[styles.detailLabel, { color: theme === "light" ? '#666' : '#aaa' }]}>Date</Text>
                           <Text style={[styles.detailValue, { color: textColor }]}>{item.date}</Text>

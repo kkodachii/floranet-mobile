@@ -121,7 +121,7 @@ const Payment = () => {
 
     setIsLoading(true);
     try {
-      const description = `Floranet Payment - ${currentDue.street || 'Monthly Due'} - ${new Date(currentDue.year, currentDue.month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
+      const description = 'Monthly Collection';
       
       const metadata = {
         resident_id: currentDue.resident_id || 'unknown',
