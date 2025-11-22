@@ -19,7 +19,13 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { Ionicons } from "@expo/vector-icons";
-import { authStorage, authService, buildStorageUrl, communityService, vendorService } from "../../services/api";
+import {
+  authStorage,
+  authService,
+  buildStorageUrl,
+  communityService,
+  vendorService,
+} from "../../services/api";
 import * as ImagePicker from "expo-image-picker";
 import CommentSection from "../Community/CommentSection";
 import { useFocusEffect } from "@react-navigation/native";
@@ -88,22 +94,26 @@ const MainProfile = () => {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState("");
   const [selectedPost, setSelectedPost] = useState(null);
-  const [editCaption, setEditCaption] = useState('');
+  const [editCaption, setEditCaption] = useState("");
   const [likedPosts, setLikedPosts] = useState({});
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [comments, setComments] = useState({});
   const [loadingComments, setLoadingComments] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [editBusinessModalVisible, setEditBusinessModalVisible] = useState(false);
-  const [becomeVendorModalVisible, setBecomeVendorModalVisible] = useState(false);
-  const [businessName, setBusinessName] = useState('');
-  const [vendorRequestModalVisible, setVendorRequestModalVisible] = useState(false);
-  const [vendorRequestBusinessName, setVendorRequestBusinessName] = useState('');
+  const [editBusinessModalVisible, setEditBusinessModalVisible] =
+    useState(false);
+  const [becomeVendorModalVisible, setBecomeVendorModalVisible] =
+    useState(false);
+  const [businessName, setBusinessName] = useState("");
+  const [vendorRequestModalVisible, setVendorRequestModalVisible] =
+    useState(false);
+  const [vendorRequestBusinessName, setVendorRequestBusinessName] =
+    useState("");
   const [hasVendorRequest, setHasVendorRequest] = useState(false);
   const [vendorRequestStatus, setVendorRequestStatus] = useState(null);
-  const [pendingBusinessName, setPendingBusinessName] = useState('');
+  const [pendingBusinessName, setPendingBusinessName] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -115,13 +125,13 @@ const MainProfile = () => {
         const fresh = await authService.getProfileCached({ force: true });
         setUser(fresh);
         await authStorage.save({ token: null, user: fresh });
-        
-        console.log('User vendor data:', fresh?.vendor);
-        
+
+        console.log("User vendor data:", fresh?.vendor);
+
         // Check vendor request status
         await checkVendorRequestStatus();
       } catch (error) {
-        console.error('Error loading user data:', error);
+        console.error("Error loading user data:", error);
       }
     })();
   }, []);
@@ -129,51 +139,58 @@ const MainProfile = () => {
   // Load user's posts
   const loadUserPosts = async (page = 1, append = false) => {
     if (!user?.id) return;
-    
+
     try {
       if (page === 1) {
         setLoadingPosts(true);
       } else {
         setLoadingMorePosts(true);
       }
-      
-      const response = await communityService.getPosts({ 
-        user_id: user.id, 
+
+      const response = await communityService.getPosts({
+        user_id: user.id,
         page,
-        per_page: 20
+        per_page: 20,
       });
-      
-      console.log('User Posts API Response:', { 
-        success: response.success, 
+
+      console.log("User Posts API Response:", {
+        success: response.success,
         postsCount: response.data?.data?.length || 0,
         pagination: response.data?.links,
         currentPage: page,
         append,
-        userId: user.id
+        userId: user.id,
       });
-      
+
       if (response.success) {
         const postsData = response.data.data || [];
         const paginationData = response.data.links || {};
-        
+
         if (append) {
-          setUserPosts(prev => [...prev, ...postsData]);
+          setUserPosts((prev) => [...prev, ...postsData]);
         } else {
           setUserPosts(postsData);
         }
-        
+
         // Check if there are more posts
         const hasMore = paginationData.next !== null && postsData.length > 0;
-        console.log('Has more user posts:', hasMore, 'Next URL:', paginationData.next, 'Posts received:', postsData.length);
+        console.log(
+          "Has more user posts:",
+          hasMore,
+          "Next URL:",
+          paginationData.next,
+          "Posts received:",
+          postsData.length
+        );
         setHasMoreUserPosts(hasMore);
-        
+
         // If no posts received and not appending, set hasMoreUserPosts to false
         if (postsData.length === 0 && !append) {
           setHasMoreUserPosts(false);
         }
       }
     } catch (error) {
-      console.error('Error loading user posts:', error);
+      console.error("Error loading user posts:", error);
     } finally {
       setLoadingPosts(false);
       setLoadingMorePosts(false);
@@ -191,10 +208,15 @@ const MainProfile = () => {
 
   // Load more user posts
   const loadMoreUserPosts = async () => {
-    console.log('loadMoreUserPosts called:', { loadingMorePosts, hasMoreUserPosts, currentPostsPage, userId: user?.id });
+    console.log("loadMoreUserPosts called:", {
+      loadingMorePosts,
+      hasMoreUserPosts,
+      currentPostsPage,
+      userId: user?.id,
+    });
     if (!loadingMorePosts && hasMoreUserPosts && user?.id) {
       const nextPage = currentPostsPage + 1;
-      console.log('Loading more user posts, next page:', nextPage);
+      console.log("Loading more user posts, next page:", nextPage);
       setCurrentPostsPage(nextPage);
       await loadUserPosts(nextPage, true);
     }
@@ -220,18 +242,18 @@ const MainProfile = () => {
       const freshUser = await authService.getProfileCached({ force: true });
       setUser(freshUser);
       await authStorage.save({ token: null, user: freshUser });
-      
+
       // Refresh posts
       if (freshUser?.id) {
         setCurrentPostsPage(1);
         setHasMoreUserPosts(true);
         await loadUserPosts(1, false);
       }
-      
+
       // Check vendor request status
       await checkVendorRequestStatus();
     } catch (error) {
-      console.error('Error refreshing profile:', error);
+      console.error("Error refreshing profile:", error);
     } finally {
       setRefreshing(false);
     }
@@ -241,7 +263,7 @@ const MainProfile = () => {
   useEffect(() => {
     if (userPosts.length > 0) {
       const initialLikedStates = {};
-      userPosts.forEach(post => {
+      userPosts.forEach((post) => {
         // Initialize with is_liked from API, or default to false
         initialLikedStates[post.id] = post.is_liked || false;
       });
@@ -252,37 +274,37 @@ const MainProfile = () => {
   // Handle edit post
   const handleEditPost = (post) => {
     setSelectedPost(post);
-    setEditCaption(post.content || '');
+    setEditCaption(post.content || "");
     setEditModalVisible(true);
   };
 
   // Handle update post
   const handleUpdatePost = async () => {
     if (!selectedPost || !editCaption.trim()) return;
-    
+
     try {
       const response = await communityService.updatePost(selectedPost.id, {
         content: editCaption.trim(),
         type: selectedPost.type,
         category: selectedPost.category,
-        visibility: selectedPost.visibility
+        visibility: selectedPost.visibility,
       });
-      
+
       if (response.success) {
         setEditModalVisible(false);
         setSelectedPost(null);
-        setEditCaption('');
+        setEditCaption("");
         setCurrentPostsPage(1);
         setHasMoreUserPosts(true);
         await loadUserPosts(1, false); // Refresh posts
-        setSuccessMessage('Post updated successfully!');
+        setSuccessMessage("Post updated successfully!");
         setSuccessModalVisible(true);
       } else {
-        Alert.alert('Error', response.message || 'Failed to update post');
+        Alert.alert("Error", response.message || "Failed to update post");
       }
     } catch (error) {
-      console.error('Error updating post:', error);
-      Alert.alert('Error', 'Failed to update post. Please try again.');
+      console.error("Error updating post:", error);
+      Alert.alert("Error", "Failed to update post. Please try again.");
     }
   };
 
@@ -295,24 +317,24 @@ const MainProfile = () => {
   // Confirm delete post
   const confirmDeletePost = async () => {
     if (!selectedPost) return;
-    
+
     try {
       const response = await communityService.deletePost(selectedPost.id);
-      
+
       if (response.success) {
         setDeleteModalVisible(false);
         setSelectedPost(null);
         setCurrentPostsPage(1);
         setHasMoreUserPosts(true);
         await loadUserPosts(1, false); // Refresh posts
-        setSuccessMessage('Post deleted successfully!');
+        setSuccessMessage("Post deleted successfully!");
         setSuccessModalVisible(true);
       } else {
-        Alert.alert('Error', response.message || 'Failed to delete post');
+        Alert.alert("Error", response.message || "Failed to delete post");
       }
     } catch (error) {
-      console.error('Error deleting post:', error);
-      Alert.alert('Error', 'Failed to delete post. Please try again.');
+      console.error("Error deleting post:", error);
+      Alert.alert("Error", "Failed to delete post. Please try again.");
     }
   };
 
@@ -320,29 +342,31 @@ const MainProfile = () => {
   const handleToggleLike = async (postId) => {
     try {
       const response = await communityService.toggleLike(postId);
-      
+
       if (response.success) {
         // Update like state
-        setLikedPosts(prev => ({
+        setLikedPosts((prev) => ({
           ...prev,
-          [postId]: response.data.is_liked || false
+          [postId]: response.data.is_liked || false,
         }));
         // Update the post in the posts array
-        setUserPosts(prev => prev.map(post => 
-          post.id === postId 
-            ? { 
-                ...post, 
-                likes_count: response.data.likes_count || 0,
-                is_liked: response.data.is_liked || false
-              }
-            : post
-        ));
+        setUserPosts((prev) =>
+          prev.map((post) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  likes_count: response.data.likes_count || 0,
+                  is_liked: response.data.is_liked || false,
+                }
+              : post
+          )
+        );
       } else {
-        Alert.alert('Error', response.message || 'Failed to update like');
+        Alert.alert("Error", response.message || "Failed to update like");
       }
     } catch (error) {
-      console.error('Error toggling like:', error);
-      Alert.alert('Error', 'Failed to update like. Please try again.');
+      console.error("Error toggling like:", error);
+      Alert.alert("Error", "Failed to update like. Please try again.");
     }
   };
 
@@ -359,13 +383,13 @@ const MainProfile = () => {
       setLoadingComments(true);
       const response = await communityService.getComments(postId);
       if (response.success) {
-        setComments(prev => ({
+        setComments((prev) => ({
           ...prev,
-          [postId]: response.data || []
+          [postId]: response.data || [],
         }));
       }
     } catch (error) {
-      console.error('Error loading comments:', error);
+      console.error("Error loading comments:", error);
     } finally {
       setLoadingComments(false);
     }
@@ -374,64 +398,74 @@ const MainProfile = () => {
   // Handle comment added
   const handleCommentAdded = async (newComment) => {
     if (!selectedPost || !newComment || !newComment.trim()) return;
-    
+
     try {
-      const response = await communityService.addComment(selectedPost.id, newComment.trim());
+      const response = await communityService.addComment(
+        selectedPost.id,
+        newComment.trim()
+      );
       if (response.success) {
         // Reload comments for this post
         await loadComments(selectedPost.id);
         // Update comment count in posts array
-        setUserPosts(prev => prev.map(post => 
-          post.id === selectedPost.id 
-            ? { ...post, comments_count: (post.comments_count || 0) + 1 }
-            : post
-        ));
+        setUserPosts((prev) =>
+          prev.map((post) =>
+            post.id === selectedPost.id
+              ? { ...post, comments_count: (post.comments_count || 0) + 1 }
+              : post
+          )
+        );
       } else {
-        Alert.alert('Error', response.message || 'Failed to add comment');
+        Alert.alert("Error", response.message || "Failed to add comment");
       }
     } catch (error) {
-      console.error('Error adding comment:', error);
-      Alert.alert('Error', 'Failed to add comment. Please try again.');
+      console.error("Error adding comment:", error);
+      Alert.alert("Error", "Failed to add comment. Please try again.");
     }
   };
 
   // Handle edit business
   const handleEditBusiness = () => {
-    setBusinessName(user?.vendor?.business_name || '');
+    setBusinessName(user?.vendor?.business_name || "");
     setEditBusinessModalVisible(true);
   };
 
   // Handle update business
   const handleUpdateBusiness = async () => {
     if (!businessName.trim()) {
-      Alert.alert('Error', 'Business name is required');
+      Alert.alert("Error", "Business name is required");
       return;
     }
-    
+
     try {
-      const response = await vendorService.updateVendorProfile(businessName.trim());
+      const response = await vendorService.updateVendorProfile(
+        businessName.trim()
+      );
       if (response.success) {
         setEditBusinessModalVisible(false);
-        setBusinessName('');
+        setBusinessName("");
         // Refresh user data
         await authService.clearProfileCache();
         const freshUser = await authService.getProfileCached({ force: true });
         setUser(freshUser);
         await authStorage.save({ token: null, user: freshUser });
-        setSuccessMessage('Business name updated successfully!');
+        setSuccessMessage("Business name updated successfully!");
         setSuccessModalVisible(true);
       } else {
-        Alert.alert('Error', response.message || 'Failed to update business name');
+        Alert.alert(
+          "Error",
+          response.message || "Failed to update business name"
+        );
       }
     } catch (error) {
-      console.error('Error updating business name:', error);
-      Alert.alert('Error', 'Failed to update business name. Please try again.');
+      console.error("Error updating business name:", error);
+      Alert.alert("Error", "Failed to update business name. Please try again.");
     }
   };
 
   // Handle become vendor
   const handleBecomeVendor = () => {
-    setVendorRequestBusinessName('');
+    setVendorRequestBusinessName("");
     setVendorRequestModalVisible(true);
   };
 
@@ -439,45 +473,55 @@ const MainProfile = () => {
   const checkVendorRequestStatus = async () => {
     try {
       const response = await vendorService.checkVendorRequestStatus();
-      console.log('Vendor request status response:', response);
+      console.log("Vendor request status response:", response);
       if (response.success) {
         setHasVendorRequest(response.data.has_request);
         setVendorRequestStatus(response.data.status);
-        setPendingBusinessName(response.data.business_name || '');
-        console.log('Vendor status set:', {
+        setPendingBusinessName(response.data.business_name || "");
+        console.log("Vendor status set:", {
           hasVendorRequest: response.data.has_request,
           status: response.data.status,
-          businessName: response.data.business_name
+          businessName: response.data.business_name,
         });
       }
     } catch (error) {
-      console.error('Error checking vendor request status:', error);
+      console.error("Error checking vendor request status:", error);
     }
   };
 
   // Handle vendor request submission
   const handleVendorRequest = async () => {
     if (!vendorRequestBusinessName.trim()) {
-      Alert.alert('Error', 'Business name is required');
+      Alert.alert("Error", "Business name is required");
       return;
     }
-    
+
     try {
-      const response = await vendorService.createVendorRequest(vendorRequestBusinessName.trim());
+      const response = await vendorService.createVendorRequest(
+        vendorRequestBusinessName.trim()
+      );
       if (response.success) {
         setVendorRequestModalVisible(false);
-        setVendorRequestBusinessName('');
+        setVendorRequestBusinessName("");
         setHasVendorRequest(true);
-        setVendorRequestStatus('pending');
+        setVendorRequestStatus("pending");
         setPendingBusinessName(vendorRequestBusinessName.trim());
-        setSuccessMessage('Vendor request submitted successfully! Please wait for admin approval.');
+        setSuccessMessage(
+          "Vendor request submitted successfully! Please wait for admin approval."
+        );
         setSuccessModalVisible(true);
       } else {
-        Alert.alert('Error', response.message || 'Failed to submit vendor request');
+        Alert.alert(
+          "Error",
+          response.message || "Failed to submit vendor request"
+        );
       }
     } catch (error) {
-      console.error('Error submitting vendor request:', error);
-      Alert.alert('Error', 'Failed to submit vendor request. Please try again.');
+      console.error("Error submitting vendor request:", error);
+      Alert.alert(
+        "Error",
+        "Failed to submit vendor request. Please try again."
+      );
     }
   };
 
@@ -528,11 +572,11 @@ const MainProfile = () => {
   const PostCard = ({ post }) => {
     const formatTimeAgo = (timestamp) => {
       if (!timestamp) return "just now";
-      
+
       const now = new Date();
       const postTime = new Date(timestamp);
       const diffInMinutes = Math.floor((now - postTime) / (1000 * 60));
-      
+
       if (diffInMinutes < 1) {
         return "just now";
       } else if (diffInMinutes < 60) {
@@ -551,9 +595,9 @@ const MainProfile = () => {
         <View style={styles.postHeader}>
           <View style={styles.postAvatar}>
             {user?.profile_picture ? (
-              <Image 
-                source={{ uri: buildStorageUrl(user.profile_picture) }} 
-                style={styles.avatarImage} 
+              <Image
+                source={{ uri: buildStorageUrl(user.profile_picture) }}
+                style={styles.avatarImage}
               />
             ) : (
               <Ionicons name="person" size={20} color="#ccc" />
@@ -561,18 +605,20 @@ const MainProfile = () => {
           </View>
           <View style={styles.postHeaderText}>
             <Text style={[styles.postAuthor, { color: textColor }]}>
-              {user?.name || 'You'}
+              {user?.name || "You"}
             </Text>
-            <Text style={styles.postTimestamp}>{formatTimeAgo(post.published_at)}</Text>
+            <Text style={styles.postTimestamp}>
+              {formatTimeAgo(post.published_at)}
+            </Text>
           </View>
           <View style={styles.postActions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButtonSmall}
               onPress={() => handleEditPost(post)}
             >
               <Ionicons name="create-outline" size={16} color={textColor} />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButtonSmall}
               onPress={() => handleDeletePost(post)}
             >
@@ -580,36 +626,36 @@ const MainProfile = () => {
             </TouchableOpacity>
           </View>
         </View>
-        
+
         {post.content && (
           <Text style={[styles.postContent, { color: textColor }]}>
             {post.content}
           </Text>
         )}
-        
+
         {post.images && post.images.length > 0 && (
           <View style={styles.postImageContainer}>
-            <Image 
-              source={{ uri: buildStorageUrl(post.images[0]) }} 
+            <Image
+              source={{ uri: buildStorageUrl(post.images[0]) }}
               style={styles.postImage}
               resizeMode="cover"
             />
           </View>
         )}
-        
+
         <View style={styles.postStats}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.postStat}
             onPress={() => handleToggleLike(post.id)}
           >
-            <Ionicons 
-              name={likedPosts[post.id] ? "heart" : "heart-outline"} 
-              size={16} 
-              color={likedPosts[post.id] ? "#28942c" : "gray"} 
+            <Ionicons
+              name={likedPosts[post.id] ? "heart" : "heart-outline"}
+              size={16}
+              color={likedPosts[post.id] ? "#28942c" : "gray"}
             />
             <Text style={styles.postStatText}>{post.likes_count || 0}</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.postStat}
             onPress={() => handleCommentPress(post)}
           >
@@ -634,13 +680,13 @@ const MainProfile = () => {
       />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <HeaderBack title="Profile" onBack={() => router.back()} />
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={[styles.scrollContainer, { flexGrow: 1 }]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={['#28942c']} // Android
+              colors={["#28942c"]} // Android
               tintColor="#28942c" // iOS
             />
           }
@@ -653,8 +699,7 @@ const MainProfile = () => {
               styles.coverPhotoWrapper,
               { backgroundColor: buttonBackground },
             ]}
-          >
-          </View>
+          ></View>
 
           <View style={styles.profileImageContainer}>
             <View style={[styles.profileImage, { backgroundColor: "#e4e6ea" }]}>
@@ -679,11 +724,14 @@ const MainProfile = () => {
             </TouchableOpacity>
           </View>
 
-          <Text style={[styles.name, { color: textColor }]}>
-            {residentData.residentName || '—'}
-          </Text>
+          <View style={styles.nameContainer}>
+            <Text style={[styles.name, { color: textColor }]}>
+              {residentData.residentName || "—"}
+            </Text>
+          </View>
+
           <Text style={[styles.subText, { color: textColor }]}>
-            Resident ID: {residentData.residentID || '—'}
+            Resident ID: {residentData.residentID || "—"}
           </Text>
 
           <View style={styles.profileActions}>
@@ -714,7 +762,6 @@ const MainProfile = () => {
               { backgroundColor: buttonBackground },
             ]}
           >
-
             {!hideSensitiveInfo ? (
               <>
                 <View style={styles.infoRow}>
@@ -727,7 +774,7 @@ const MainProfile = () => {
                   <View style={styles.infoTextContainer}>
                     <Text style={styles.infoLabel}>House Number</Text>
                     <Text style={[styles.infoText, { color: textColor }]}>
-                      {residentData.houseNumber || '—'}
+                      {residentData.houseNumber || "—"}
                     </Text>
                   </View>
                 </View>
@@ -742,7 +789,7 @@ const MainProfile = () => {
                   <View style={styles.infoTextContainer}>
                     <Text style={styles.infoLabel}>Street</Text>
                     <Text style={[styles.infoText, { color: textColor }]}>
-                      {residentData.street || '—'}
+                      {residentData.street || "—"}
                     </Text>
                   </View>
                 </View>
@@ -757,11 +804,10 @@ const MainProfile = () => {
                   <View style={styles.infoTextContainer}>
                     <Text style={styles.infoLabel}>Contact Number</Text>
                     <Text style={[styles.infoText, { color: textColor }]}>
-                      {residentData.contactNumber || '—'}
+                      {residentData.contactNumber || "—"}
                     </Text>
                   </View>
                 </View>
-
               </>
             ) : (
               <Text style={{ color: "gray", marginBottom: 10 }}>
@@ -784,32 +830,58 @@ const MainProfile = () => {
                       {user.vendor.business_name}
                     </Text>
                     <TouchableOpacity
-                      style={[styles.editBusinessButton, { backgroundColor: buttonBackground }]}
+                      style={[
+                        styles.editBusinessButton,
+                        { backgroundColor: buttonBackground },
+                      ]}
                       onPress={handleEditBusiness}
                     >
-                      <Ionicons name="create-outline" size={16} color={textColor} />
-                      <Text style={[styles.editBusinessButtonText, { color: textColor }]}>
+                      <Ionicons
+                        name="create-outline"
+                        size={16}
+                        color={textColor}
+                      />
+                      <Text
+                        style={[
+                          styles.editBusinessButtonText,
+                          { color: textColor },
+                        ]}
+                      >
                         Edit
                       </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
-              ) : (hasVendorRequest && vendorRequestStatus === 'pending') || (user?.vendor?.business_name && !user?.vendor?.isAccepted) ? (
+              ) : (hasVendorRequest && vendorRequestStatus === "pending") ||
+                (user?.vendor?.business_name && !user?.vendor?.isAccepted) ? (
                 <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
-                  <View style={[styles.pendingVendorContainer, { backgroundColor: "#f39c12" }]}>
+                  <View
+                    style={[
+                      styles.pendingVendorContainer,
+                      { backgroundColor: "#f39c12" },
+                    ]}
+                  >
                     <View style={styles.pendingVendorContent}>
-                      <Ionicons 
-                        name="time-outline" 
-                        size={20} 
-                        color="#ffffff" 
+                      <Ionicons
+                        name="time-outline"
+                        size={20}
+                        color="#ffffff"
                         style={styles.pendingIcon}
                       />
                       <View style={styles.pendingTextContainer}>
-                        <Text style={[styles.pendingTitle, { color: "#ffffff" }]}>
-                          {user?.vendor?.business_name || pendingBusinessName || 'Business'} - Pending
+                        <Text
+                          style={[styles.pendingTitle, { color: "#ffffff" }]}
+                        >
+                          {user?.vendor?.business_name ||
+                            pendingBusinessName ||
+                            "Business"}{" "}
+                          - Pending
                         </Text>
-                        <Text style={[styles.pendingSubtitle, { color: "#ffffff" }]}>
-                          Your business request is under review. You'll be notified once approved.
+                        <Text
+                          style={[styles.pendingSubtitle, { color: "#ffffff" }]}
+                        >
+                          Your business request is under review. You'll be
+                          notified once approved.
                         </Text>
                       </View>
                     </View>
@@ -821,7 +893,10 @@ const MainProfile = () => {
                     No business registered
                   </Text>
                   <TouchableOpacity
-                    style={[styles.becomeVendorButton, { backgroundColor: "#28942c" }]}
+                    style={[
+                      styles.becomeVendorButton,
+                      { backgroundColor: "#28942c" },
+                    ]}
                     onPress={handleBecomeVendor}
                   >
                     <Text style={styles.becomeVendorButtonText}>
@@ -840,9 +915,9 @@ const MainProfile = () => {
               <View style={styles.avatarContainer}>
                 <View style={styles.placeholder}>
                   {user?.profile_picture ? (
-                    <Image 
-                      source={{ uri: buildStorageUrl(user.profile_picture) }} 
-                      style={styles.placeholderImage} 
+                    <Image
+                      source={{ uri: buildStorageUrl(user.profile_picture) }}
+                      style={styles.placeholderImage}
                     />
                   ) : (
                     <Ionicons name="person" size={24} color="#ccc" />
@@ -862,7 +937,12 @@ const MainProfile = () => {
               </View>
 
               {loadingPosts ? (
-                <View style={[styles.loadingContainer, { backgroundColor: buttonBackground }]}>
+                <View
+                  style={[
+                    styles.loadingContainer,
+                    { backgroundColor: buttonBackground },
+                  ]}
+                >
                   <Text style={[styles.loadingText, { color: textColor }]}>
                     Loading your posts...
                   </Text>
@@ -872,32 +952,46 @@ const MainProfile = () => {
                   {userPosts.map((post) => (
                     <PostCard key={post.id} post={post} />
                   ))}
-                  
+
                   {/* Loading more indicator */}
                   {loadingMorePosts && userPosts.length > 0 && (
                     <View style={styles.loadingMoreContainer}>
-                      <Text style={[styles.loadingMoreText, { color: textColor }]}>
+                      <Text
+                        style={[styles.loadingMoreText, { color: textColor }]}
+                      >
                         Loading more posts...
                       </Text>
                     </View>
                   )}
-                  
+
                   {/* Load More Button (fallback) */}
-                  {hasMoreUserPosts && !loadingMorePosts && userPosts.length > 0 && (
-                    <TouchableOpacity
-                      style={[styles.loadMoreButton, { backgroundColor: buttonBackground }]}
-                      onPress={loadMoreUserPosts}
-                    >
-                      <Text style={[styles.loadMoreButtonText, { color: textColor }]}>
-                        Load More Posts
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  
+                  {hasMoreUserPosts &&
+                    !loadingMorePosts &&
+                    userPosts.length > 0 && (
+                      <TouchableOpacity
+                        style={[
+                          styles.loadMoreButton,
+                          { backgroundColor: buttonBackground },
+                        ]}
+                        onPress={loadMoreUserPosts}
+                      >
+                        <Text
+                          style={[
+                            styles.loadMoreButtonText,
+                            { color: textColor },
+                          ]}
+                        >
+                          Load More Posts
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
                   {/* End of posts indicator */}
                   {!hasMoreUserPosts && userPosts.length > 0 && (
                     <View style={styles.endOfPostsContainer}>
-                      <Text style={[styles.endOfPostsText, { color: textColor }]}>
+                      <Text
+                        style={[styles.endOfPostsText, { color: textColor }]}
+                      >
                         You've reached the end of your posts
                       </Text>
                     </View>
@@ -947,8 +1041,12 @@ const MainProfile = () => {
           onRequestClose={() => setModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalContent, { backgroundColor: cardBackground }]}>
-              <Text style={[styles.modalTitle, { color: textColor }]}>Privacy Settings</Text>
+            <View
+              style={[styles.modalContent, { backgroundColor: cardBackground }]}
+            >
+              <Text style={[styles.modalTitle, { color: textColor }]}>
+                Privacy Settings
+              </Text>
               <Text
                 style={[styles.modalOption, { color: textColor }]}
                 onPress={() => {
@@ -985,13 +1083,20 @@ const MainProfile = () => {
           onRequestClose={() => setEditModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.editModalContent, { backgroundColor: cardBackground }]}>
-              <Text style={[styles.modalTitle, { color: textColor }]}>Edit Post</Text>
-              
+            <View
+              style={[
+                styles.editModalContent,
+                { backgroundColor: cardBackground },
+              ]}
+            >
+              <Text style={[styles.modalTitle, { color: textColor }]}>
+                Edit Post
+              </Text>
+
               {selectedPost?.images && selectedPost.images.length > 0 && (
                 <View style={styles.editImageContainer}>
-                  <Image 
-                    source={{ uri: buildStorageUrl(selectedPost.images[0]) }} 
+                  <Image
+                    source={{ uri: buildStorageUrl(selectedPost.images[0]) }}
                     style={styles.editImage}
                     resizeMode="cover"
                   />
@@ -1000,13 +1105,16 @@ const MainProfile = () => {
                   </Text>
                 </View>
               )}
-              
+
               <TextInput
-                style={[styles.editTextInput, { 
-                  color: textColor, 
-                  borderColor: textColor,
-                  backgroundColor: buttonBackground 
-                }]}
+                style={[
+                  styles.editTextInput,
+                  {
+                    color: textColor,
+                    borderColor: textColor,
+                    backgroundColor: buttonBackground,
+                  },
+                ]}
                 placeholder="What's on your mind?"
                 placeholderTextColor="#888"
                 multiline
@@ -1014,14 +1122,14 @@ const MainProfile = () => {
                 onChangeText={setEditCaption}
                 maxLength={5000}
               />
-              
+
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.cancelButton]}
                   onPress={() => {
                     setEditModalVisible(false);
                     setSelectedPost(null);
-                    setEditCaption('');
+                    setEditCaption("");
                   }}
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -1045,14 +1153,20 @@ const MainProfile = () => {
           onRequestClose={() => setDeleteModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.deleteModalContent, { backgroundColor: cardBackground }]}>
+            <View
+              style={[
+                styles.deleteModalContent,
+                { backgroundColor: cardBackground },
+              ]}
+            >
               <Text style={[styles.deleteModalTitle, { color: textColor }]}>
                 Delete Post
               </Text>
               <Text style={[styles.deleteModalMessage, { color: textColor }]}>
-                Are you sure you want to delete this post? This action cannot be undone.
+                Are you sure you want to delete this post? This action cannot be
+                undone.
               </Text>
-              
+
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.cancelButton]}
@@ -1081,23 +1195,55 @@ const MainProfile = () => {
           animationType="fade"
           onRequestClose={() => setSuccessModalVisible(false)}
         >
-          <View style={[styles.modalOverlay, { backgroundColor: theme === 'light' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.7)' }]}>
-            <View style={[
-              styles.successModal, 
-              { 
-                backgroundColor: colors.cardBackground || (theme === 'light' ? '#ffffff' : '#1F2633'),
-                borderColor: colors.border || (theme === 'light' ? '#e0e0e0' : '#2A2F3A'),
-                shadowColor: theme === 'light' ? '#000' : '#fff'
-              }
-            ]}>
-              <Text style={[styles.successTitle, { color: colors.text || (theme === 'light' ? '#000' : '#fff') }]}>
+          <View
+            style={[
+              styles.modalOverlay,
+              {
+                backgroundColor:
+                  theme === "light"
+                    ? "rgba(0, 0, 0, 0.5)"
+                    : "rgba(0, 0, 0, 0.7)",
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.successModal,
+                {
+                  backgroundColor:
+                    colors.cardBackground ||
+                    (theme === "light" ? "#ffffff" : "#1F2633"),
+                  borderColor:
+                    colors.border ||
+                    (theme === "light" ? "#e0e0e0" : "#2A2F3A"),
+                  shadowColor: theme === "light" ? "#000" : "#fff",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.successTitle,
+                  {
+                    color: colors.text || (theme === "light" ? "#000" : "#fff"),
+                  },
+                ]}
+              >
                 Success!
               </Text>
-              <Text style={[styles.successMessage, { color: colors.textSecondary || (theme === 'light' ? '#666' : '#999') }]}>
+              <Text
+                style={[
+                  styles.successMessage,
+                  {
+                    color:
+                      colors.textSecondary ||
+                      (theme === "light" ? "#666" : "#999"),
+                  },
+                ]}
+              >
                 {successMessage}
               </Text>
               <TouchableOpacity
-                style={[styles.successButton, { backgroundColor: '#28942c' }]}
+                style={[styles.successButton, { backgroundColor: "#28942c" }]}
                 onPress={() => setSuccessModalVisible(false)}
               >
                 <Text style={styles.successButtonText}>Continue</Text>
@@ -1113,22 +1259,38 @@ const MainProfile = () => {
           transparent={true}
           onRequestClose={() => setCommentModalVisible(false)}
         >
-          <View style={[styles.modalOverlay, { backgroundColor: theme === 'light' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.7)' }]}>
-            <View style={[styles.commentModalContent, { backgroundColor: cardBackground }]}>
+          <View
+            style={[
+              styles.modalOverlay,
+              {
+                backgroundColor:
+                  theme === "light"
+                    ? "rgba(0, 0, 0, 0.5)"
+                    : "rgba(0, 0, 0, 0.7)",
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.commentModalContent,
+                { backgroundColor: cardBackground },
+              ]}
+            >
               <View style={styles.commentModalHeader}>
                 <Text style={[styles.commentModalTitle, { color: textColor }]}>
-                  Comments ({selectedPost ? (comments[selectedPost.id] || []).length : 0})
+                  Comments (
+                  {selectedPost ? (comments[selectedPost.id] || []).length : 0})
                 </Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => setCommentModalVisible(false)}
                   style={styles.closeButton}
                 >
                   <Ionicons name="close" size={24} color={textColor} />
                 </TouchableOpacity>
               </View>
-              
+
               <CommentSection
-                comments={selectedPost ? (comments[selectedPost.id] || []) : []}
+                comments={selectedPost ? comments[selectedPost.id] || [] : []}
                 onCommentAdd={handleCommentAdded}
                 postId={selectedPost?.id}
               />
@@ -1144,28 +1306,38 @@ const MainProfile = () => {
           onRequestClose={() => setEditBusinessModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.editModalContent, { backgroundColor: cardBackground }]}>
-              <Text style={[styles.modalTitle, { color: textColor }]}>Edit Business Name</Text>
-              
+            <View
+              style={[
+                styles.editModalContent,
+                { backgroundColor: cardBackground },
+              ]}
+            >
+              <Text style={[styles.modalTitle, { color: textColor }]}>
+                Edit Business Name
+              </Text>
+
               <TextInput
-                style={[styles.editTextInput, { 
-                  color: textColor, 
-                  borderColor: textColor,
-                  backgroundColor: buttonBackground 
-                }]}
+                style={[
+                  styles.editTextInput,
+                  {
+                    color: textColor,
+                    borderColor: textColor,
+                    backgroundColor: buttonBackground,
+                  },
+                ]}
                 placeholder="Enter business name"
                 placeholderTextColor="#888"
                 value={businessName}
                 onChangeText={setBusinessName}
                 maxLength={255}
               />
-              
+
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.cancelButton]}
                   onPress={() => {
                     setEditBusinessModalVisible(false);
-                    setBusinessName('');
+                    setBusinessName("");
                   }}
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -1189,31 +1361,42 @@ const MainProfile = () => {
           onRequestClose={() => setVendorRequestModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.editModalContent, { backgroundColor: cardBackground }]}>
-              <Text style={[styles.modalTitle, { color: textColor }]}>Become a Vendor</Text>
-              <Text style={[styles.modalSubtitle, { color: textColor }]}>
-                Enter your business name to submit a vendor request. Admin approval is required.
+            <View
+              style={[
+                styles.editModalContent,
+                { backgroundColor: cardBackground },
+              ]}
+            >
+              <Text style={[styles.modalTitle, { color: textColor }]}>
+                Become a Vendor
               </Text>
-              
+              <Text style={[styles.modalSubtitle, { color: textColor }]}>
+                Enter your business name to submit a vendor request. Admin
+                approval is required.
+              </Text>
+
               <TextInput
-                style={[styles.editTextInput, { 
-                  color: textColor, 
-                  borderColor: textColor,
-                  backgroundColor: buttonBackground 
-                }]}
+                style={[
+                  styles.editTextInput,
+                  {
+                    color: textColor,
+                    borderColor: textColor,
+                    backgroundColor: buttonBackground,
+                  },
+                ]}
                 placeholder="Enter business name"
                 placeholderTextColor="#888"
                 value={vendorRequestBusinessName}
                 onChangeText={setVendorRequestBusinessName}
                 maxLength={255}
               />
-              
+
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.cancelButton]}
                   onPress={() => {
                     setVendorRequestModalVisible(false);
-                    setVendorRequestBusinessName('');
+                    setVendorRequestBusinessName("");
                   }}
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -1293,7 +1476,17 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
-  name: { fontSize: 30, fontWeight: "bold", marginBottom: 4 },
+  name: {
+    fontSize: 30,
+    fontWeight: "bold",
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  nameContainer: {
+    width: "90%",
+    alignItems: "center",
+    paddingHorizontal: 16,
+  },
   subText: { fontSize: 14, color: "gray", marginBottom: 6 },
   sectionTitle: {
     fontSize: 20,
@@ -1537,26 +1730,26 @@ const styles = StyleSheet.create({
   postImageContainer: {
     marginVertical: 10,
     borderRadius: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   postImage: {
-    width: '100%',
+    width: "100%",
     height: 200,
   },
   postStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 20,
     marginTop: 10,
   },
   postStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   postStatText: {
     fontSize: 12,
-    color: 'gray',
+    color: "gray",
   },
   actionButtonSmall: {
     padding: 6,
@@ -1584,28 +1777,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   editImageContainer: {
-    width: '100%',
+    width: "100%",
     marginBottom: 15,
-    alignItems: 'center',
+    alignItems: "center",
   },
   editImage: {
-    width: '100%',
+    width: "100%",
     height: 150,
     borderRadius: 8,
     marginBottom: 8,
   },
   editImageNote: {
     fontSize: 12,
-    fontStyle: 'italic',
+    fontStyle: "italic",
     opacity: 0.7,
   },
   editTextInput: {
-    width: '100%',
+    width: "100%",
     minHeight: 100,
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
     marginBottom: 20,
   },
   // Delete Modal Styles
@@ -1623,52 +1816,52 @@ const styles = StyleSheet.create({
   },
   deleteModalMessage: {
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 20,
     marginBottom: 20,
   },
   // Modal Button Styles
   modalButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
-    width: '100%',
+    width: "100%",
   },
   modalButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   cancelButton: {
-    backgroundColor: '#e0e0e0',
+    backgroundColor: "#e0e0e0",
   },
   saveButton: {
-    backgroundColor: '#28942c',
+    backgroundColor: "#28942c",
   },
   deleteButton: {
-    backgroundColor: '#e74c3c',
+    backgroundColor: "#e74c3c",
   },
   cancelButtonText: {
-    color: '#333',
-    fontWeight: '600',
+    color: "#333",
+    fontWeight: "600",
   },
   saveButtonText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: "#fff",
+    fontWeight: "600",
   },
   deleteButtonText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: "#fff",
+    fontWeight: "600",
   },
   // Success Modal Styles
   successModal: {
-    width: '100%',
+    width: "100%",
     maxWidth: 320,
     borderRadius: 16,
     padding: 24,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -1679,70 +1872,70 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: "600",
+    textAlign: "center",
     marginBottom: 16,
   },
   successMessage: {
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 20,
     marginBottom: 24,
   },
   successButton: {
-    width: '100%',
+    width: "100%",
     paddingVertical: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   successButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   // Comment Modal Styles
   commentModalContent: {
-    width: '100%',
-    height: '80%',
+    width: "100%",
+    height: "80%",
     borderRadius: 16,
     padding: 0,
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
   },
   commentModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
   },
   commentModalTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   closeButton: {
     padding: 4,
   },
   // Business-related styles
   businessInfoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 8,
   },
   businessName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     flex: 1,
     marginRight: 12,
   },
   editBusinessButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -1750,23 +1943,23 @@ const styles = StyleSheet.create({
   },
   editBusinessButtonText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   becomeVendorButton: {
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 12,
   },
   becomeVendorButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   modalSubtitle: {
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 20,
     lineHeight: 20,
   },
@@ -1808,8 +2001,8 @@ const styles = StyleSheet.create({
     borderColor: "#f39c12",
   },
   pendingVendorContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   pendingIcon: {
     marginRight: 12,
@@ -1819,7 +2012,7 @@ const styles = StyleSheet.create({
   },
   pendingTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 4,
   },
   pendingSubtitle: {

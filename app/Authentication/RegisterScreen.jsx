@@ -399,7 +399,7 @@ const RegisterScreen = () => {
             style={styles.inputIcon}
           />
           <TextInput
-            placeholder="e.g. A3B"
+            placeholder="e.g. B3A"
             placeholderTextColor={colors.text + "60"}
             style={[styles.input, { color: colors.text }]}
             value={block}
