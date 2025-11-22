@@ -18,7 +18,12 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../Theme/ThemeProvider";
 import { Ionicons } from "@expo/vector-icons";
-import { authStorage, authService, buildStorageUrl, communityService } from "../../services/api";
+import {
+  authStorage,
+  authService,
+  buildStorageUrl,
+  communityService,
+} from "../../services/api";
 import { messagingService } from "../../services/messagingService";
 import CommentSection from "../Community/CommentSection";
 import { useFocusEffect } from "@react-navigation/native";
@@ -96,8 +101,8 @@ const OtherProfile = () => {
   const searchParams = useLocalSearchParams();
   const { userId: rawUserId } = router.params || searchParams || {};
   const userId = rawUserId ? parseInt(rawUserId) : null;
-  
-  console.log('OtherProfile - userId:', userId);
+
+  console.log("OtherProfile - userId:", userId);
 
   const statusBarBackground = theme === "light" ? "#ffffff" : "#14181F";
   const navBarBackground = theme === "light" ? "#ffffff" : "#14181F";
@@ -114,37 +119,40 @@ const OtherProfile = () => {
   // Load user data
   const loadUserData = async () => {
     if (!userId) {
-      console.log('No userId provided');
+      console.log("No userId provided");
       return;
     }
-    
-    console.log('Loading user data for userId:', userId);
+
+    console.log("Loading user data for userId:", userId);
     setLoadingUser(true);
-    
+
     try {
       // Load user profile data
       const response = await authService.getUserProfile(userId);
-      
+
       if (response.success) {
         setUser(response.data);
-        console.log('User data loaded successfully');
+        console.log("User data loaded successfully");
       } else {
-        console.log('Failed to load user profile:', response.message);
+        console.log("Failed to load user profile:", response.message);
         // Check if it's an admin access denial
-        if (response.message && response.message.includes('access denied')) {
+        if (response.message && response.message.includes("access denied")) {
           setAdminAccessDeniedModal(true);
         } else {
-          Alert.alert('Error', response.message || 'Failed to load user profile');
+          Alert.alert(
+            "Error",
+            response.message || "Failed to load user profile"
+          );
           router.back();
         }
       }
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error("Error loading user data:", error);
       // Check if it's a 404 error (user not found or admin access denied)
       if (error.response && error.response.status === 404) {
         setAdminAccessDeniedModal(true);
       } else {
-        Alert.alert('Error', 'Failed to load user profile');
+        Alert.alert("Error", "Failed to load user profile");
         router.back();
       }
     } finally {
@@ -155,41 +163,41 @@ const OtherProfile = () => {
   // Load user's posts
   const loadUserPosts = async (page = 1, append = false) => {
     if (!userId) return;
-    
+
     try {
       if (page === 1) {
         setLoadingPosts(true);
       } else {
         setLoadingMorePosts(true);
       }
-      
-      const response = await communityService.getPosts({ 
-        user_id: userId, 
+
+      const response = await communityService.getPosts({
+        user_id: userId,
         page,
-        per_page: 20
+        per_page: 20,
       });
-      
+
       if (response.success) {
         const postsData = response.data.data || [];
         const paginationData = response.data.links || {};
-        
+
         if (append) {
-          setUserPosts(prev => [...prev, ...postsData]);
+          setUserPosts((prev) => [...prev, ...postsData]);
         } else {
           setUserPosts(postsData);
         }
-        
+
         // Check if there are more posts
         const hasMore = paginationData.next !== null && postsData.length > 0;
         setHasMoreUserPosts(hasMore);
-        
+
         // If no posts received and not appending, set hasMoreUserPosts to false
         if (postsData.length === 0 && !append) {
           setHasMoreUserPosts(false);
         }
       }
     } catch (error) {
-      console.error('Error loading user posts:', error);
+      console.error("Error loading user posts:", error);
     } finally {
       setLoadingPosts(false);
       setLoadingMorePosts(false);
@@ -231,7 +239,7 @@ const OtherProfile = () => {
     try {
       // Refresh user data
       await loadUserData();
-      
+
       // Refresh posts
       if (userId) {
         setCurrentPostsPage(1);
@@ -239,7 +247,7 @@ const OtherProfile = () => {
         await loadUserPosts(1, false);
       }
     } catch (error) {
-      console.error('Error refreshing profile:', error);
+      console.error("Error refreshing profile:", error);
     } finally {
       setRefreshing(false);
     }
@@ -249,7 +257,7 @@ const OtherProfile = () => {
   useEffect(() => {
     if (userPosts.length > 0) {
       const initialLikedStates = {};
-      userPosts.forEach(post => {
+      userPosts.forEach((post) => {
         initialLikedStates[post.id] = post.is_liked || false;
       });
       setLikedPosts(initialLikedStates);
@@ -260,29 +268,31 @@ const OtherProfile = () => {
   const handleToggleLike = async (postId) => {
     try {
       const response = await communityService.toggleLike(postId);
-      
+
       if (response.success) {
         // Update like state
-        setLikedPosts(prev => ({
+        setLikedPosts((prev) => ({
           ...prev,
-          [postId]: response.data.is_liked || false
+          [postId]: response.data.is_liked || false,
         }));
         // Update the post in the posts array
-        setUserPosts(prev => prev.map(post => 
-          post.id === postId 
-            ? { 
-                ...post, 
-                likes_count: response.data.likes_count || 0,
-                is_liked: response.data.is_liked || false
-              }
-            : post
-        ));
+        setUserPosts((prev) =>
+          prev.map((post) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  likes_count: response.data.likes_count || 0,
+                  is_liked: response.data.is_liked || false,
+                }
+              : post
+          )
+        );
       } else {
-        Alert.alert('Error', response.message || 'Failed to update like');
+        Alert.alert("Error", response.message || "Failed to update like");
       }
     } catch (error) {
-      console.error('Error toggling like:', error);
-      Alert.alert('Error', 'Failed to update like. Please try again.');
+      console.error("Error toggling like:", error);
+      Alert.alert("Error", "Failed to update like. Please try again.");
     }
   };
 
@@ -299,13 +309,13 @@ const OtherProfile = () => {
       setLoadingComments(true);
       const response = await communityService.getComments(postId);
       if (response.success) {
-        setComments(prev => ({
+        setComments((prev) => ({
           ...prev,
-          [postId]: response.data || []
+          [postId]: response.data || [],
         }));
       }
     } catch (error) {
-      console.error('Error loading comments:', error);
+      console.error("Error loading comments:", error);
     } finally {
       setLoadingComments(false);
     }
@@ -314,24 +324,29 @@ const OtherProfile = () => {
   // Handle comment added
   const handleCommentAdded = async (newComment) => {
     if (!selectedPost || !newComment || !newComment.trim()) return;
-    
+
     try {
-      const response = await communityService.addComment(selectedPost.id, newComment.trim());
+      const response = await communityService.addComment(
+        selectedPost.id,
+        newComment.trim()
+      );
       if (response.success) {
         // Reload comments for this post
         await loadComments(selectedPost.id);
         // Update comment count in posts array
-        setUserPosts(prev => prev.map(post => 
-          post.id === selectedPost.id 
-            ? { ...post, comments_count: (post.comments_count || 0) + 1 }
-            : post
-        ));
+        setUserPosts((prev) =>
+          prev.map((post) =>
+            post.id === selectedPost.id
+              ? { ...post, comments_count: (post.comments_count || 0) + 1 }
+              : post
+          )
+        );
       } else {
-        Alert.alert('Error', response.message || 'Failed to add comment');
+        Alert.alert("Error", response.message || "Failed to add comment");
       }
     } catch (error) {
-      console.error('Error adding comment:', error);
-      Alert.alert('Error', 'Failed to add comment. Please try again.');
+      console.error("Error adding comment:", error);
+      Alert.alert("Error", "Failed to add comment. Please try again.");
     }
   };
 
@@ -356,11 +371,11 @@ const OtherProfile = () => {
   const PostCard = ({ post }) => {
     const formatTimeAgo = (timestamp) => {
       if (!timestamp) return "just now";
-      
+
       const now = new Date();
       const postTime = new Date(timestamp);
       const diffInMinutes = Math.floor((now - postTime) / (1000 * 60));
-      
+
       if (diffInMinutes < 1) {
         return "just now";
       } else if (diffInMinutes < 60) {
@@ -379,9 +394,9 @@ const OtherProfile = () => {
         <View style={styles.postHeader}>
           <View style={styles.postAvatar}>
             {user?.profile_picture ? (
-              <Image 
-                source={{ uri: buildStorageUrl(user.profile_picture) }} 
-                style={styles.avatarImage} 
+              <Image
+                source={{ uri: buildStorageUrl(user.profile_picture) }}
+                style={styles.avatarImage}
               />
             ) : (
               <Ionicons name="person" size={20} color="#ccc" />
@@ -389,41 +404,43 @@ const OtherProfile = () => {
           </View>
           <View style={styles.postHeaderText}>
             <Text style={[styles.postAuthor, { color: textColor }]}>
-              {user?.name || 'Unknown User'}
+              {user?.name || "Unknown User"}
             </Text>
-            <Text style={styles.postTimestamp}>{formatTimeAgo(post.published_at)}</Text>
+            <Text style={styles.postTimestamp}>
+              {formatTimeAgo(post.published_at)}
+            </Text>
           </View>
         </View>
-        
+
         {post.content && (
           <Text style={[styles.postContent, { color: textColor }]}>
             {post.content}
           </Text>
         )}
-        
+
         {post.images && post.images.length > 0 && (
           <View style={styles.postImageContainer}>
-            <Image 
-              source={{ uri: buildStorageUrl(post.images[0]) }} 
+            <Image
+              source={{ uri: buildStorageUrl(post.images[0]) }}
               style={styles.postImage}
               resizeMode="cover"
             />
           </View>
         )}
-        
+
         <View style={styles.postStats}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.postStat}
             onPress={() => handleToggleLike(post.id)}
           >
-            <Ionicons 
-              name={likedPosts[post.id] ? "heart" : "heart-outline"} 
-              size={16} 
-              color={likedPosts[post.id] ? "#28942c" : "gray"} 
+            <Ionicons
+              name={likedPosts[post.id] ? "heart" : "heart-outline"}
+              size={16}
+              color={likedPosts[post.id] ? "#28942c" : "gray"}
             />
             <Text style={styles.postStatText}>{post.likes_count || 0}</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.postStat}
             onPress={() => handleCommentPress(post)}
           >
@@ -448,13 +465,13 @@ const OtherProfile = () => {
       />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <HeaderBack title="Profile" onBack={() => router.back()} />
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={[styles.scrollContainer, { flexGrow: 1 }]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={['#28942c']} // Android
+              colors={["#28942c"]} // Android
               tintColor="#28942c" // iOS
             />
           }
@@ -467,8 +484,7 @@ const OtherProfile = () => {
               styles.coverPhotoWrapper,
               { backgroundColor: buttonBackground },
             ]}
-          >
-          </View>
+          ></View>
 
           <View style={styles.profileImageContainer}>
             <View style={[styles.profileImage, { backgroundColor: "#e4e6ea" }]}>
@@ -483,11 +499,14 @@ const OtherProfile = () => {
             </View>
           </View>
 
-          <Text style={[styles.name, { color: textColor }]}>
-            {loadingUser ? 'Loading...' : (user?.name || '—')}
-          </Text>
+          <View style={styles.nameContainer}>
+            <Text style={[styles.name, { color: textColor }]}>
+              {loadingUser ? "Loading..." : user?.name || "—"}
+            </Text>
+          </View>
+          
           <Text style={[styles.subText, { color: textColor }]}>
-            Resident ID: {loadingUser ? 'Loading...' : (user?.resident_id || '—')}
+            Resident ID: {loadingUser ? "Loading..." : user?.resident_id || "—"}
           </Text>
 
           <View style={styles.profileActions}>
@@ -496,29 +515,40 @@ const OtherProfile = () => {
               onPress={async () => {
                 try {
                   // Create or get conversation with this user
-                  const response = await messagingService.createConversation(user?.id);
+                  const response = await messagingService.createConversation(
+                    user?.id
+                  );
                   if (response.success) {
                     // Navigate to ChatScreen with conversation ID
                     router.push({
                       pathname: "/Chat/ChatScreen",
-                      params: { conversationId: response.data.id }
+                      params: { conversationId: response.data.id },
                     });
                   } else {
-                    Alert.alert("Error", "Failed to start conversation. Please try again.");
+                    Alert.alert(
+                      "Error",
+                      "Failed to start conversation. Please try again."
+                    );
                   }
                 } catch (error) {
                   console.error("Error creating conversation:", error);
-                  Alert.alert("Error", "Failed to start conversation. Please try again.");
+                  Alert.alert(
+                    "Error",
+                    "Failed to start conversation. Please try again."
+                  );
                 }
               }}
             >
-              <Ionicons name="chatbubble-outline" size={14} color={textColor} style={{ marginRight: 6 }} />
+              <Ionicons
+                name="chatbubble-outline"
+                size={14}
+                color={textColor}
+                style={{ marginRight: 6 }}
+              />
               <Text style={[styles.buttonText, { color: textColor }]}>
                 Message
               </Text>
             </TouchableOpacity>
-
-
           </View>
 
           <View
@@ -539,7 +569,9 @@ const OtherProfile = () => {
                   <View style={styles.infoTextContainer}>
                     <Text style={styles.infoLabel}>House Number</Text>
                     <Text style={[styles.infoText, { color: textColor }]}>
-                      {loadingUser ? 'Loading...' : (user?.house?.house_number || '—')}
+                      {loadingUser
+                        ? "Loading..."
+                        : user?.house?.house_number || "—"}
                     </Text>
                   </View>
                 </View>
@@ -554,7 +586,7 @@ const OtherProfile = () => {
                   <View style={styles.infoTextContainer}>
                     <Text style={styles.infoLabel}>Street</Text>
                     <Text style={[styles.infoText, { color: textColor }]}>
-                      {loadingUser ? 'Loading...' : (user?.house?.street || '—')}
+                      {loadingUser ? "Loading..." : user?.house?.street || "—"}
                     </Text>
                   </View>
                 </View>
@@ -569,7 +601,7 @@ const OtherProfile = () => {
                   <View style={styles.infoTextContainer}>
                     <Text style={styles.infoLabel}>Contact Number</Text>
                     <Text style={[styles.infoText, { color: textColor }]}>
-                      {loadingUser ? 'Loading...' : (user?.contact_no || '—')}
+                      {loadingUser ? "Loading..." : user?.contact_no || "—"}
                     </Text>
                   </View>
                 </View>
@@ -602,21 +634,30 @@ const OtherProfile = () => {
                     </Text>
                   </View>
                 </View>
-              ) : (user?.vendor?.business_name && !user?.vendor?.isAccepted) ? (
+              ) : user?.vendor?.business_name && !user?.vendor?.isAccepted ? (
                 <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
-                  <View style={[styles.pendingVendorContainer, { backgroundColor: "#f39c12" }]}>
+                  <View
+                    style={[
+                      styles.pendingVendorContainer,
+                      { backgroundColor: "#f39c12" },
+                    ]}
+                  >
                     <View style={styles.pendingVendorContent}>
-                      <Ionicons 
-                        name="time-outline" 
-                        size={20} 
-                        color="#ffffff" 
+                      <Ionicons
+                        name="time-outline"
+                        size={20}
+                        color="#ffffff"
                         style={styles.pendingIcon}
                       />
                       <View style={styles.pendingTextContainer}>
-                        <Text style={[styles.pendingTitle, { color: "#ffffff" }]}>
-                          {user?.vendor?.business_name || 'Business'} - Pending
+                        <Text
+                          style={[styles.pendingTitle, { color: "#ffffff" }]}
+                        >
+                          {user?.vendor?.business_name || "Business"} - Pending
                         </Text>
-                        <Text style={[styles.pendingSubtitle, { color: "#ffffff" }]}>
+                        <Text
+                          style={[styles.pendingSubtitle, { color: "#ffffff" }]}
+                        >
                           Business request is under review.
                         </Text>
                       </View>
@@ -639,7 +680,12 @@ const OtherProfile = () => {
               </Text>
 
               {loadingPosts ? (
-                <View style={[styles.loadingContainer, { backgroundColor: buttonBackground }]}>
+                <View
+                  style={[
+                    styles.loadingContainer,
+                    { backgroundColor: buttonBackground },
+                  ]}
+                >
                   <Text style={[styles.loadingText, { color: textColor }]}>
                     Loading posts...
                   </Text>
@@ -649,32 +695,46 @@ const OtherProfile = () => {
                   {userPosts.map((post) => (
                     <PostCard key={post.id} post={post} />
                   ))}
-                  
+
                   {/* Loading more indicator */}
                   {loadingMorePosts && userPosts.length > 0 && (
                     <View style={styles.loadingMoreContainer}>
-                      <Text style={[styles.loadingMoreText, { color: textColor }]}>
+                      <Text
+                        style={[styles.loadingMoreText, { color: textColor }]}
+                      >
                         Loading more posts...
                       </Text>
                     </View>
                   )}
-                  
+
                   {/* Load More Button (fallback) */}
-                  {hasMoreUserPosts && !loadingMorePosts && userPosts.length > 0 && (
-                    <TouchableOpacity
-                      style={[styles.loadMoreButton, { backgroundColor: buttonBackground }]}
-                      onPress={loadMoreUserPosts}
-                    >
-                      <Text style={[styles.loadMoreButtonText, { color: textColor }]}>
-                        Load More Posts
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  
+                  {hasMoreUserPosts &&
+                    !loadingMorePosts &&
+                    userPosts.length > 0 && (
+                      <TouchableOpacity
+                        style={[
+                          styles.loadMoreButton,
+                          { backgroundColor: buttonBackground },
+                        ]}
+                        onPress={loadMoreUserPosts}
+                      >
+                        <Text
+                          style={[
+                            styles.loadMoreButtonText,
+                            { color: textColor },
+                          ]}
+                        >
+                          Load More Posts
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
                   {/* End of posts indicator */}
                   {!hasMoreUserPosts && userPosts.length > 0 && (
                     <View style={styles.endOfPostsContainer}>
-                      <Text style={[styles.endOfPostsText, { color: textColor }]}>
+                      <Text
+                        style={[styles.endOfPostsText, { color: textColor }]}
+                      >
                         You've reached the end of posts
                       </Text>
                     </View>
@@ -723,22 +783,38 @@ const OtherProfile = () => {
           transparent={true}
           onRequestClose={() => setCommentModalVisible(false)}
         >
-          <View style={[styles.modalOverlay, { backgroundColor: theme === 'light' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.7)' }]}>
-            <View style={[styles.commentModalContent, { backgroundColor: cardBackground }]}>
+          <View
+            style={[
+              styles.modalOverlay,
+              {
+                backgroundColor:
+                  theme === "light"
+                    ? "rgba(0, 0, 0, 0.5)"
+                    : "rgba(0, 0, 0, 0.7)",
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.commentModalContent,
+                { backgroundColor: cardBackground },
+              ]}
+            >
               <View style={styles.commentModalHeader}>
                 <Text style={[styles.commentModalTitle, { color: textColor }]}>
-                  Comments ({selectedPost ? (comments[selectedPost.id] || []).length : 0})
+                  Comments (
+                  {selectedPost ? (comments[selectedPost.id] || []).length : 0})
                 </Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => setCommentModalVisible(false)}
                   style={styles.closeButton}
                 >
                   <Ionicons name="close" size={24} color={textColor} />
                 </TouchableOpacity>
               </View>
-              
+
               <CommentSection
-                comments={selectedPost ? (comments[selectedPost.id] || []) : []}
+                comments={selectedPost ? comments[selectedPost.id] || [] : []}
                 onCommentAdd={handleCommentAdded}
                 postId={selectedPost?.id}
               />
@@ -793,26 +869,61 @@ const OtherProfile = () => {
           transparent={true}
           onRequestClose={() => setAdminAccessDeniedModal(false)}
         >
-          <View style={[styles.modalOverlay, { backgroundColor: theme === 'light' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.7)' }]}>
-            <View style={[
-              styles.adminAccessModal, 
-              { 
-                backgroundColor: colors.cardBackground || (theme === 'light' ? '#ffffff' : '#1F2633'),
-                borderColor: colors.border || (theme === 'light' ? '#e0e0e0' : '#2A2F3A'),
-                shadowColor: theme === 'light' ? '#000' : '#fff'
-              }
-            ]}>
+          <View
+            style={[
+              styles.modalOverlay,
+              {
+                backgroundColor:
+                  theme === "light"
+                    ? "rgba(0, 0, 0, 0.5)"
+                    : "rgba(0, 0, 0, 0.7)",
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.adminAccessModal,
+                {
+                  backgroundColor:
+                    colors.cardBackground ||
+                    (theme === "light" ? "#ffffff" : "#1F2633"),
+                  borderColor:
+                    colors.border ||
+                    (theme === "light" ? "#e0e0e0" : "#2A2F3A"),
+                  shadowColor: theme === "light" ? "#000" : "#fff",
+                },
+              ]}
+            >
               <View style={styles.adminAccessIconContainer}>
                 <Ionicons name="shield-checkmark" size={48} color="#e74c3c" />
               </View>
-              <Text style={[styles.adminAccessTitle, { color: colors.text || (theme === 'light' ? '#000' : '#fff') }]}>
+              <Text
+                style={[
+                  styles.adminAccessTitle,
+                  {
+                    color: colors.text || (theme === "light" ? "#000" : "#fff"),
+                  },
+                ]}
+              >
                 Access Restricted
               </Text>
-              <Text style={[styles.adminAccessMessage, { color: colors.textSecondary || (theme === 'light' ? '#666' : '#999') }]}>
+              <Text
+                style={[
+                  styles.adminAccessMessage,
+                  {
+                    color:
+                      colors.textSecondary ||
+                      (theme === "light" ? "#666" : "#999"),
+                  },
+                ]}
+              >
                 You cannot view administrator profiles for security reasons.
               </Text>
               <TouchableOpacity
-                style={[styles.adminAccessButton, { backgroundColor: '#28942c' }]}
+                style={[
+                  styles.adminAccessButton,
+                  { backgroundColor: "#28942c" },
+                ]}
                 onPress={() => {
                   setAdminAccessDeniedModal(false);
                   router.back();
@@ -870,7 +981,17 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
-  name: { fontSize: 30, fontWeight: "bold", marginBottom: 4 },
+  name: {
+    fontSize: 30,
+    fontWeight: "bold",
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  nameContainer: {
+    width: "90%",
+    alignItems: "center",
+    paddingHorizontal: 16,
+  },
   subText: { fontSize: 14, color: "gray", marginBottom: 6 },
   sectionTitle: {
     fontSize: 20,
@@ -1026,26 +1147,26 @@ const styles = StyleSheet.create({
   postImageContainer: {
     marginVertical: 10,
     borderRadius: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   postImage: {
-    width: '100%',
+    width: "100%",
     height: 200,
   },
   postStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 20,
     marginTop: 10,
   },
   postStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   postStatText: {
     fontSize: 12,
-    color: 'gray',
+    color: "gray",
   },
   avatarImage: {
     width: 32,
@@ -1085,41 +1206,41 @@ const styles = StyleSheet.create({
   },
   // Comment Modal Styles
   commentModalContent: {
-    width: '100%',
-    height: '80%',
+    width: "100%",
+    height: "80%",
     borderRadius: 16,
     padding: 0,
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
   },
   commentModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
   },
   commentModalTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   closeButton: {
     padding: 4,
   },
   // Business-related styles
   businessInfoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 8,
   },
   businessName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     flex: 1,
     marginRight: 12,
   },
@@ -1132,8 +1253,8 @@ const styles = StyleSheet.create({
     borderColor: "#f39c12",
   },
   pendingVendorContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   pendingIcon: {
     marginRight: 12,
@@ -1143,7 +1264,7 @@ const styles = StyleSheet.create({
   },
   pendingTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 4,
   },
   pendingSubtitle: {
@@ -1182,13 +1303,13 @@ const styles = StyleSheet.create({
   },
   // Admin Access Modal Styles
   adminAccessModal: {
-    width: '100%',
+    width: "100%",
     maxWidth: 320,
     borderRadius: 16,
     padding: 24,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -1202,25 +1323,25 @@ const styles = StyleSheet.create({
   },
   adminAccessTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: "600",
+    textAlign: "center",
     marginBottom: 12,
   },
   adminAccessMessage: {
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 20,
     marginBottom: 24,
   },
   adminAccessButton: {
-    width: '100%',
+    width: "100%",
     paddingVertical: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   adminAccessButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

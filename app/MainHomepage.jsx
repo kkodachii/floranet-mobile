@@ -18,7 +18,10 @@ import { useTheme } from "../Theme/ThemeProvider";
 import { StatusBar } from "react-native";
 import { useAuth } from "../services/AuthContext";
 import { buildStorageUrl } from "../services/api";
-import { setOneSignalUserId, sendCurrentOneSignalIdsToBackend } from "./_layout";
+import {
+  setOneSignalUserId,
+  sendCurrentOneSignalIdsToBackend,
+} from "./_layout";
 
 const MainHomepage = () => {
   const insets = useSafeAreaInsets();
@@ -191,7 +194,11 @@ const AccountDetails = ({
     </View>
 
     <View style={styles.cardContent}>
-      <Text style={[styles.residentName, { color: textColor }]}>
+      <Text
+        style={[styles.residentName, { color: textColor }]}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+      >
         {residentName}
       </Text>
       <Text style={styles.residentId}>House Number: {HouseNumber}</Text>
@@ -219,7 +226,9 @@ const MenuButton = ({
     ]}
     onPress={onPress}
   >
-    <View style={[styles.iconCircle, { backgroundColor: iconCircleBackground }]}>
+    <View
+      style={[styles.iconCircle, { backgroundColor: iconCircleBackground }]}
+    >
       {icon}
     </View>
     <View style={styles.buttonTextContainer}>
